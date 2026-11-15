@@ -15,6 +15,7 @@ import tempfile
 from engine import render
 from cover_art import embed_cover
 from planner import plan
+from generated_storage import save_generated
 
 MAX_JOBS = 8
 JOB_TTL = 3600
@@ -75,6 +76,7 @@ def _run(job_id: str, analysis: list[dict], transition: int, mastering: str = "b
         metrics = render(ordered, job.directory / "mix.mp3", transition=transition, progress=progress, mastering=mastering, kick_enabled=kick_enabled, kick_style=kick_style, kick_level=kick_level, mastering_options=mastering_options, kick_source_index=kick_source_index, source_tracks=source_tracks)
         if cover is not None:
             embed_cover(job.directory / "mix.mp3", cover, title, artist, album, year)
+        save_generated(job.directory / "mix.mp3", "dj_mixes", (title or "MixMaster_AI_Nonstop") + ".mp3", "audio/mpeg")
         with _lock:
             job.metrics = metrics
             job.status = "done"

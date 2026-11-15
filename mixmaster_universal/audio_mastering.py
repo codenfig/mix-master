@@ -13,6 +13,8 @@ import subprocess
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 
+from generated_storage import save_generated
+
 router = APIRouter()
 ALLOWED = {".mp3", ".wav", ".flac", ".m4a", ".ogg", ".aac"}
 MAX_BYTES = 200 * 1024 * 1024
@@ -82,6 +84,7 @@ def _run(job_id):
             raise RuntimeError("FFmpeg mastering failed. Check audio format, disk space and server logs.")
         before = _measure(source)
         after = _measure(output)
+        save_generated(output, "audio_mastering", job["filename"] + "_mastered.wav", "audio/wav")
         with _lock:
             job["measurements"] = {"before": before, "after": after}
             job["output"] = output

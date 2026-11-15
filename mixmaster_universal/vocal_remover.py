@@ -12,6 +12,8 @@ from fastapi import APIRouter, File, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 from starlette.background import BackgroundTask
 
+from generated_storage import save_generated
+
 router = APIRouter()
 ALLOWED = {".mp3", ".wav", ".flac", ".m4a", ".ogg", ".aac"}
 MAX_BYTES = 200 * 1024 * 1024
@@ -51,6 +53,7 @@ def _run(job_id: str):
         output = root / "separated" / "htdemucs" / source.stem / "no_vocals.wav"
         if not output.is_file() or output.stat().st_size == 0:
             raise RuntimeError("Demucs did not generate an instrumental WAV.")
+        save_generated(output, "vocal_remover", job["filename"] + "_instrumental.wav", "audio/wav")
         with _lock:
             job["status"] = "complete"
             job["output"] = output

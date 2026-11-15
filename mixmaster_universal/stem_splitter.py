@@ -9,6 +9,8 @@ from fastapi import APIRouter, File, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 from starlette.background import BackgroundTask
 
+from generated_storage import save_generated
+
 router = APIRouter()
 SUPPORTED = {".mp3", ".wav", ".flac", ".m4a", ".ogg", ".aac"}
 STEMS = ("vocals", "drums", "bass", "other")
@@ -53,6 +55,7 @@ def split_stems(song: UploadFile = File(...)):
                 if not path.is_file() or path.stat().st_size == 0:
                     raise HTTPException(500, f"Missing stem: {stem}.")
                 zip_file.write(path, stem + ".wav")
+        save_generated(archive, "stem_splitter", Path(filename).stem + "_stems.zip", "application/zip")
         return FileResponse(archive, media_type="application/zip",
                             filename=Path(filename).stem + "_stems.zip",
                             background=BackgroundTask(temp.cleanup))

@@ -18,6 +18,8 @@ from vocal_remover import router as vocal_remover_router
 from stem_splitter import router as stem_splitter_router
 from audio_mastering import router as mastering_router
 from voice_studio import router as voice_studio_router
+from generated_storage import router as generated_files_router, save_generated
+from text_to_song import router as text_to_song_router
 
 ROOT = Path(__file__).resolve().parent
 app = FastAPI(title="MixMaster AI Universal", version="0.2.0")
@@ -25,6 +27,8 @@ app.include_router(vocal_remover_router)
 app.include_router(stem_splitter_router)
 app.include_router(mastering_router)
 app.include_router(voice_studio_router)
+app.include_router(generated_files_router)
+app.include_router(text_to_song_router)
 app.mount("/static", StaticFiles(directory=ROOT / "static"), name="static")
 SUPPORTED = {".mp3", ".wav", ".flac", ".m4a", ".ogg", ".aac"}
 MAX_FILE_BYTES = 200 * 1024 * 1024
@@ -170,6 +174,7 @@ def mix(songs: list[UploadFile] = File(...), count: int = Form(10), transition: 
                 embed_cover(out, image, mix_title, mix_artist, mix_album, mix_year)
         saved = Path(tempfile.gettempdir()) / f"mixmaster_{uuid.uuid4().hex}.mp3"
         shutil.copyfile(out, saved)
+        save_generated(out, "dj_mixes", "MixMaster_AI_Nonstop.mp3", "audio/mpeg")
         return FileResponse(
             saved,
             media_type="audio/mpeg",
