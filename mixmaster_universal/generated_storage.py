@@ -22,7 +22,7 @@ BACKEND = os.environ.get("STORAGE_BACKEND", "local").lower()
 if BACKEND not in {"local", "s3"}:
     raise RuntimeError("STORAGE_BACKEND must be local or s3")
 DB = Path(os.environ.get("STORAGE_METADATA_DB", str(ROOT / "metadata" / "files.sqlite3"))).expanduser().resolve()
-CATEGORIES = {"dj_mixes", "stem_splitter", "vocal_remover", "audio_mastering", "voice_studio"}
+CATEGORIES = {"dj_mixes", "stem_splitter", "vocal_remover", "audio_mastering", "voice_studio", "text_to_song"}
 _lock = RLock()
 
 
