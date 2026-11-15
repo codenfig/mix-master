@@ -17,3 +17,43 @@
 @media(max-width:900px){.agent-overview{grid-template-columns:1fr}}
 
 .signal-panel{margin-top:22px}.signal-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.signal-metrics span{display:flex;flex-direction:column;gap:8px;padding:16px;border:1px solid #39304e;background:#1b1930;border-radius:10px;color:#a7a1c0;font-size:11px}.signal-metrics strong{font-size:16px;color:#e4ccff}@media(max-width:700px){.signal-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* Dedicated page navigation and responsive studio shell */
+.sidebar .nav{text-decoration:none;position:relative;transition:background .2s,color .2s,transform .2s}
+.sidebar .nav:hover{transform:translateX(3px)}
+.nav-indicator{margin-left:auto;width:6px;height:6px;border-radius:50%;background:#caa4ff;box-shadow:0 0 12px #a773ff}
+.page-heading{display:flex;justify-content:space-between;align-items:center;gap:20px;margin-bottom:25px}
+.page-heading h1{font:700 clamp(29px,3vw,40px) 'Space Grotesk',sans-serif;letter-spacing:-1.2px;margin:9px 0 4px}
+.page-heading p{color:#9c98b5;font-size:13px;margin:0}
+.page-heading-actions .action{width:auto;margin:0;padding:12px 18px}
+.overview-banner{position:relative;overflow:hidden;padding:48px;min-height:290px;border:1px solid #60458a;border-radius:20px;background:radial-gradient(ellipse at 90% 40%,#5c347a 0,transparent 40%),linear-gradient(120deg,#30214e,#17172c 70%)}
+.overview-banner h2{font:700 clamp(34px,4.3vw,60px) 'Space Grotesk',sans-serif;letter-spacing:-2px;max-width:610px;margin:18px 0 12px}
+.overview-banner h2 span{color:#ca96ff}
+.overview-banner p{max-width:480px;color:#b9afcf;font-size:14px;line-height:1.8}
+.overview-cta{display:inline-flex;align-items:center;gap:14px;background:#f1e8ff;color:#302049;border:0;border-radius:10px;padding:13px 20px;font-weight:800;margin-top:14px}
+.banner-orb{position:absolute;right:10%;top:20%;height:190px;width:190px;display:grid;place-items:center;border-radius:50%;border:14px solid #47325f;background:repeating-radial-gradient(circle,#34284a 0 6px,#1c1a31 7px 12px);box-shadow:0 0 85px #a55bf244;color:#d9b4ff;pointer-events:none}
+.overview-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px;margin:22px 0}
+.stat-card{background:#17172b;border:1px solid #35304b;border-radius:15px;padding:24px;display:flex;flex-direction:column;gap:8px}
+.stat-card span{font-size:10px;font-weight:800;letter-spacing:1.3px;color:#a7a0bd}
+.stat-card strong{font:700 36px 'Space Grotesk',sans-serif;color:#f4eaff}
+.stat-card small{color:#8984a1}
+.overview-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.status-rows>div{display:flex;justify-content:space-between;gap:12px;border-top:1px solid #312b46;padding:16px 0;font-size:13px}
+.status-rows span{color:#a6a0bc}
+.status-rows strong{color:#e9d8ff}
+.inline-link{background:none;border:0;color:#c49aff;font-weight:700;display:inline-flex;align-items:center;gap:8px;padding:12px 0}
+.recent-row{display:flex;align-items:center;gap:12px;border-top:1px solid #312b46;padding:14px 0}
+.recent-row strong,.recent-row small{display:block}
+.recent-row strong{font-size:13px}
+.recent-row small,.overview-empty{color:#9b94b3;font-size:12px;margin-top:6px}
+.recent-icon{display:grid;place-items:center;padding:12px;border-radius:11px;background:#302343;color:#c8a0ff}
+.workspace-single{grid-template-columns:1fr}
+.workspace-single .left-column{display:block}
+.workspace-single .settings{max-width:760px;width:100%;justify-self:center}
+.workspace-single .library{min-height:430px}
+.workspace-single .table-wrap{max-height:none}
+.content>.preview{margin-top:0}
+.content>.history-panel{margin-top:0}
+.content>.signal-panel{margin-top:22px}
+@media(max-width:1100px){.banner-orb{right:4%;opacity:.35}.overview-banner h2,.overview-banner p{position:relative;z-index:1}}
+@media(max-width:760px){.overview-stats,.overview-grid{grid-template-columns:1fr}.overview-banner{padding:28px}.banner-orb{display:none}.page-heading{align-items:flex-start;flex-direction:column}.page-heading-actions .action{width:auto}.sidebar{display:flex;position:relative;width:100%;height:auto;padding:15px;border-right:0;border-bottom:1px solid #29253f}.app{display:block}.brand{padding:4px 6px 15px}.sidebar nav{display:flex;overflow-x:auto;gap:6px}.sidebar .nav{flex-shrink:0;padding:11px 13px}.sidebar-bottom,.nav-label{display:none}.topbar{height:55px}.content{padding:17px}}
