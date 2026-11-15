@@ -15,6 +15,8 @@ def analyze(path):
     if len(y) < SR: raise ValueError(f'Track too short: {path}')
     tempo, beats = librosa.beat.beat_track(y=y, sr=sr, trim=False)
     bpm = float(np.asarray(tempo).ravel()[0])
+    beat_times = librosa.frames_to_time(beats, sr=sr)
+    beat_offset = float(beat_times[0]) if len(beat_times) >= 3 else None
     chroma = librosa.feature.chroma_stft(y=y, sr=sr).mean(axis=1)
     scores = [(np.corrcoef(chroma, np.roll(profile, i))[0,1], KEYS[i] + mode)
               for i in range(12) for profile,mode in [(MAJOR,' major'),(MINOR,' minor')]]
@@ -22,7 +24,8 @@ def analyze(path):
     rms = librosa.feature.rms(y=y)[0]
     energy = float(np.percentile(rms, 75))
     return {'path':str(path), 'name':Path(path).name, 'bpm':round(bpm,1),
-            'key':key, 'energy':energy, 'duration':round(len(y)/sr,1)}
+            'key':key, 'energy':energy, 'duration':round(len(y)/sr,1),
+            'beat_offset':round(beat_offset,4) if beat_offset is not None else None}
 
 def arrange(tracks):
     # Ascending energy is the hard requirement; adjacent BPM/key affinity breaks near ties.
@@ -85,6 +88,21 @@ def decode_stereo_disk(path, directory, sr=44100):
     return np.memmap(destination, dtype='<f4', mode='r', shape=(samples, 2))
 
 
+def beat_aligned_trim(outgoing_duration, fade_seconds, outgoing_beat_offset,
+                      incoming_beat_offset, bpm, max_trim=0.8):
+    """Calculate a small trim that aligns estimated beat phases, not phrases."""
+    if (bpm <= 0 or outgoing_beat_offset is None or incoming_beat_offset is None
+            or not np.isfinite(bpm)):
+        return 0.0
+    period = 60.0 / bpm
+    if not 0.25 <= period <= 2.0:
+        return 0.0
+    phase = (outgoing_duration - fade_seconds - outgoing_beat_offset) % period
+    until_next = (-phase) % period
+    trim = (incoming_beat_offset - until_next) % period
+    return float(trim) if trim <= max_trim else 0.0
+
+
 def render(tracks, output, transition=12, progress=None, beatmatch=True):
     """Disk-backed crossfade renderer with optional conservative tempo matching.
 
@@ -94,6 +112,8 @@ def render(tracks, output, transition=12, progress=None, beatmatch=True):
     sr = 44100
     fade = int(sr * transition)
     previous_bpm = None
+    previous_beat_offset = None
+    previous_duration = None
     with tempfile.TemporaryDirectory() as tmp:
         raw = Path(tmp) / 'mix.raw'
         with raw.open('wb') as out:
@@ -104,8 +124,26 @@ def render(tracks, output, transition=12, progress=None, beatmatch=True):
                 with tempfile.TemporaryDirectory(dir=tmp) as decoded_dir:
                     audio = decode_stereo_disk(track['path'], decoded_dir, sr)
                     current_bpm = float(track.get('bpm', 0))
+                    applied = False
                     if beatmatch and previous_bpm is not None:
-                        audio, _ = match_tempo(audio, current_bpm, previous_bpm)
+                        audio, applied = match_tempo(audio, current_bpm, previous_bpm)
+                    effective_bpm = previous_bpm if applied else current_bpm
+                    ratio = current_bpm / effective_bpm if applied and effective_bpm else 1.0
+                    incoming_offset = track.get('beat_offset')
+                    if incoming_offset is not None:
+                        incoming_offset = float(incoming_offset) * ratio
+                    trim_frames = 0
+                    if (beatmatch and previous_bpm and previous_duration is not None
+                            and effective_bpm > 0
+                            and abs(effective_bpm - previous_bpm) / previous_bpm < 0.035):
+                        trim_seconds = beat_aligned_trim(
+                            previous_duration, transition, previous_beat_offset,
+                            incoming_offset, effective_bpm)
+                        trim_frames = round(trim_seconds * sr)
+                    if trim_frames:
+                        audio = audio[trim_frames:]
+                        if incoming_offset is not None:
+                            incoming_offset -= trim_frames / sr
                     if len(audio) < 2 * fade:
                         raise ValueError(f'Track must exceed {2 * transition} seconds: {track["name"]}')
                     if tail is None:
@@ -118,7 +156,9 @@ def render(tracks, output, transition=12, progress=None, beatmatch=True):
                         _write_audio(out, overlap)
                         _write_audio(out, audio[n:-fade])
                     tail = np.asarray(audio[-fade:], dtype=np.float32).copy()
-                    previous_bpm = current_bpm if current_bpm > 0 else previous_bpm
+                    previous_bpm = effective_bpm if effective_bpm > 0 else previous_bpm
+                    previous_beat_offset = incoming_offset
+                    previous_duration = len(audio) / sr
                 if progress:
                     progress(i + 1, len(tracks))
             if tail is not None:
