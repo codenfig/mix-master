@@ -116,6 +116,20 @@ def list_generated_files(category: str | None = None):
     return {"files": [dict(row) for row in rows], "backend": BACKEND}
 
 
+@router.get("/api/generated-files/{file_id}/stream")
+def stream_generated_file(file_id: str):
+    item = _get(file_id)
+    if not item["mime"].startswith("audio/"):
+        raise HTTPException(400, "Only audio files can be streamed.")
+    if BACKEND == "s3":
+        url = _s3().generate_presigned_url("get_object", Params={"Bucket": _bucket(), "Key": item["storage_key"], "ResponseContentType": item["mime"]}, ExpiresIn=300)
+        return RedirectResponse(url, status_code=307)
+    path = ROOT / item["storage_key"]
+    if not path.is_file():
+        raise HTTPException(404, "Stored file is missing.")
+    return FileResponse(path, media_type=item["mime"], content_disposition_type="inline")
+
+
 @router.get("/api/generated-files/{file_id}/download")
 def download_generated_file(file_id: str):
     item = _get(file_id)
