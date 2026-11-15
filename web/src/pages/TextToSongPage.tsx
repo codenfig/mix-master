@@ -33,6 +33,6 @@ export default function TextToSongPage() {
   <label>Length<select value={bars} onChange={e=>setBars(Number(e.target.value))}>{[8,16,24,32].map(n=><option value={n} key={n}>{n} bars</option>)}</select></label></div>
   <button className="textsong-generate" disabled={busy||!text.trim()||bpm<60||bpm>180} onClick={()=>void generate()}><Music2 size={18}/>{busy?'Composing…':'Generate instrumental'}</button>
   {error&&<p className="textsong-error" role="alert">{error}</p>}
-  {result&&<div className="textsong-result"><strong>Instrumental saved successfully</strong><p>{result.file.name} · {(result.file.size/1048576).toFixed(1)} MiB</p><audio controls src={result.download_url} preload="none"/><a href={result.download_url}><Download size={17}/> Download WAV</a><small>Also available in Generated Files → Text to Song.</small></div>}
+  {result&&<div className="textsong-result"><strong>Instrumental saved successfully</strong><p>{result.file.name} · {(result.file.size/1048576).toFixed(1)} MiB</p><audio controls src={'/api/generated-files/'+result.file.id+'/stream'} preload="none"/><a href={result.download_url}><Download size={17}/> Download WAV</a><small>Also available in Generated Files → Text to Song.</small></div>}
  </section>
 }
