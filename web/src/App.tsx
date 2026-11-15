@@ -1,3 +1,4 @@
+import GeneratedFilesPage from './pages/GeneratedFilesPage'
 import OverviewPage from './pages/OverviewPage'
 import './styles/onboarding.css'
 import { useEffect, useRef, useState } from 'react'
@@ -9,7 +10,7 @@ import StemSplitter from './StemSplitter'
 import AudioMastering from './AudioMastering'
 import VoiceStudio from './VoiceStudio'
 
-type Page = 'onboarding' | 'overview' | 'studio' | 'library' | 'preview' | 'history' | 'settings' | 'vocal-remover' | 'stem-splitter' | 'audio-mastering' | 'voice-studio'
+type Page = 'onboarding' | 'overview' | 'studio' | 'library' | 'preview' | 'history' | 'generated-files' | 'settings' | 'vocal-remover' | 'stem-splitter' | 'audio-mastering' | 'voice-studio'
 const pages: { id: Page; label: string; subtitle: string }[] = [
   { id: 'onboarding', label: 'Welcome', subtitle: 'Discover MixMaster AI' },
   { id: 'overview', label: 'Overview', subtitle: 'Your creative command center' },
@@ -17,6 +18,7 @@ const pages: { id: Page; label: string; subtitle: string }[] = [
   { id: 'library', label: 'Track Library', subtitle: 'Explore and arrange your music' },
   { id: 'preview', label: 'Mix Preview', subtitle: 'Listen, review and export' },
   { id: 'history', label: 'Mix History', subtitle: 'Your previous sessions' },
+  { id: 'generated-files', label: 'Generated Files', subtitle: 'Browse and download your saved audio outputs' },
   { id: 'vocal-remover', label: 'Vocal Remover', subtitle: 'Extract clean instrumental audio from songs' },
   { id: 'stem-splitter', label: 'Stem Splitter', subtitle: 'Separate vocals, drums, bass and instruments' },
   { id: 'audio-mastering', label: 'Audio Mastering', subtitle: 'Make your music polished, balanced and louder' },
@@ -298,7 +300,7 @@ export default function App() {
       <div className="nav-label">YOUR STUDIO</div>
       <nav aria-label="Main navigation">
         {pages.filter(item => item.id !== 'onboarding').map(item => {
-          const Icon = item.id === 'overview' ? LayoutDashboard : item.id === 'studio' ? SlidersHorizontal : item.id === 'library' ? ListMusic : item.id === 'preview' ? Headphones : item.id === 'history' ? RotateCcw : item.id === 'vocal-remover' ? FileAudio : item.id === 'stem-splitter' ? AudioLines : item.id === 'audio-mastering' ? SlidersHorizontal : item.id === 'voice-studio' ? Music2 : Settings2
+          const Icon = item.id === 'overview' ? LayoutDashboard : item.id === 'studio' ? SlidersHorizontal : item.id === 'library' ? ListMusic : item.id === 'preview' ? Headphones : item.id === 'history' ? RotateCcw : item.id === 'generated-files' ? FolderOpen : item.id === 'vocal-remover' ? FileAudio : item.id === 'stem-splitter' ? AudioLines : item.id === 'audio-mastering' ? SlidersHorizontal : item.id === 'voice-studio' ? Music2 : Settings2
           return <a key={item.id} href={'#/' + item.id} aria-current={page === item.id ? 'page' : undefined} className={'nav' + (page === item.id ? ' active' : '')} onClick={() => setPage(item.id)}><Icon size={18}/>{item.label}{page === item.id && <span className="nav-indicator"/>}</a>
         })}
       </nav>
@@ -310,6 +312,7 @@ export default function App() {
       <div className={"content content-" + page + (page === "overview" ? " overview-content" : "")} key={page}>
         {activeJob && <div className="background-job" role="status"><div><LoaderCircle className="spin" size={18}/><strong>Background mix in progress</strong><span>{progress || 'The server is preparing your audio.'}</span></div><button type="button" onClick={() => navigate('studio')}>View progress <ArrowRight size={15}/></button></div>}
         <div className="page-heading"><div><div className="eyebrow"><Sparkles size={14}/> MIXMASTER WORKSPACE</div><h1>{pages.find(p => p.id === page)?.label}</h1><p>{pages.find(p => p.id === page)?.subtitle}</p></div><div className="page-heading-actions">{page !== 'studio' && <button className="action primary" onClick={() => navigate('studio')}><Sparkles size={16}/> Create a Mix <ArrowRight size={16}/></button>}</div></div>
+        {page === 'generated-files' && <GeneratedFilesPage/>}
         {page === 'vocal-remover' && <VocalRemover/>}
         {page === 'stem-splitter' && <StemSplitter/>}
         {page === 'audio-mastering' && <AudioMastering/>}
