@@ -2,6 +2,7 @@
 from hashlib import sha256
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from time import monotonic
 import numpy as np
 import soundfile as sf
 from fastapi import APIRouter, HTTPException
@@ -62,6 +63,7 @@ def compose(request: SongRequest, destination: Path):
     if request.genre not in GENRES or request.key not in SCALES or request.output != "instrumental":
         raise ValueError("Choose a supported genre, key and instrumental output.")
     seed = int.from_bytes(sha256(f'{request.text}|{request.genre}|{request.bpm}|{request.key}'.encode()).digest()[:8], 'big')
+    deadline = monotonic() + 45
     rng = np.random.default_rng(seed)
     beat = 60 / request.bpm
     bar = 4 * beat
@@ -83,6 +85,8 @@ def compose(request: SongRequest, destination: Path):
     }
     kicks, snares, hats = patterns[request.genre]
     for i in range(request.bars):
+        if monotonic() > deadline:
+            raise TimeoutError('Instrumental generation exceeded 45 seconds. Try fewer bars.')
         base = i * bar
         chord = progression[i % 4]
         # Chord pad on beats 0 and 2; bass follows roots with syncopation.
@@ -118,7 +122,10 @@ def text_to_song(request: SongRequest):
     temp = TemporaryDirectory(prefix="mixmaster_composer_")
     try:
         path = Path(temp.name) / "MixMaster_Text_to_Song.wav"
-        compose(request, path)
+        try:
+            compose(request, path)
+        except TimeoutError as exc:
+            raise HTTPException(status_code=504, detail=str(exc)) from exc
         saved = save_generated(path, "text_to_song", path.name, "audio/wav")
         return {"file": saved, "download_url": f"/api/generated-files/{saved['id']}/download"}
     finally:
