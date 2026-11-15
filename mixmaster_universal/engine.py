@@ -135,7 +135,53 @@ def evaluate_raw_mix(path, chunk_frames=65536):
     }
 
 
-def render(tracks, output, transition=12, progress=None, beatmatch=True, optimize=True, mastering="balanced"):
+def add_kick_to_raw(source, destination, bpm, level=0.16, style="soft", sr=44100):
+    """Overlay a globally phase-continuous synthetic four-on-the-floor kick.
+
+    Stream in bounded chunks. Conservative level adaptation uses short-block
+    RMS as a proxy for existing density; this is not kick-source separation.
+    """
+    if not 60 <= bpm <= 180 or not 0 <= level <= 0.35:
+        raise ValueError("Invalid kick tempo or level")
+    if style not in {"soft", "club"}:
+        raise ValueError("Unknown kick style")
+    length = round((0.19 if style == "soft" else 0.24) * sr)
+    t = np.arange(length, dtype=np.float64) / sr
+    freq = (58 if style == "soft" else 68) * np.exp(-t * (24 if style == "soft" else 28)) + (48 if style == "soft" else 44)
+    phase = 2 * np.pi * np.cumsum(freq) / sr
+    envelope = (1 - np.exp(-t * 850)) * np.exp(-t * (27 if style == "soft" else 20))
+    kick = (np.sin(phase) * envelope).astype(np.float32)
+    if style == "club":
+        kick += (0.12 * np.exp(-t * 120) * np.sin(2 * np.pi * 1400 * t)).astype(np.float32)
+    beat_frames = sr * 60.0 / bpm
+    frame = 0
+    with open(source, "rb") as inp, open(destination, "wb") as out:
+        while True:
+            block = np.fromfile(inp, dtype="<f4", count=65536 * 2)
+            if block.size == 0:
+                break
+            if block.size % 2:
+                raise ValueError("Invalid stereo PCM")
+            stereo = block.reshape(-1, 2).copy()
+            end = frame + len(stereo)
+            first = max(0, int(np.ceil((frame - length + 1) / beat_frames)))
+            last = int(np.floor((end - 1) / beat_frames))
+            # Keep the kick's timing anchored to sample zero across every song.
+            for beat in range(first, last + 1):
+                onset = round(beat * beat_frames)
+                a = max(frame, onset)
+                b = min(end, onset + length)
+                if b <= a:
+                    continue
+                section = stereo[a - frame:b - frame]
+                density = float(np.sqrt(np.mean(section * section) + 1e-10))
+                gain = level * (0.45 if density > 0.20 else 0.65 if density > 0.12 else 1.0)
+                section += (gain * kick[a - onset:b - onset])[:, None]
+            out.write(stereo.astype("<f4", copy=False).tobytes())
+            frame = end
+
+
+def render(tracks, output, transition=12, progress=None, beatmatch=True, optimize=True, mastering="balanced", kick_enabled=False, kick_style="soft", kick_level=0.16):
     """Disk-backed crossfade renderer with optional conservative tempo matching.
 
     Unstretched tracks remain on disk. Stretching a track still uses RAM, so
@@ -212,7 +258,17 @@ def render(tracks, output, transition=12, progress=None, beatmatch=True, optimiz
                     progress(i + 1, len(tracks))
             if tail is not None:
                 _write_audio(out, tail)
+        if kick_enabled:
+            reference_bpm = float(tracks[0].get("bpm", 0)) if tracks else 0
+            if not 60 <= reference_bpm <= 180:
+                raise ValueError("Smart Kick requires an opening track between 60 and 180 BPM")
+            with_kick = Path(tmp) / "mix_with_kick.raw"
+            add_kick_to_raw(raw, with_kick, reference_bpm, kick_level, kick_style, sr)
+            raw = with_kick
         report = evaluate_raw_mix(raw)
+        report["kick"] = {"enabled": kick_enabled, "style": kick_style if kick_enabled else None,
+                          "bpm": round(float(tracks[0].get("bpm", 0)), 1) if kick_enabled else None,
+                          "level": kick_level if kick_enabled else None}
         report['transitions'] = transition_reports
         report['transition_proxy_average'] = round(sum(t['proxy_score'] for t in transition_reports) / len(transition_reports), 1) if transition_reports else None
         # FFmpeg loudnorm performs EBU R128 loudness normalization and
