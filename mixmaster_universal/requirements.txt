@@ -1,8 +1,10 @@
 fastapi>=0.110,<1
 uvicorn>=0.29,<1
 python-multipart>=0.0.9
-numpy>=1.26
-librosa>=0.10.2
+numpy==1.26.4
+# Pin SciPy to a NumPy 1.26-compatible release (newer SciPy requires NumPy 2.x).
+scipy==1.13.1
+librosa==0.10.2.post1
 soundfile>=0.12
 # Use a compatible prebuilt Numba/LLVM pair on macOS Intel Python 3.12.
 numba==0.61.2
