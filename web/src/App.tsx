@@ -30,6 +30,7 @@ export default function App() {
   const navigate = (next: Page) => { window.location.hash = '/' + next; setPage(next); window.scrollTo(0, 0) }
   const [count, setCount] = useState<5 | 10 | 20>(10)
   const [transition, setTransition] = useState(12)
+  const [mastering, setMastering] = useState<'off' | 'balanced' | 'club'>('balanced')
   const [preset, setPreset] = useState<'smooth' | 'balanced' | 'quick'>('balanced')
   const [history, setHistory] = useState<{ tracks: number; created: string }[]>(() => { try { return JSON.parse(localStorage.getItem('mixmaster_history') || '[]') } catch { return [] } })
   const [files, setFiles] = useState<File[]>([])
@@ -42,6 +43,7 @@ export default function App() {
   const [metrics, setMetrics] = useState<MixMetrics | null>(null)
   const [progress, setProgress] = useState<string | null>(null)
   const [transitionChecks, setTransitionChecks] = useState<{ from: string; to: string; proxy_score: number; loudness_gap_db: number; attempts: number }[]>([])
+  const [masteringResult, setMasteringResult] = useState<{ preset: string; target_lufs: number | null; true_peak_limit_dbtp: number | null } | null>(null)
   const [playSignal, setPlaySignal] = useState(0)
   const [playReady, setPlayReady] = useState(false)
   const [current, setCurrent] = useState(0)
@@ -58,6 +60,7 @@ export default function App() {
     outputUrl.current = null
     setUrl(null)
     setMetrics(null)
+    setMasteringResult(null)
     setTransitionChecks([])
     setProgress(null)
     setPlayReady(false)
@@ -144,7 +147,7 @@ export default function App() {
         setMessage('Analysis complete. Your mix is ready to render.')
       } else {
         resetOutput()
-        const queued = await queueMix(files, count, transition, controller.signal)
+        const queued = await queueMix(files, count, transition, controller.signal, mastering)
         let job = await fetchJob(queued.id, controller.signal)
         while (job.status === 'queued' || job.status === 'processing') {
           setProgress(job.status === 'queued' ? 'Waiting in mixing queue…' : 'Rendering ' + job.completed_tracks + '/' + job.total_tracks + ' tracks')
@@ -159,6 +162,7 @@ export default function App() {
         const blob = await downloadJob(queued.id, controller.signal)
         const result = { metrics: { peak: job.metrics?.peak ?? 0, rms: job.metrics?.rms ?? 0, nearSilence: job.metrics?.near_silence_fraction ?? 0, clippingRisk: job.metrics?.clipping_risk ?? false } }
         setMetrics(result.metrics)
+        setMasteringResult(job.metrics?.mastering || null)
         setTransitionChecks(job.metrics?.transitions || [])
         setProgress(null)
         if (!blob.size) throw new Error('The server returned an empty audio file.')
@@ -244,6 +248,9 @@ export default function App() {
             <label className="field-label">MIX STYLE</label>
             <div className="preset-options">{(['smooth','balanced','quick'] as const).map(value => <button key={value} className={preset === value ? 'selected' : ''} disabled={busy !== null} onClick={() => applyPreset(value)}>{value}</button>)}</div>
             <small className="preset-hint">Styles adjust crossfade duration, not the mixing algorithm.</small>
+            <label className="field-label">AUDIO MASTERING</label>
+            <div className="preset-options mastering-options">{(['off', 'balanced', 'club'] as const).map(value => <button key={value} type="button" className={mastering === value ? 'selected' : ''} disabled={busy !== null} onClick={() => { setMastering(value); resetOutput() }}>{value === 'off' ? 'Off' : value === 'balanced' ? 'Balanced' : 'Club'}</button>)}</div>
+            <small className="preset-hint">{mastering === 'off' ? 'Peak limiting only.' : mastering === 'balanced' ? 'Streaming-friendly target: −14 LUFS / −1.5 dBTP.' : 'Louder DJ set target: −12 LUFS / −1.5 dBTP.'} Applied when exporting the mix.</small>
             <label className="field-label">NUMBER OF SONGS</label>
             <div className="count-options">{([5,10,20] as const).map(n => <button key={n} className={count === n ? 'selected' : ''} disabled={busy !== null} onClick={() => changeCount(n)}>{n}<small>songs</small></button>)}</div>
             <label className="field-label" htmlFor="transition">TRANSITION DURATION <span>{transition}s</span></label>
@@ -258,6 +265,7 @@ export default function App() {
         </div>}
 
         {page === 'preview' && <><section className="panel preview" id="preview"><div className="preview-main"><div className="panel-heading"><div><h2><AudioLines size={20}/> Mix Preview <span className="muted">{url ? '· Ready to play' : '· Awaiting your mix'}</span></h2><p>Listen to your finished mix before downloading.</p></div></div><div className="player"><button className="play" disabled={!playReady} aria-label="Play or pause mix" onClick={() => setPlaySignal(n => n+1)}><Play size={21} fill="currentColor"/></button><div className="wave-area"><Waveform url={url} onTime={(t,d) => {setCurrent(t);setDuration(d)}} onReady={setPlayReady} playSignal={playSignal}/><div className="time"><span>{formatTime(current)}</span><span>{formatTime(duration)}</span></div></div></div></div><div className="preview-summary"><div className="summary-title">MIX SUMMARY</div><strong>{url ? formatTime(duration) : '--:--'}</strong><span>Total Mix Duration</span><div className="summary-divider"/><p>{Math.max(0,count-1)} transitions · {transition}s each</p>{url && <a className="download" href={url} download="MixMaster_AI_Nonstop.mp3"><Download size={17}/> Download MP3</a>}</div></section>
+        {masteringResult && <section className="panel mastering-report"><div className="panel-heading"><div><h2><SlidersHorizontal size={20}/> Mastering Report</h2><p>Export processing settings, not a measured post-encode loudness report.</p></div></div><div className="signal-metrics"><span>Preset <strong>{masteringResult.preset}</strong></span><span>Target loudness <strong>{masteringResult.target_lufs === null ? 'Not normalized' : masteringResult.target_lufs + ' LUFS'}</strong></span><span>Peak ceiling <strong>{masteringResult.true_peak_limit_dbtp === null ? 'Basic limiter' : masteringResult.true_peak_limit_dbtp + ' dBTP'}</strong></span></div></section>}
         {metrics && <section className="panel signal-panel"><div className="panel-heading"><div><h2><Activity size={20}/> Audio Signal Check</h2><p>Measured on the mix before final limiting; not an assessment of musical transition quality.</p></div></div><div className="signal-metrics"><span>Peak amplitude <strong>{metrics.peak.toFixed(3)}</strong></span><span>RMS level <strong>{metrics.rms.toFixed(3)}</strong></span><span>Near-silence <strong>{(metrics.nearSilence * 100).toFixed(1)}%</strong></span><span>Clipping risk <strong>{metrics.clippingRisk ? 'Review mix' : 'Not detected'}</strong></span></div></section>}
         {transitionChecks.length > 0 && <section className="panel transition-report"><div className="panel-heading"><div><h2><Sparkles size={20}/> Automated Transition Review</h2><p>Measured proxy scores from candidate crossfades; higher does not guarantee better musical sound.</p></div></div><div className="history-list">{transitionChecks.map((t,i) => <div className="history-item" key={i}><strong>{t.from} → {t.to}</strong><span>{t.proxy_score}/100 · {t.attempts} candidates · {t.loudness_gap_db} dB gap</span></div>)}</div></section>}
         </>}
