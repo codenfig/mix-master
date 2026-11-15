@@ -64,7 +64,7 @@ mix-master/
 4. **Mix:** `POST /api/mix` renders equal-power crossfades using a selectable **4–32 second** transition (default 12 seconds).
 5. **Export:** The backend returns a stereo **320 kbps MP3** for download or saving.
 
-**Audio limitation:** Current mixing uses crossfades; it does **not** yet perform true beat synchronization, pitch-preserving tempo matching, phrase alignment, stem separation or mashups.
+**Audio limitation:** Current mixing uses crossfades; it does **not** yet perform beat-grid synchronization or phrase alignment; it now supports conservative pitch-preserving tempo matching for nearby BPMs, stem separation or mashups.
 
 ## 🛠 Requirements
 
@@ -149,7 +149,7 @@ This is **not ready for direct public exposure**. It lacks authentication, rate 
 
 - Validate automated tests and real-world audio processing
 - Add streaming uploads/downloads, background jobs and progress reporting
-- Implement beatmatching and musical phrase alignment
+- Implement beat-grid synchronization and musical phrase alignment
 - Package and sign Windows, macOS and Linux desktop applications
 - Test Flutter on Android and iOS and prepare release builds
 - Deploy a secured HTTPS backend with monitoring and resource limits
