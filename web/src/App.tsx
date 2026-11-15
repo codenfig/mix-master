@@ -21,6 +21,7 @@ export default function App() {
   const [url, setUrl] = useState<string | null>(null)
   const [metrics, setMetrics] = useState<MixMetrics | null>(null)
   const [progress, setProgress] = useState<string | null>(null)
+  const [transitionChecks, setTransitionChecks] = useState<{ from: string; to: string; proxy_score: number; loudness_gap_db: number; attempts: number }[]>([])
   const [playSignal, setPlaySignal] = useState(0)
   const [playReady, setPlayReady] = useState(false)
   const [current, setCurrent] = useState(0)
@@ -37,6 +38,7 @@ export default function App() {
     outputUrl.current = null
     setUrl(null)
     setMetrics(null)
+    setTransitionChecks([])
     setProgress(null)
     setPlayReady(false)
     setCurrent(0)
@@ -112,6 +114,7 @@ export default function App() {
         const blob = await downloadJob(queued.id, controller.signal)
         const result = { metrics: { peak: job.metrics?.peak ?? 0, rms: job.metrics?.rms ?? 0, nearSilence: job.metrics?.near_silence_fraction ?? 0, clippingRisk: job.metrics?.clipping_risk ?? false } }
         setMetrics(result.metrics)
+        setTransitionChecks(job.metrics?.transitions || [])
         setProgress(null)
         if (!blob.size) throw new Error('The server returned an empty audio file.')
         const nextUrl = URL.createObjectURL(blob)
@@ -197,6 +200,7 @@ export default function App() {
 
         <section className="panel preview" id="preview"><div className="preview-main"><div className="panel-heading"><div><h2><AudioLines size={20}/> Mix Preview <span className="muted">{url ? '· Ready to play' : '· Awaiting your mix'}</span></h2><p>Listen to your finished mix before downloading.</p></div></div><div className="player"><button className="play" disabled={!playReady} aria-label="Play or pause mix" onClick={() => setPlaySignal(n => n+1)}><Play size={21} fill="currentColor"/></button><div className="wave-area"><Waveform url={url} onTime={(t,d) => {setCurrent(t);setDuration(d)}} onReady={setPlayReady} playSignal={playSignal}/><div className="time"><span>{formatTime(current)}</span><span>{formatTime(duration)}</span></div></div></div></div><div className="preview-summary"><div className="summary-title">MIX SUMMARY</div><strong>{url ? formatTime(duration) : '--:--'}</strong><span>Total Mix Duration</span><div className="summary-divider"/><p>{Math.max(0,count-1)} transitions · {transition}s each</p>{url && <a className="download" href={url} download="MixMaster_AI_Nonstop.mp3"><Download size={17}/> Download MP3</a>}</div></section>
         {metrics && <section className="panel signal-panel"><div className="panel-heading"><div><h2><Activity size={20}/> Audio Signal Check</h2><p>Measured on the mix before final limiting; not an assessment of musical transition quality.</p></div></div><div className="signal-metrics"><span>Peak amplitude <strong>{metrics.peak.toFixed(3)}</strong></span><span>RMS level <strong>{metrics.rms.toFixed(3)}</strong></span><span>Near-silence <strong>{(metrics.nearSilence * 100).toFixed(1)}%</strong></span><span>Clipping risk <strong>{metrics.clippingRisk ? 'Review mix' : 'Not detected'}</strong></span></div></section>}
+        {transitionChecks.length > 0 && <section className="panel transition-report"><div className="panel-heading"><div><h2><Sparkles size={20}/> Automated Transition Review</h2><p>Measured proxy scores from candidate crossfades; higher does not guarantee better musical sound.</p></div></div><div className="history-list">{transitionChecks.map((t,i) => <div className="history-item" key={i}><strong>{t.from} → {t.to}</strong><span>{t.proxy_score}/100 · {t.attempts} candidates · {t.loudness_gap_db} dB gap</span></div>)}</div></section>}
         <section className="panel history-panel" id="history"><div className="panel-heading"><div><h2><RotateCcw size={20}/> Mix History</h2><p>Completed mix metadata saved in this browser only. Audio is not retained.</p></div><button className="subtle" disabled={!history.length} onClick={() => { setHistory([]); try { localStorage.removeItem('mixmaster_history') } catch { /* Storage may be unavailable */ } }}>Clear</button></div>{history.length ? <div className="history-list">{history.map((item,i) => <div className="history-item" key={i}><strong>MixMaster AI Nonstop</strong><span>{item.tracks} tracks · {item.created}</span></div>)}</div> : <p className="history-empty">Your completed mixes will appear here.</p>}</section>
         <footer><span>MixMaster AI · Development MVP · Experimental beat-phase alignment · Phrase matching pending</span><span>Only upload audio you have permission to use.</span></footer>
       </div>
