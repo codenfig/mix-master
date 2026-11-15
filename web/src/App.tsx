@@ -57,6 +57,7 @@ export default function App() {
   const [masteringResult, setMasteringResult] = useState<{ preset: string; target_lufs: number | null; true_peak_limit_dbtp: number | null } | null>(null)
   const [playSignal, setPlaySignal] = useState(0)
   const [playReady, setPlayReady] = useState(false)
+  const [isPlaying, setIsPlaying] = useState(false)
   const [current, setCurrent] = useState(0)
   const [duration, setDuration] = useState(0)
   const input = useRef<HTMLInputElement>(null)
@@ -76,6 +77,7 @@ export default function App() {
     setTransitionChecks([])
     setProgress(null)
     setPlayReady(false)
+    setIsPlaying(false)
     setCurrent(0)
     setDuration(0)
   }
@@ -271,26 +273,32 @@ export default function App() {
           <div className="overview-stats"><div className="stat-card"><span>TRACKS LOADED</span><strong>{files.length}</strong><small>Ready in your session</small></div><div className="stat-card"><span>COMPLETED MIXES</span><strong>{history.length}</strong><small>Browser history entries</small></div><div className="stat-card"><span>PLAN COMPATIBILITY</span><strong>{analysis?.plan ? analysis.plan.quality_score + '/100' : '—'}</strong><small>Metadata-based estimate</small></div></div>
           <div className="overview-grid"><div className="panel"><div className="panel-heading"><div><h2><Activity size={19}/> Session status</h2><p>Your current workflow at a glance.</p></div></div><div className="status-rows"><div><span>Track selection</span><strong>{files.length} / {count} files</strong></div><div><span>Track analysis</span><strong>{analysis ? 'Complete' : 'Not started'}</strong></div><div><span>Mix output</span><strong>{url ? 'Ready to preview' : busy ? 'Processing' : 'Not rendered'}</strong></div></div><button className="inline-link" onClick={() => navigate(url ? 'preview' : 'studio')}>Continue session <ArrowRight size={16}/></button></div><div className="panel"><div className="panel-heading"><div><h2><ListMusic size={19}/> Recent activity</h2><p>Previously completed mixes on this browser.</p></div></div>{history.length ? history.slice(0,3).map((item,i) => <div className="recent-row" key={i}><div className="recent-icon"><AudioLines size={18}/></div><div><strong>Nonstop Mix</strong><small>{item.tracks} tracks · {item.created}</small></div></div>) : <div className="overview-empty">Your first finished mix will appear here.</div>}<button className="inline-link" onClick={() => navigate('history')}>View history <ArrowRight size={16}/></button></div></div>
         </div>}
-        {page === 'studio' && <><div className="hero"><div><div className="eyebrow"><Sparkles size={15}/> SMART MIXING WORKSPACE</div><h1>Create your <span>perfect mix.</span></h1><p>Upload your favorite tracks and let MixMaster AI analyze, arrange and blend them into one continuous listening experience.</p></div><div className="hero-disc"><div className="disc-inner"><Music2 size={34}/></div></div></div>
-
-        <div className="steps" aria-label="Mix workflow">
-          {[['01','Upload Tracks'],['02','Analyze Music'],['03','Arrange Flow'],['04','Create Mix']].map(([number,label],index) => <div className="step" key={number}><span className={index === 0 || (index === 1 && analysis) || (index === 3 && url) ? 'step-number done' : 'step-number'}>{index === 0 && files.length === count ? <Check size={17}/> : number}</span><span>{label}</span>{index < 3 && <span className="step-line"/>}</div>)}
-        </div>
-
-        <div className="agent-overview">
-          <div className="agent-card"><div className="agent-label"><Sparkles size={17}/> AUTONOMOUS DJ PLAN</div><strong>{analysis?.plan ? analysis.plan.quality_score + '/100' : 'Awaiting analysis'}</strong><small>Estimated transition compatibility, not an audible-quality rating</small></div>
-          <div className="agent-card agent-curve"><div className="agent-label"><Activity size={17}/> ENERGY JOURNEY</div>
-            {plannedTracks.length > 1 ? <svg viewBox="0 0 600 120" preserveAspectRatio="none" role="img" aria-label="Planned energy progression" className="energy-chart"><polyline fill="none" stroke="#b77aff" strokeWidth="3" strokeLinejoin="round" points={plannedTracks.map((t,i) => (i * 600 / (plannedTracks.length - 1)) + ',' + (110 - t.energy / energyMax * 95)).join(' ')}/></svg> : <div className="curve-empty">Analyze tracks to reveal the planned energy flow.</div>}
+        {page === 'studio' && <div className="studio-intro">
+          <section className="studio-hero">
+            <div className="studio-hero-copy"><div className="studio-eyebrow"><Sparkles size={15}/> THE AI MIXING STUDIO <span> / SESSION 001</span></div><h2>Make the night <em>flow.</em></h2><p>Drop your tracks. Shape the energy. Let MixMaster AI build a continuous set with seamless transitions and your signature sound.</p><div className="studio-hero-tags"><span><AudioLines size={14}/> BEAT MATCHING</span><span><Activity size={14}/> ENERGY FLOW</span><span><Sparkles size={14}/> AI ARRANGEMENT</span></div></div>
+            <div className="studio-hero-art" aria-hidden="true"><div className="studio-hero-halo"/><div className="studio-hero-record"><div className="studio-record-label"><Music2 size={33}/><small>MIXMASTER</small></div></div><div className="studio-hero-eq">{Array.from({length:25},(_,i)=><i key={i} style={{height:(16+Math.abs(Math.sin(i*.82)*Math.cos(i*.21))*74)+'%'}}/>)}</div></div>
+          </section>
+          <div className="studio-progress-steps" aria-label="Mix workflow">
+            {[['01','Upload','Build your crate'],['02','Analyze','Discover the sound'],['03','Arrange','Shape the journey'],['04','Render','Create your mix']].map(([number,label,detail],index)=>{
+              const complete=index===0?files.length===count:index===1||index===2?Boolean(analysis):Boolean(url)
+              const currentStep=!url?(files.length!==count?0:!analysis?1:3):4
+              return <div key={number} className={'studio-progress-step'+(complete?' is-complete':'')+(currentStep===index?' is-current':'')}><span className="studio-step-num">{complete?<Check size={16}/>:number}</span><div><strong>{label}</strong><small>{detail}</small></div>{index<3&&<ArrowRight className="studio-step-arrow" size={15}/>}</div>
+            })}
           </div>
-        </div>
-        </>}
+          <div className="studio-intelligence">
+            <section className="studio-intel-card"><div className="studio-intel-label"><Sparkles size={17}/> SMART DJ PLAN <span>{analysis?.plan?'ANALYZED':'PENDING'}</span></div><strong>{analysis?.plan?analysis.plan.quality_score+'/100':'Ready when you are'}</strong><p>{analysis?.plan?'Estimated musical compatibility for the proposed sequence.':'Add your tracks and analyze them to reveal the AI-selected sequence.'}</p></section>
+            <section className="studio-intel-card studio-intel-energy"><div className="studio-intel-label"><Activity size={17}/> ENERGY JOURNEY <span>{analysis?'LIVE ANALYSIS':'PREVIEW'}</span></div>
+              {plannedTracks.length>1?<svg viewBox="0 0 600 115" preserveAspectRatio="none" role="img" aria-label="Planned energy progression" className="studio-energy-chart"><defs><linearGradient id="studioEnergy" x1="0" y1="0" x2="1" y2="0"><stop stopColor="#d850ef"/><stop offset=".55" stopColor="#8056fb"/><stop offset="1" stopColor="#36baf2"/></linearGradient></defs><polyline fill="none" stroke="url(#studioEnergy)" strokeWidth="4" strokeLinejoin="round" strokeLinecap="round" points={plannedTracks.map((t,i)=>(i*600/(plannedTracks.length-1))+','+(104-t.energy/energyMax*88)).join(' ')}/>{plannedTracks.map((t,i)=><circle key={i} cx={i*600/(plannedTracks.length-1)} cy={104-t.energy/energyMax*88} r="5" fill="#d9adff"/>)}</svg>:<div className="studio-energy-placeholder"><div className="studio-eq-bars" aria-hidden="true">{Array.from({length:43},(_,i)=><i key={i} style={{height:8+Math.abs(Math.sin(i*.67)*Math.cos(i*.16))*48}}/>)}</div><span>Your energy curve appears after track analysis</span></div>}
+            </section>
+          </div>
+        </div>}
         {(page === 'studio' || page === 'library' || page === 'settings') && <div className={"workspace" + (page !== 'studio' ? " workspace-single" : "")}>
           <section className="left-column">
-            {page === 'studio' && <div className="panel upload-panel">
+            {page === 'studio' && <div className="panel upload-panel studio-upload-card">
               <div className="panel-heading"><div><h2><UploadCloud size={20}/> Upload Your Music</h2><p>Start by adding your tracks to the studio.</p></div><span className="pill">{files.length} / {count} tracks</span></div>
               <input ref={input} type="file" multiple accept=".mp3,.wav,.flac,.m4a,.ogg,.aac,audio/*" className="hidden" onChange={e => { if (e.target.files) addFiles(e.target.files); e.target.value = '' }} />
-              <div className="drop-zone" role="button" tabIndex={0} onClick={() => !busy && input.current?.click()} onKeyDown={e => { if ((e.key === 'Enter' || e.key === ' ') && !busy) { e.preventDefault(); input.current?.click() } }} onDragOver={e => e.preventDefault()} onDrop={e => { e.preventDefault(); if (e.dataTransfer.files.length) addFiles(e.dataTransfer.files) }}>
-                <div className="upload-icon"><FolderOpen size={30}/></div><strong>{files.length ? 'Add more audio tracks' : 'Drag & drop your audio files here'}</strong><span>or click to browse from your device</span><div className="browse-button">Browse Files</div><small>MP3, WAV, FLAC, M4A, OGG, AAC · Max 200 MiB each</small>
+              <div className="drop-zone studio-drop-zone" role="button" tabIndex={0} onClick={() => !busy && input.current?.click()} onKeyDown={e => { if ((e.key === 'Enter' || e.key === ' ') && !busy) { e.preventDefault(); input.current?.click() } }} onDragOver={e => e.preventDefault()} onDrop={e => { e.preventDefault(); if (e.dataTransfer.files.length) addFiles(e.dataTransfer.files) }}>
+                <div className="upload-icon"><UploadCloud size={32}/></div><strong>{files.length ? 'Keep building your music crate' : 'Your next great mix starts here'}</strong><span>Drag & drop tracks, or browse your device</span><div className="browse-button"><FolderOpen size={15}/> Choose Audio Files <ArrowRight size={15}/></div><small>MP3, WAV, FLAC, M4A, OGG, AAC · Max 200 MiB each</small>
               </div>
               <div className="upload-feedback" role="status" aria-live="polite">
                 <div className="upload-feedback-heading"><strong>{files.length === count ? 'Track selection complete' : files.length ? files.length + ' of ' + count + ' tracks selected' : 'No audio tracks selected yet'}</strong><span>{files.length === count ? 'Ready to analyze' : files.length > count ? 'Remove extra tracks' : (count - files.length) + ' remaining'}</span></div>
@@ -343,10 +351,10 @@ export default function App() {
         </div>}
 
         {page === 'preview' && <div className="dj-preview">
-          <div className="dj-banner"><div className="dj-banner-copy"><span className="dj-kicker">MIXMASTER WORKSPACE</span><h2>Mix Preview</h2><p>Listen, analyze and export your AI-powered DJ mix</p></div><div className="dj-banner-eq" aria-hidden="true">{Array.from({length:42},(_,i)=><i key={i} style={{height: (15+Math.abs(Math.sin(i*.67)*Math.cos(i*.17))*76)+'%'}}/>)}</div><div className="dj-headphones" aria-hidden="true"><Headphones size={140} strokeWidth={1.1}/></div></div>
+          <div className="dj-banner"><div className="dj-banner-copy"><span className="dj-kicker">MIXMASTER WORKSPACE</span><h2>Mix Preview</h2><p>Listen, analyze and export your AI-powered DJ mix</p></div><div className="dj-banner-eq" aria-hidden="true">{Array.from({length:42},(_,i)=><i key={i} style={{height: (15+Math.abs(Math.sin(i*.67)*Math.cos(i*.17))*76)+'%'}}/>)}</div><div className="dj-headphones" aria-hidden="true"/></div>
           <section className="dj-main-deck">
-            <div className="dj-cover-stack" aria-hidden="true"><div className="dj-vinyl"><div className="dj-vinyl-center"/></div><div className="dj-cover"><div className="dj-cover-light"/><Headphones size={74} strokeWidth={1.3}/><strong>AI DJ MIX</strong><small>MIXMASTER AI</small></div></div>
-            <div className="dj-deck-center"><div className="dj-track-heading"><div><div className="dj-track-title"><h3>My DJ Mix</h3><span>AI MIX</span></div><p>Continuous set <b>•</b> AI arranged <b>•</b> Studio master</p></div></div><div className="dj-main-wave"><Waveform url={url} onTime={(t,d)=>{setCurrent(t);setDuration(d)}} onReady={setPlayReady} playSignal={playSignal}/></div><div className="dj-timeline"><span>{formatTime(current)}</span><div className="dj-progress-track"><div style={{width:duration?Math.min(100,current/duration*100)+'%':'0%'}}/></div><span>{formatTime(duration)}</span></div><div className="dj-player-actions"><span className="dj-player-label"><Headphones size={15}/> STUDIO LISTENING</span><button type="button" className="dj-play-btn" disabled={!playReady} onClick={()=>setPlaySignal(v=>v+1)} aria-label="Play or pause mix"><Play size={25} fill="currentColor"/></button><span className="dj-player-label">MP3 · EXPORT READY</span></div></div>
+            <div className={"dj-cover-stack" + (isPlaying ? " is-spinning" : "")} aria-hidden="true"><div className="dj-vinyl"><div className="dj-vinyl-center"/></div><div className="dj-cover" role="img" aria-label="Neon DJ silhouette and AI DJ MIX album cover"/></div>
+            <div className="dj-deck-center"><div className="dj-track-heading"><div><div className="dj-track-title"><h3>My DJ Mix</h3><span>AI MIX</span></div><p>Continuous set <b>•</b> AI arranged <b>•</b> Studio master</p></div></div><div className="dj-main-wave"><Waveform url={url} onTime={(t,d)=>{setCurrent(t);setDuration(d)}} onReady={setPlayReady} playSignal={playSignal} onPlayingChange={setIsPlaying}/></div><div className="dj-timeline"><span>{formatTime(current)}</span><div className="dj-progress-track"><div style={{width:duration?Math.min(100,current/duration*100)+'%':'0%'}}/></div><span>{formatTime(duration)}</span></div><div className="dj-player-actions"><span className="dj-player-label"><Headphones size={15}/> STUDIO LISTENING</span><button type="button" className="dj-play-btn" disabled={!playReady} onClick={()=>setPlaySignal(v=>v+1)} aria-label="Play or pause mix"><Play size={25} fill="currentColor"/></button><span className="dj-player-label">MP3 · EXPORT READY</span></div></div>
             <aside className="dj-summary"><span className="dj-card-label">MIX SUMMARY</span><div className="dj-summary-row"><Music2 size={20}/><div><strong>{url?formatTime(duration):'--:--'}</strong><small>Total Mix Duration</small></div></div><div className="dj-summary-row"><ListMusic size={20}/><div><strong>{url?count:'—'}</strong><small>Tracks Mixed</small></div></div><div className="dj-summary-row"><Activity size={20}/><div><strong>{url?Math.max(0,count-1):'—'}</strong><small>Transitions · {transition}s each</small></div></div>{url?<a className="dj-download" href={url} download="MixMaster_AI_Nonstop.mp3"><Download size={18}/> Download MP3</a>:<button className="dj-download" disabled><Download size={18}/> {activeJob?'Rendering mix':'No mix yet'}</button>}</aside>
           </section>
           <div className="dj-console-grid">
