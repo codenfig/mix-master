@@ -11,11 +11,13 @@ import wave
 
 from generated_storage import save_generated
 from song_arrangement import arrangement
+from full_song_jobs import router as job_router, submit as submit_job, status as job_status, cancel as cancel_job
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
 router = APIRouter()
+router.include_router(job_router)
 PROJECT_ROOT = Path(os.environ.get("FULL_SONG_PROJECT_ROOT", "~/MixMasterAI/Storage/full_song_projects")).expanduser().resolve()
 GENRES = {"Afro-pop", "Rumba", "Dancehall", "Bongo Flava", "Pop", "Afrobeat", "Country Pop"}
 
@@ -100,6 +102,27 @@ def read_project(project_id: str):
     if not path.is_file():
         raise HTTPException(404, "Project not found.")
     return json.loads(path.read_text(encoding="utf-8"))
+
+
+
+@router.post("/api/full-song/jobs", status_code=202)
+def start_song_job(project: SongProject):
+    validate_project(project)
+    executable = _engine_command(project.output)
+    if executable is None:
+        raise HTTPException(503, "No compatible local music engine is configured for this output.")
+    payload = project.model_dump() if hasattr(project, "model_dump") else project.dict()
+    return submit_job(payload, executable, arrangement(project.lyrics, project.bpm, project.minutes))
+
+
+@router.get("/api/full-song/jobs/{job_id}")
+def get_song_job(job_id: str):
+    return job_status(job_id)
+
+
+@router.post("/api/full-song/jobs/{job_id}/cancel")
+def cancel_song_job(job_id: str):
+    return cancel_job(job_id)
 
 
 @router.post("/api/full-song/generate")
