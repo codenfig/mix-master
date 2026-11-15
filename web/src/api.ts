@@ -9,8 +9,9 @@ export type MixPlan = { order_indices: number[]; quality_score: number; strategy
 export type AnalysisResult = { tracks: Track[]; order: string[]; plan?: MixPlan }
 
 export type MasteringOptions = { target_lufs: number; true_peak: number; bass_db: number; treble_db: number; compression: boolean }
+export type CoverOptions = { image: File | null; title: string; artist: string; album: string; year: string }
 export type KickOptions = { enabled: boolean; style: "soft" | "club"; level: number; sourceIndex?: number }
-function formData(files: File[], count: number, transition: number, mastering = "balanced", kick?: KickOptions, masteringOptions?: MasteringOptions): FormData {
+function formData(files: File[], count: number, transition: number, mastering = "balanced", kick?: KickOptions, masteringOptions?: MasteringOptions, cover?: CoverOptions): FormData {
   const data = new FormData()
   files.forEach(file => data.append('songs', file))
   data.append('count', String(count))
@@ -24,13 +25,20 @@ function formData(files: File[], count: number, transition: number, mastering = 
     data.append('treble_db', String(masteringOptions.treble_db))
     data.append('compression', String(masteringOptions.compression))
   }
+  if (cover) {
+    if (cover.image) data.append('cover', cover.image)
+    data.append('mix_title', cover.title)
+    data.append('mix_artist', cover.artist)
+    data.append('mix_album', cover.album)
+    data.append('mix_year', cover.year)
+  }
   return data
 }
 
-async function post(endpoint: string, files: File[], count: number, transition: number, signal?: AbortSignal, mastering = "balanced", kick?: KickOptions, masteringOptions?: MasteringOptions) {
+async function post(endpoint: string, files: File[], count: number, transition: number, signal?: AbortSignal, mastering = "balanced", kick?: KickOptions, masteringOptions?: MasteringOptions, cover?: CoverOptions) {
   let response: Response
   try {
-    response = await fetch(endpoint, { method: 'POST', body: formData(files, count, transition, mastering, kick, masteringOptions), signal })
+    response = await fetch(endpoint, { method: 'POST', body: formData(files, count, transition, mastering, kick, masteringOptions, cover), signal })
   } catch (error) {
     if (error instanceof DOMException && error.name === 'AbortError') throw error
     throw new Error('Cannot reach the audio server. Start FastAPI on port 8000.')
@@ -65,8 +73,8 @@ export async function mix(files: File[], count: number, transition: number, sign
 }
 
 export type MixJob = { id: string; status: 'queued' | 'processing' | 'done' | 'failed'; completed_tracks: number; total_tracks: number; error: string | null; metrics: { peak: number; rms: number; near_silence_fraction: number; clipping_risk: boolean; transition_proxy_average?: number | null; mastering?: { preset: string; target_lufs: number | null; true_peak_limit_dbtp: number | null; bass_db?: number; treble_db?: number; compression?: boolean }; kick?: { enabled: boolean; style: string | null; bpm: number | null; level: number | null; source?: string | null; source_offset_seconds?: number | null }; transitions?: { from: string; to: string; proxy_score: number; loudness_gap_db: number; attempts: number }[] } | null }
-export async function queueMix(files: File[], count: number, transition: number, signal?: AbortSignal, mastering = "balanced", kick?: KickOptions, masteringOptions?: MasteringOptions): Promise<{ id: string }> {
-  return (await post('/api/jobs', files, count, transition, signal, mastering, kick, masteringOptions)).json()
+export async function queueMix(files: File[], count: number, transition: number, signal?: AbortSignal, mastering = "balanced", kick?: KickOptions, masteringOptions?: MasteringOptions, cover?: CoverOptions): Promise<{ id: string }> {
+  return (await post('/api/jobs', files, count, transition, signal, mastering, kick, masteringOptions, cover)).json()
 }
 export async function fetchJob(id: string, signal?: AbortSignal): Promise<MixJob> {
   const response = await fetch('/api/jobs/' + encodeURIComponent(id), { signal })

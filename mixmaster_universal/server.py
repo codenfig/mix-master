@@ -13,13 +13,16 @@ from starlette.background import BackgroundTask
 from engine import analyze, render
 from planner import plan
 from jobs import allocate_directory, create_job, get_job, get_download
+from cover_art import embed_cover
 from vocal_remover import router as vocal_remover_router
 from stem_splitter import router as stem_splitter_router
+from audio_mastering import router as mastering_router
 
 ROOT = Path(__file__).resolve().parent
 app = FastAPI(title="MixMaster AI Universal", version="0.2.0")
 app.include_router(vocal_remover_router)
 app.include_router(stem_splitter_router)
+app.include_router(mastering_router)
 app.mount("/static", StaticFiles(directory=ROOT / "static"), name="static")
 SUPPORTED = {".mp3", ".wav", ".flac", ".m4a", ".ogg", ".aac"}
 MAX_FILE_BYTES = 200 * 1024 * 1024
@@ -54,6 +57,37 @@ def validate_settings(count: int, transition: int):
         raise HTTPException(400, "Song count must be 5, 10 or 20.")
     if not 4 <= transition <= 32:
         raise HTTPException(400, "Transition must be between 4 and 32 seconds.")
+
+
+def save_cover(cover: UploadFile | None, directory: Path) -> Path | None:
+    if cover is None or not cover.filename:
+        return None
+    extension = Path(cover.filename).suffix.lower()
+    if extension not in {".jpg", ".jpeg", ".png"}:
+        raise HTTPException(400, "Cover image must be JPG or PNG.")
+    destination = directory / ("cover" + extension)
+    size = 0
+    with destination.open("wb") as out:
+        while chunk := cover.file.read(1024 * 1024):
+            size += len(chunk)
+            if size > 10 * 1024 * 1024:
+                raise HTTPException(413, "Cover image must be smaller than 10 MiB.")
+            out.write(chunk)
+    if not size:
+        raise HTTPException(400, "Cover image is empty.")
+    header = destination.read_bytes()[:8]
+    if extension == ".png" and header != bytes.fromhex("89504e470d0a1a0a"):
+        raise HTTPException(400, "Invalid PNG image.")
+    if extension in {".jpg", ".jpeg"} and not header.startswith(bytes.fromhex("ffd8ff")):
+        raise HTTPException(400, "Invalid JPEG image.")
+    return destination
+
+
+def validate_cover_metadata(title: str, artist: str, album: str, year: str):
+    if any(len(value) > 120 for value in (title, artist, album)) or len(year) > 4:
+        raise HTTPException(400, "Cover metadata is too long.")
+    if year and (not year.isdigit() or not 1900 <= int(year) <= 2100):
+        raise HTTPException(400, "Invalid release year.")
 
 
 def save_uploads(songs: list[UploadFile], directory: Path, count: int):
@@ -101,10 +135,11 @@ def analyze_songs(songs: list[UploadFile] = File(...), count: int = Form(10)):
 
 
 @app.post("/api/mix")
-def mix(songs: list[UploadFile] = File(...), count: int = Form(10), transition: int = Form(12), mastering: str = Form("balanced"), kick_enabled: bool = Form(False), kick_style: str = Form("soft"), kick_level: float = Form(0.16), kick_source_index: int = Form(-1), target_lufs: float = Form(-14), true_peak: float = Form(-1.5), bass_db: float = Form(0), treble_db: float = Form(0), compression: bool = Form(False)):
+def mix(songs: list[UploadFile] = File(...), count: int = Form(10), transition: int = Form(12), mastering: str = Form("balanced"), kick_enabled: bool = Form(False), kick_style: str = Form("soft"), kick_level: float = Form(0.16), kick_source_index: int = Form(-1), target_lufs: float = Form(-14), true_peak: float = Form(-1.5), bass_db: float = Form(0), treble_db: float = Form(0), compression: bool = Form(False), cover: UploadFile | None = File(None), mix_title: str = Form("My DJ Mix"), mix_artist: str = Form("MixMaster AI"), mix_album: str = Form("MixMaster AI"), mix_year: str = Form("")):
     validate_settings(count, transition)
     validate_mastering_options(mastering, target_lufs, true_peak, bass_db, treble_db)
     validate_kick(kick_style, kick_level)
+    validate_cover_metadata(mix_title, mix_artist, mix_album, mix_year)
     if kick_enabled and kick_source_index >= count:
         raise HTTPException(400, "Kick source is not one of the uploaded songs.")
     if kick_source_index < -1:
@@ -120,6 +155,10 @@ def mix(songs: list[UploadFile] = File(...), count: int = Form(10), transition: 
             quality = render(ordered, out, transition=transition, mastering=mastering, kick_enabled=kick_enabled, kick_style=kick_style, kick_level=kick_level, mastering_options={"target_lufs": target_lufs, "true_peak": true_peak, "bass_db": bass_db, "treble_db": treble_db, "compression": compression}, kick_source_index=kick_source_index if kick_enabled and kick_source_index >= 0 else None, source_tracks=analysis)
         except Exception as exc:
             raise HTTPException(422, "Audio rendering failed. Check track lengths and FFmpeg installation.") from exc
+        if cover is not None:
+            image = save_cover(cover, tmp)
+            if image is not None:
+                embed_cover(out, image, mix_title, mix_artist, mix_album, mix_year)
         saved = Path(tempfile.gettempdir()) / f"mixmaster_{uuid.uuid4().hex}.mp3"
         shutil.copyfile(out, saved)
         return FileResponse(
@@ -136,7 +175,7 @@ def mix(songs: list[UploadFile] = File(...), count: int = Form(10), transition: 
 
 
 @app.post("/api/jobs", status_code=202)
-def queue_mix(songs: list[UploadFile] = File(...), count: int = Form(10), transition: int = Form(12), mastering: str = Form("balanced"), kick_enabled: bool = Form(False), kick_style: str = Form("soft"), kick_level: float = Form(0.16), kick_source_index: int = Form(-1), target_lufs: float = Form(-14), true_peak: float = Form(-1.5), bass_db: float = Form(0), treble_db: float = Form(0), compression: bool = Form(False)):
+def queue_mix(songs: list[UploadFile] = File(...), count: int = Form(10), transition: int = Form(12), mastering: str = Form("balanced"), kick_enabled: bool = Form(False), kick_style: str = Form("soft"), kick_level: float = Form(0.16), kick_source_index: int = Form(-1), target_lufs: float = Form(-14), true_peak: float = Form(-1.5), bass_db: float = Form(0), treble_db: float = Form(0), compression: bool = Form(False), cover: UploadFile | None = File(None), mix_title: str = Form("My DJ Mix"), mix_artist: str = Form("MixMaster AI"), mix_album: str = Form("MixMaster AI"), mix_year: str = Form("")):
     """Accept uploads, analyze, then render asynchronously in one bounded worker."""
     validate_settings(count, transition)
     validate_mastering_options(mastering, target_lufs, true_peak, bass_db, treble_db)
@@ -147,9 +186,10 @@ def queue_mix(songs: list[UploadFile] = File(...), count: int = Form(10), transi
         raise HTTPException(400, "Invalid kick source.")
     directory = allocate_directory()
     try:
+        image = save_cover(cover, directory)
         tracks, names = save_uploads(songs, directory, count)
         analysis = inspect_tracks(tracks, names)
-        job_id = create_job(analysis, transition, directory, mastering=mastering, kick_enabled=kick_enabled, kick_style=kick_style, kick_level=kick_level, mastering_options={"target_lufs": target_lufs, "true_peak": true_peak, "bass_db": bass_db, "treble_db": treble_db, "compression": compression}, kick_source_index=kick_source_index if kick_enabled and kick_source_index >= 0 else None, source_tracks=analysis)
+        job_id = create_job(analysis, transition, directory, mastering=mastering, kick_enabled=kick_enabled, kick_style=kick_style, kick_level=kick_level, mastering_options={"target_lufs": target_lufs, "true_peak": true_peak, "bass_db": bass_db, "treble_db": treble_db, "compression": compression}, kick_source_index=kick_source_index if kick_enabled and kick_source_index >= 0 else None, source_tracks=analysis, cover=image, title=mix_title, artist=mix_artist, album=mix_album, year=mix_year)
         return {"id": job_id, "status": "queued", "status_url": f"/api/jobs/{job_id}"}
     except RuntimeError as exc:
         shutil.rmtree(directory, ignore_errors=True)
