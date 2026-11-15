@@ -42,61 +42,94 @@ def transition_metrics(outgoing, incoming, sr=44100):
             "loudness_gap_db": round(loudness_gap, 2)}
 
 def optimize_transition(outgoing, incoming, fade_frames, sr=44100, retries=3,
-                        bpm=None, beat_offset=None, max_intro_seconds=24.0):
-    """Find a musically plausible entry point in the incoming track.
+                        bpm=None, beat_offset=None, max_intro_seconds=90.0):
+    """Choose a compatible incoming section, potentially well beyond its intro.
 
-    With reliable tempo, examine beat-aligned and 4-bar phrase candidates
-    throughout a bounded intro, not just the first 750 milliseconds.
-    Evaluate compatibility against the actual outgoing crossfade window.
-    Without a beat grid, retain the conservative short-offset search.
-    Returns (trim_frames, proxy_metrics, evaluated_candidates).
+    Search bounded bar/phrase starts through up to 45% of the track, leaving
+    ample playable material. A coarse energy/spectrum pass selects promising
+    candidates; detailed crossfade scoring checks those against the outgoing
+    tail. This is a heuristic, not semantic vocal or melody recognition.
     """
+    reference = outgoing[-fade_frames:]
     if len(outgoing) < fade_frames or len(incoming) < fade_frames + sr:
-        return 0, transition_metrics(outgoing[-fade_frames:], incoming[:fade_frames], sr), 1
+        return 0, transition_metrics(reference, incoming[:fade_frames], sr), 1
 
-    maximum = min(
+    maximum = max(0, min(
         len(incoming) - 2 * fade_frames,
         int(max_intro_seconds * sr),
-        int(len(incoming) * 0.15),
-    )
+        int(len(incoming) * 0.45),
+    ))
     if maximum <= 0:
-        return 0, transition_metrics(outgoing[-fade_frames:], incoming[:fade_frames], sr), 1
+        return 0, transition_metrics(reference, incoming[:fade_frames], sr), 1
 
-    offsets = {0}
     valid_grid = (bpm is not None and beat_offset is not None
                   and np.isfinite(bpm) and np.isfinite(beat_offset)
                   and 50 <= bpm <= 210 and beat_offset >= 0)
+    offsets = {0}
     if valid_grid:
         beat = 60.0 / float(bpm)
-        # Check downbeats of each bar and the 4-bar phrase boundaries.
-        # Include the opening beat and avoid arbitrarily chopping mid-beat.
-        for number in range(0, int(max_intro_seconds / beat) + 1, 4):
-            seconds = float(beat_offset) + number * beat
-            offset = round(seconds * sr)
+        # Bar starts (every four beats), with phrase preference at 16 beats.
+        for number in range(0, int(maximum / sr / beat) + 1, 4):
+            offset = round((float(beat_offset) + number * beat) * sr)
             if 0 <= offset <= maximum:
                 offsets.add(offset)
     else:
+        # Without a trustworthy beat grid, use sparse time candidates and
+        # retain the original near-intro offsets.
         offsets.update(int(sr * seconds) for seconds in (0.25, 0.5, 0.75)
                        if int(sr * seconds) <= maximum)
-        offsets = set(sorted(offsets)[:max(1, min(retries + 1, 4))])
+        offsets.update(range(4 * sr, maximum + 1, 4 * sr))
 
-    candidates = []
+    def signature(segment):
+        # Use fixed-length, sparse samples to keep long-song search affordable.
+        stride = max(1, len(segment) // 4096)
+        mono = np.asarray(segment[::stride], dtype=np.float32).mean(axis=1)
+        rms = float(np.sqrt(np.mean(mono * mono) + 1e-10))
+        # Normalized spectral bands approximate timbral similarity.
+        spectrum = np.abs(np.fft.rfft(mono[:4096] * np.hanning(len(mono[:4096]))))
+        bands = np.array([float(np.mean(x)) for x in np.array_split(spectrum, 8)])
+        bands /= float(np.linalg.norm(bands) + 1e-9)
+        return rms, bands
+
+    reference_rms, reference_bands = signature(reference)
+    shortlist = []
     for offset in sorted(offsets):
         if len(incoming) - offset < 2 * fade_frames:
             continue
+        rms, bands = signature(incoming[offset:offset + fade_frames])
+        loudness_gap = abs(20 * np.log10((reference_rms + 1e-8) / (rms + 1e-8)))
+        spectral_similarity = float(np.dot(reference_bands, bands))
+        coarse = 100 - min(65, loudness_gap * 4) + 20 * spectral_similarity
+        # Prefer phrase starts, but don't assume all music is 4/4.
+        if valid_grid and offset:
+            beat_number = round((offset / sr - float(beat_offset)) / beat)
+            if beat_number % 16 == 0:
+                coarse += 3
+        # Modest penalty for discarding much of the next track.
+        coarse -= 0.035 * (offset / sr)
+        shortlist.append((coarse, offset))
+
+    # Include the start as a baseline even if the best-looking candidates
+    # occur later. The shortlist avoids expensive full evaluation everywhere.
+    shortlisted = {0}
+    shortlisted.update(offset for _, offset in sorted(shortlist, reverse=True)[:16])
+    candidates = []
+    for offset in sorted(shortlisted):
+        if len(incoming) - offset < 2 * fade_frames:
+            continue
         metrics = transition_metrics(
-            outgoing[-fade_frames:], incoming[offset:offset + fade_frames], sr)
-        # Small preference for phrase boundaries; penalize cutting too deep
-        # into a track unless it genuinely produces a better transition.
+            reference, incoming[offset:offset + fade_frames], sr)
+        rms, bands = signature(incoming[offset:offset + fade_frames])
+        spectral_similarity = float(np.dot(reference_bands, bands))
         phrase_bonus = 0.0
         if valid_grid and offset:
             beat_number = round((offset / sr - float(beat_offset)) / beat)
-            phrase_bonus = 2.5 if beat_number % 16 == 0 else 0.7
-        trim_penalty = 0.12 * offset / sr
-        value = metrics["score"] + phrase_bonus - trim_penalty
-        candidates.append((value, -offset, offset, metrics))
+            phrase_bonus = 2.5 if beat_number % 16 == 0 else 0.5
+        score = (metrics["score"] + 12 * spectral_similarity
+                 + phrase_bonus - 0.035 * offset / sr)
+        candidates.append((score, -offset, offset, metrics))
 
     if not candidates:
-        return 0, transition_metrics(outgoing[-fade_frames:], incoming[:fade_frames], sr), 1
+        return 0, transition_metrics(reference, incoming[:fade_frames], sr), 1
     best = max(candidates)
-    return best[2], best[3], len(candidates)
+    return best[2], best[3], len(shortlist)
