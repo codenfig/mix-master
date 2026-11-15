@@ -61,7 +61,7 @@ export default function App() {
   const input = useRef<HTMLInputElement>(null)
   const request = useRef<AbortController | null>(null)
   const outputUrl = useRef<string | null>(null)
-  const ready = files.length === count && !busy
+  const ready = files.length === count && !busy && !activeJob
   const plannedTracks = analysis?.plan?.order_indices?.map(i => analysis.tracks[i]) ?? []
   const energyMax = Math.max(0.000001, ...(analysis?.tracks.map(t => t.energy) || []))
 
@@ -235,6 +235,10 @@ export default function App() {
     } catch (err) {
       const canceled = err instanceof DOMException && err.name === 'AbortError'
       setError(!canceled)
+      if (!canceled && mode === 'mix') {
+        setActiveJob(null)
+        try { localStorage.removeItem('mixmaster_active_job') } catch { /* Storage may be unavailable */ }
+      }
       setMessage(canceled ? 'Monitoring stopped. Background rendering may still be running.' : err instanceof Error ? err.message : 'Unexpected processing error.')
     } finally {
       request.current = null
@@ -329,6 +333,7 @@ export default function App() {
             <input id="transition" type="range" min={4} max={32} value={transition} disabled={busy !== null} onChange={e => { setTransition(Number(e.target.value)); setPreset('balanced') }}/><div className="range-labels"><span>4s · Quick</span><span>32s · Smooth</span></div>
             <label className="field-label" htmlFor="quality">EXPORT QUALITY</label><select id="quality" disabled value="320"><option value="320">MP3 · 320 kbps</option></select>
             <div className="settings-divider"/>
+            {activeJob && <p className="preset-hint">A background mix is already running. Wait for it to finish before starting another.</p>}
             <button className="action secondary" disabled={!ready} onClick={() => void run('analysis')}>{busy === 'analysis' ? <LoaderCircle className="spin" size={18}/> : <Activity size={18}/>} Analyze Tracks</button>
             <button className="action primary" disabled={!ready} onClick={() => void run('mix')}>{busy === 'mix' ? <LoaderCircle className="spin" size={18}/> : <Sparkles size={18}/>} Create My Mix</button>
             {busy && <button className="cancel" onClick={cancel}><X size={15}/> {busy === 'mix' ? 'Stop monitoring (mix continues)' : 'Cancel request'}</button>}
