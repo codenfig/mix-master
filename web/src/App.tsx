@@ -1,3 +1,4 @@
+import './styles/onboarding.css'
 import { useEffect, useRef, useState } from 'react'
 import { Activity, AudioLines, Check, CircleHelp, Download, FileAudio, FolderOpen, Headphones, ListMusic, LoaderCircle, Music2, Play, Pause, RotateCcw, Settings2, SlidersHorizontal, Sparkles, UploadCloud, X, LayoutDashboard, ArrowRight } from 'lucide-react'
 import { analyze, queueMix, fetchJob, downloadJob, type AnalysisResult, type MixMetrics, type MixJob } from './api'
