@@ -31,6 +31,10 @@ export default function App() {
   const [count, setCount] = useState<5 | 10 | 20>(10)
   const [transition, setTransition] = useState(12)
   const [mastering, setMastering] = useState<'off' | 'balanced' | 'club'>('balanced')
+  const [kickEnabled, setKickEnabled] = useState(false)
+  const [kickStyle, setKickStyle] = useState<'soft' | 'club'>('soft')
+  const [kickLevel, setKickLevel] = useState(16)
+  const [kickResult, setKickResult] = useState<{ enabled: boolean; style: string | null; bpm: number | null; level: number | null } | null>(null)
   const [preset, setPreset] = useState<'smooth' | 'balanced' | 'quick'>('balanced')
   const [history, setHistory] = useState<{ tracks: number; created: string }[]>(() => { try { return JSON.parse(localStorage.getItem('mixmaster_history') || '[]') } catch { return [] } })
   const [files, setFiles] = useState<File[]>([])
@@ -61,6 +65,7 @@ export default function App() {
     setUrl(null)
     setMetrics(null)
     setMasteringResult(null)
+    setKickResult(null)
     setTransitionChecks([])
     setProgress(null)
     setPlayReady(false)
@@ -147,7 +152,7 @@ export default function App() {
         setMessage('Analysis complete. Your mix is ready to render.')
       } else {
         resetOutput()
-        const queued = await queueMix(files, count, transition, controller.signal, mastering)
+        const queued = await queueMix(files, count, transition, controller.signal, mastering, { enabled: kickEnabled, style: kickStyle, level: kickLevel / 100 })
         let job = await fetchJob(queued.id, controller.signal)
         while (job.status === 'queued' || job.status === 'processing') {
           setProgress(job.status === 'queued' ? 'Waiting in mixing queue…' : 'Rendering ' + job.completed_tracks + '/' + job.total_tracks + ' tracks')
@@ -163,6 +168,7 @@ export default function App() {
         const result = { metrics: { peak: job.metrics?.peak ?? 0, rms: job.metrics?.rms ?? 0, nearSilence: job.metrics?.near_silence_fraction ?? 0, clippingRisk: job.metrics?.clipping_risk ?? false } }
         setMetrics(result.metrics)
         setMasteringResult(job.metrics?.mastering || null)
+        setKickResult(job.metrics?.kick || null)
         setTransitionChecks(job.metrics?.transitions || [])
         setProgress(null)
         if (!blob.size) throw new Error('The server returned an empty audio file.')
@@ -248,6 +254,10 @@ export default function App() {
             <label className="field-label">MIX STYLE</label>
             <div className="preset-options">{(['smooth','balanced','quick'] as const).map(value => <button key={value} className={preset === value ? 'selected' : ''} disabled={busy !== null} onClick={() => applyPreset(value)}>{value}</button>)}</div>
             <small className="preset-hint">Styles adjust crossfade duration, not the mixing algorithm.</small>
+            <div className="settings-divider"/>
+            <label className="field-label">SMART KICK BEAT</label>
+            <label className="kick-toggle"><input type="checkbox" checked={kickEnabled} disabled={busy !== null} onChange={e => { setKickEnabled(e.target.checked); resetOutput() }}/><span>Add a constant kick pulse throughout the mix</span></label>
+            {kickEnabled && <div className="kick-controls"><div className="preset-options mastering-options">{(['soft','club'] as const).map(value => <button type="button" key={value} className={kickStyle === value ? 'selected' : ''} disabled={busy !== null} onClick={() => { setKickStyle(value); resetOutput() }}>{value === 'soft' ? 'Subtle' : 'Club'}</button>)}</div><label className="field-label" htmlFor="kick-level">KICK STRENGTH <span>{kickLevel}%</span></label><input id="kick-level" type="range" min={5} max={35} step={1} value={kickLevel} disabled={busy !== null} onChange={e => { setKickLevel(Number(e.target.value)); resetOutput() }}/><small className="preset-hint">Uses the opening song's estimated BPM as a constant tempo. Best for songs already close in tempo.</small></div>}
             <label className="field-label">AUDIO MASTERING</label>
             <div className="preset-options mastering-options">{(['off', 'balanced', 'club'] as const).map(value => <button key={value} type="button" className={mastering === value ? 'selected' : ''} disabled={busy !== null} onClick={() => { setMastering(value); resetOutput() }}>{value === 'off' ? 'Off' : value === 'balanced' ? 'Balanced' : 'Club'}</button>)}</div>
             <small className="preset-hint">{mastering === 'off' ? 'Peak limiting only.' : mastering === 'balanced' ? 'Streaming-friendly target: −14 LUFS / −1.5 dBTP.' : 'Louder DJ set target: −12 LUFS / −1.5 dBTP.'} Applied when exporting the mix.</small>
@@ -265,6 +275,7 @@ export default function App() {
         </div>}
 
         {page === 'preview' && <><section className="panel preview" id="preview"><div className="preview-main"><div className="panel-heading"><div><h2><AudioLines size={20}/> Mix Preview <span className="muted">{url ? '· Ready to play' : '· Awaiting your mix'}</span></h2><p>Listen to your finished mix before downloading.</p></div></div><div className="player"><button className="play" disabled={!playReady} aria-label="Play or pause mix" onClick={() => setPlaySignal(n => n+1)}><Play size={21} fill="currentColor"/></button><div className="wave-area"><Waveform url={url} onTime={(t,d) => {setCurrent(t);setDuration(d)}} onReady={setPlayReady} playSignal={playSignal}/><div className="time"><span>{formatTime(current)}</span><span>{formatTime(duration)}</span></div></div></div></div><div className="preview-summary"><div className="summary-title">MIX SUMMARY</div><strong>{url ? formatTime(duration) : '--:--'}</strong><span>Total Mix Duration</span><div className="summary-divider"/><p>{Math.max(0,count-1)} transitions · {transition}s each</p>{url && <a className="download" href={url} download="MixMaster_AI_Nonstop.mp3"><Download size={17}/> Download MP3</a>}</div></section>
+        {kickResult?.enabled && <section className="panel mastering-report"><div className="panel-heading"><div><h2><Activity size={20}/> Smart Kick Report</h2><p>A synthesized pulse mixed into the exported audio.</p></div></div><div className="signal-metrics"><span>Tempo <strong>{kickResult.bpm} BPM</strong></span><span>Kick type <strong>{kickResult.style}</strong></span><span>Strength <strong>{Math.round((kickResult.level || 0) * 100)}%</strong></span></div></section>}
         {masteringResult && <section className="panel mastering-report"><div className="panel-heading"><div><h2><SlidersHorizontal size={20}/> Mastering Report</h2><p>Export processing settings, not a measured post-encode loudness report.</p></div></div><div className="signal-metrics"><span>Preset <strong>{masteringResult.preset}</strong></span><span>Target loudness <strong>{masteringResult.target_lufs === null ? 'Not normalized' : masteringResult.target_lufs + ' LUFS'}</strong></span><span>Peak ceiling <strong>{masteringResult.true_peak_limit_dbtp === null ? 'Basic limiter' : masteringResult.true_peak_limit_dbtp + ' dBTP'}</strong></span></div></section>}
         {metrics && <section className="panel signal-panel"><div className="panel-heading"><div><h2><Activity size={20}/> Audio Signal Check</h2><p>Measured on the mix before final limiting; not an assessment of musical transition quality.</p></div></div><div className="signal-metrics"><span>Peak amplitude <strong>{metrics.peak.toFixed(3)}</strong></span><span>RMS level <strong>{metrics.rms.toFixed(3)}</strong></span><span>Near-silence <strong>{(metrics.nearSilence * 100).toFixed(1)}%</strong></span><span>Clipping risk <strong>{metrics.clippingRisk ? 'Review mix' : 'Not detected'}</strong></span></div></section>}
         {transitionChecks.length > 0 && <section className="panel transition-report"><div className="panel-heading"><div><h2><Sparkles size={20}/> Automated Transition Review</h2><p>Measured proxy scores from candidate crossfades; higher does not guarantee better musical sound.</p></div></div><div className="history-list">{transitionChecks.map((t,i) => <div className="history-item" key={i}><strong>{t.from} → {t.to}</strong><span>{t.proxy_score}/100 · {t.attempts} candidates · {t.loudness_gap_db} dB gap</span></div>)}</div></section>}
