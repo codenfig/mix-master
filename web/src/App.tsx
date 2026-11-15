@@ -75,10 +75,34 @@ export default function App() {
     const invalid = next.filter(file => !extensions.has(file.name.split('.').pop()?.toLowerCase() || '') || file.size > MAX_BYTES || file.size === 0)
     const valid = next.filter(file => !invalid.includes(file))
     setFiles(valid)
+    navigate('studio')
     setAnalysis(null)
     resetOutput()
     setError(invalid.length > 0)
-    setMessage(invalid.length ? 'Some files were rejected (unsupported, empty or over 200 MiB).' : valid.length === count ? 'Tracks ready for analysis or mixing.' : 'Select exactly ' + count + ' songs.')
+    setMessage(invalid.length ? 'Some files were rejected (unsupported, empty or over 200 MiB).' : valid.length === count ? 'All ' + count + ' tracks added. Analyze or create your mix.' : valid.length > count ? 'You selected ' + valid.length + ' tracks. Remove ' + (valid.length - count) + ' to continue.' : valid.length ? valid.length + ' tracks added. Add ' + (count - valid.length) + ' more to continue.' : 'Select exactly ' + count + ' songs.')
+  }
+
+  function removeFile(index: number) {
+    if (busy) return
+    const next = files.filter((_, i) => i !== index)
+    setFiles(next)
+    setAnalysis(null)
+    resetOutput()
+    setError(false)
+    setMessage(next.length === count ? 'Tracks ready for analysis or mixing.' : next.length > count ? 'Remove ' + (next.length - count) + ' more tracks.' : 'Added ' + next.length + ' of ' + count + ' required tracks.')
+  }
+
+  function addFiles(list: FileList | File[]) {
+    if (busy) return
+    const incoming = Array.from(list)
+    const invalid = incoming.filter(file => !extensions.has(file.name.split('.').pop()?.toLowerCase() || '') || file.size > MAX_BYTES || file.size === 0)
+    const valid = incoming.filter(file => !invalid.includes(file))
+    const combined = [...files, ...valid.filter(file => !files.some(existing => existing.name === file.name && existing.size === file.size && existing.lastModified === file.lastModified))]
+    setFiles(combined)
+    setAnalysis(null)
+    resetOutput()
+    setError(invalid.length > 0)
+    setMessage(invalid.length ? 'Some files were rejected. Check the supported formats and 200 MiB limit.' : combined.length === count ? 'All tracks added. Ready to analyze or mix.' : combined.length > count ? 'Too many tracks: remove ' + (combined.length - count) + '.' : 'Added ' + combined.length + ' of ' + count + ' tracks. Add ' + (count - combined.length) + ' more.')
   }
 
   function changeCount(value: 5 | 10 | 20) {
@@ -87,7 +111,7 @@ export default function App() {
     setAnalysis(null)
     resetOutput()
     setError(false)
-    setMessage('Select exactly ' + value + ' songs.')
+    setMessage(files.length === value ? 'Tracks ready for analysis or mixing.' : 'Selected ' + files.length + ' tracks. This preset requires exactly ' + value + '.')
   }
 
   function applyPreset(value: 'smooth' | 'balanced' | 'quick') {
@@ -195,14 +219,21 @@ export default function App() {
           <section className="left-column">
             {page === 'studio' && <div className="panel upload-panel">
               <div className="panel-heading"><div><h2><UploadCloud size={20}/> Upload Your Music</h2><p>Start by adding your tracks to the studio.</p></div><span className="pill">{files.length} / {count} tracks</span></div>
-              <input ref={input} type="file" multiple accept=".mp3,.wav,.flac,.m4a,.ogg,.aac,audio/*" className="hidden" onChange={e => { if (e.target.files) chooseFiles(e.target.files); e.target.value = '' }} />
-              <div className="drop-zone" role="button" tabIndex={0} onClick={() => !busy && input.current?.click()} onKeyDown={e => { if ((e.key === 'Enter' || e.key === ' ') && !busy) { e.preventDefault(); input.current?.click() } }} onDragOver={e => e.preventDefault()} onDrop={e => { e.preventDefault(); if (e.dataTransfer.files.length) chooseFiles(e.dataTransfer.files) }}>
-                <div className="upload-icon"><FolderOpen size={30}/></div><strong>Drag & drop your audio files here</strong><span>or click to browse from your device</span><div className="browse-button">Browse Files</div><small>MP3, WAV, FLAC, M4A, OGG, AAC · Max 200 MiB each</small>
+              <input ref={input} type="file" multiple accept=".mp3,.wav,.flac,.m4a,.ogg,.aac,audio/*" className="hidden" onChange={e => { if (e.target.files) addFiles(e.target.files); e.target.value = '' }} />
+              <div className="drop-zone" role="button" tabIndex={0} onClick={() => !busy && input.current?.click()} onKeyDown={e => { if ((e.key === 'Enter' || e.key === ' ') && !busy) { e.preventDefault(); input.current?.click() } }} onDragOver={e => e.preventDefault()} onDrop={e => { e.preventDefault(); if (e.dataTransfer.files.length) addFiles(e.dataTransfer.files) }}>
+                <div className="upload-icon"><FolderOpen size={30}/></div><strong>{files.length ? 'Add more audio tracks' : 'Drag & drop your audio files here'}</strong><span>or click to browse from your device</span><div className="browse-button">Browse Files</div><small>MP3, WAV, FLAC, M4A, OGG, AAC · Max 200 MiB each</small>
+              </div>
+              <div className="upload-feedback" role="status" aria-live="polite">
+                <div className="upload-feedback-heading"><strong>{files.length === count ? 'Track selection complete' : files.length ? files.length + ' of ' + count + ' tracks selected' : 'No audio tracks selected yet'}</strong><span>{files.length === count ? 'Ready to analyze' : files.length > count ? 'Remove extra tracks' : (count - files.length) + ' remaining'}</span></div>
+                <div className="upload-progress"><span style={{ width: Math.min(100, files.length / count * 100) + '%' }}/></div>
+                {files.length > 0 && <div className="selected-tracks">{files.map((file,i) => <div className="selected-track" key={file.name + '-' + i}><FileAudio size={17}/><span title={file.name}>{file.name}</span><small>{(file.size / 1048576).toFixed(1)} MB</small><button type="button" aria-label={'Remove ' + file.name} disabled={busy !== null} onClick={() => removeFile(i)}><X size={16}/></button></div>)}</div>}
+                {files.length > 0 && <button type="button" className="inline-link" onClick={() => navigate('library')}>View track library <ArrowRight size={15}/></button>}
               </div>
             </div>}
 
             {(page === 'studio' || page === 'library') && <div className="panel library" id="library">
               <div className="panel-heading"><div><h2><ListMusic size={20}/> Track Analysis</h2><p>Insights into your selected music.</p></div><button className="subtle" disabled={busy !== null || files.length === 0} onClick={() => chooseFiles([])}><RotateCcw size={15}/> Clear</button></div>
+              {page === 'library' && <div className="library-upload-actions"><span>{files.length} tracks in this session</span><button type="button" onClick={() => navigate('studio')}><UploadCloud size={16}/> Add tracks in Create Mix</button></div>}
               <div className="tabs"><button className={tab === 'tracks' ? 'selected' : ''} onClick={() => setTab('tracks')}>Tracks & Insights</button><button className={tab === 'order' ? 'selected' : ''} onClick={() => setTab('order')}>Suggested Order</button></div>
               {tab === 'tracks' ? <div className="table-wrap"><table><thead><tr><th>#</th><th>TRACK</th><th>DURATION</th><th>BPM</th><th>KEY</th><th>ENERGY</th></tr></thead><tbody>{files.length === 0 ? <tr><td className="empty" colSpan={6}><FileAudio size={28}/> Upload tracks to view their analysis.</td></tr> : files.map((file,i) => { const track = analysis?.tracks[i]; return <tr key={i}><td>{String(i+1).padStart(2,'0')}</td><td className="track-name" title={file.name}>{file.name}</td><td>{track ? formatTime(track.duration) : '—'}</td><td>{track ? Math.round(track.bpm) : '—'}</td><td>{track?.key || '—'}</td><td>{track ? <div className="energy-bar"><span style={{width: Math.max(6,track.energy / energyMax * 100)+'%'}}/></div> : '—'}</td></tr> })}</tbody></table></div> : <div>{analysis?.plan && <div className="plan-score"><strong>Mix compatibility: {analysis.plan.quality_score}/100</strong><small>{analysis.plan.strategy} · Estimated from track metadata</small></div>}<ol className="order-list">{analysis?.order.length ? analysis.order.map((name,i) => <li key={i}><span>{String(i+1).padStart(2,'0')}</span>{name}</li>) : <li className="order-empty">Analyze your tracks to see the suggested play order.</li>}</ol>{analysis?.plan?.transitions.map((t, i) => <div className="transition-insight" key={i}><span>{t.from} → {t.to}</span><strong>{t.compatibility}/100</strong>{t.warning && <small>{t.warning}</small>}</div>)}</div>}
             </div>}
