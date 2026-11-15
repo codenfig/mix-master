@@ -5,7 +5,6 @@ const plans = [
   { name: 'Free', price: 0, credits: 2, tagline: 'Explore the studio', features: ['2 short preview credits / month', 'Explore creation tools', 'Local downloads when available'] },
   { name: 'Creator', price: 9, credits: 30, tagline: 'For new creators', features: ['30 generation credits / month', 'Instrumental and audio tools', 'Generated file library'] },
   { name: 'Pro Music', price: 19, credits: 90, tagline: 'For active musicians', features: ['90 generation credits / month', 'All supported studio tools', 'Higher monthly allowance'] },
-  { name: 'Studio', price: 49, credits: 300, tagline: 'For production workflows', features: ['300 generation credits / month', 'All supported studio tools', 'Larger monthly allowance'] },
 ]
 
 export default function PricingPage() {
