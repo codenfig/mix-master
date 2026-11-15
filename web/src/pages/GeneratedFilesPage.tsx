@@ -3,7 +3,7 @@ import { Download, FolderOpen, RefreshCw, Trash2 } from 'lucide-react'
 import '../styles/generated-files.css'
 
 type GeneratedFile = { id: string; category: string; name: string; size: number; mime: string; created_at: string }
-const labels: Record<string,string> = { dj_mixes: 'DJ Mixes', stem_splitter: 'Stem Splitter', vocal_remover: 'Vocal Remover', audio_mastering: 'Audio Mastering', voice_studio: 'Voice Studio' }
+const labels: Record<string,string> = { dj_mixes: 'DJ Mixes', stem_splitter: 'Stem Splitter', vocal_remover: 'Vocal Remover', audio_mastering: 'Audio Mastering', voice_studio: 'Voice Studio', text_to_song: 'Text to Song' }
 export default function GeneratedFilesPage() {
   const [files,setFiles] = useState<GeneratedFile[]>([])
   const [category,setCategory] = useState('all')
