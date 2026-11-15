@@ -13,8 +13,16 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import urlsplit
 from urllib.request import Request, urlopen
 
-BASE = "http://127.0.0.1:8001"
-TIMEOUT = 285
+BASE = os.environ.get("ACESTEP_BASE_URL", "http://127.0.0.1:8001").rstrip("/")
+TIMEOUT = int(os.environ.get("ACESTEP_JOB_TIMEOUT_SECONDS", "900"))
+parsed_base = urlsplit(BASE)
+if parsed_base.scheme not in {"http", "https"} or not parsed_base.hostname or parsed_base.username or parsed_base.password or parsed_base.path not in {"", "/"}:
+    raise RuntimeError("ACESTEP_BASE_URL must be an HTTP(S) origin without a path or credentials.")
+if parsed_base.scheme == "http" and parsed_base.hostname not in {"127.0.0.1", "localhost", "::1"}:
+    raise RuntimeError("Remote ACE-Step requires HTTPS; plain HTTP is allowed only on loopback.")
+if parsed_base.hostname not in {"127.0.0.1", "localhost", "::1"} and not os.environ.get("ACESTEP_API_KEY", "").strip():
+    raise RuntimeError("Remote ACE-Step requires ACESTEP_API_KEY.")
+
 
 
 def _api(path, payload=None):
@@ -25,7 +33,7 @@ def _api(path, payload=None):
     request = Request(BASE + path, data=json.dumps(payload).encode() if payload is not None else None,
                       headers=headers)
     try:
-        with urlopen(request, timeout=10) as response:
+        with urlopen(request, timeout=30) as response:
             body = json.load(response)
     except (HTTPError, URLError, TimeoutError) as exc:
         raise RuntimeError("Local ACE-Step API unavailable: " + str(exc)) from exc
@@ -62,7 +70,7 @@ def _download_audio(path, destination):
     token = os.environ.get("ACESTEP_API_KEY", "").strip()
     if token:
         request.add_header("Authorization", "Bearer " + token)
-    with urlopen(request, timeout=45) as response, destination.open("wb") as output:
+    with urlopen(request, timeout=120) as response, destination.open("wb") as output:
         while True:
             chunk = response.read(1024 * 1024)
             if not chunk:
