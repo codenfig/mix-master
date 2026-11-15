@@ -14,8 +14,12 @@ mix-master/
 │   ├── pubspec.yaml                  # Flutter dependencies and metadata
 │   ├── lib/main.dart                 # Track selection, API calls, MP3 save dialog
 │   └── README.md                     # Flutter setup and limitations
-├── web/
-│   └── README.md                     # Web app entry point and startup instructions
+├── web/                              # Standalone React + TypeScript + Vite studio
+│   ├── package.json                  # Web dependencies and build scripts
+│   ├── vite.config.ts                # Local FastAPI proxy
+│   ├── index.html                    # React application entry
+│   ├── src/                          # Dashboard, API client, waveform and styles
+│   └── README.md                     # Web development and deployment guide
 ├── windows/
 │   └── README.md                     # Windows desktop setup; packaging pending
 ├── mac/
@@ -43,7 +47,7 @@ mix-master/
 | Directory | Responsibility | Current state |
 | --- | --- | --- |
 | `flutter/` | Flutter UI for selecting tracks, calling the API, and saving MP3 output | Starter implementation; device validation pending |
-| `web/` | Documentation for running the browser application | Browser UI is in `mixmaster_universal/static/` |
+| `web/` | Independent React + TypeScript DJ dashboard | Implemented in source; build validation pending |
 | `windows/` | Windows-specific run instructions and future installer assets | Uses shared desktop launcher; no .exe installer yet |
 | `mac/` | macOS-specific run instructions and future app packaging | Uses shared desktop launcher; no signed .app/.dmg yet |
 | `linux/` | Linux-specific run instructions and future packages | Uses shared desktop launcher; no AppImage/.deb yet |
@@ -60,7 +64,7 @@ mix-master/
 4. **Mix:** `POST /api/mix` renders equal-power crossfades using a selectable **4–32 second** transition (default 12 seconds).
 5. **Export:** The backend returns a stereo **320 kbps MP3** for download or saving.
 
-**Audio limitation:** Current mixing uses crossfades; it does **not** yet perform true beat synchronization, pitch-preserving tempo matching, phrase alignment, stem separation or mashups.
+**Audio limitation:** Current mixing uses crossfades; it does **not** yet perform beat-grid synchronization or phrase alignment; it now supports conservative pitch-preserving tempo matching for nearby BPMs, stem separation or mashups.
 
 ## 🛠 Requirements
 
@@ -85,7 +89,7 @@ python -m uvicorn server:app --host 127.0.0.1 --port 8000
 
 Open **http://127.0.0.1:8000** in your browser. API health: **http://127.0.0.1:8000/health**.
 
-The browser UI is served from `mixmaster_universal/static/index.html`. The `web/` folder currently documents this shared implementation rather than duplicating the frontend.
+This runs the legacy browser UI served from `mixmaster_universal/static/index.html`. The new React web studio is separate: run `cd web && npm install && npm run dev` from the repository root in another terminal, then open http://localhost:5173. The Vite development server proxies API requests to FastAPI on port 8000.
 
 ## 🖥 Run Windows, macOS or Linux desktop
 
@@ -145,9 +149,17 @@ This is **not ready for direct public exposure**. It lacks authentication, rate 
 
 - Validate automated tests and real-world audio processing
 - Add streaming uploads/downloads, background jobs and progress reporting
-- Implement beatmatching and musical phrase alignment
+- Implement beat-grid synchronization and musical phrase alignment
 - Package and sign Windows, macOS and Linux desktop applications
 - Test Flutter on Android and iOS and prepare release builds
 - Deploy a secured HTTPS backend with monitoring and resource limits
 
 See [PLATFORMS.md](PLATFORMS.md) and the README in each platform folder for additional details.
+
+### Renderer memory behavior
+
+The renderer now decodes each track to a temporary disk-backed float32 file and writes the mixed PCM output in chunks. Transition overlaps remain in memory. Optional pitch-preserving tempo stretching still materializes the full track being stretched, so memory use can be high for long tracks. FFmpeg and adequate temporary disk space are required. Beat-grid and phrase alignment remain future work.
+
+### Beat-phase alignment (experimental)
+
+Analysis now records an estimated first beat offset. During rendering, when consecutive tempos are sufficiently close, the mixer may trim up to 0.8 seconds from the incoming track to align its estimated beat phase with the outgoing track at the crossfade. It falls back safely when beat information is unavailable. This is **not** downbeat detection, phrase alignment, or continuous beat-grid correction, and tempo estimates can be wrong. Listen to transitions before publishing a mix.

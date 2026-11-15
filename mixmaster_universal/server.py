@@ -10,7 +10,8 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.background import BackgroundTask
 
-from engine import analyze, arrange, render
+from engine import analyze, render
+from planner import plan
 
 ROOT = Path(__file__).resolve().parent
 app = FastAPI(title="MixMaster AI Universal", version="0.2.0")
@@ -77,8 +78,8 @@ def analyze_songs(songs: list[UploadFile] = File(...), count: int = Form(10)):
     with TemporaryDirectory(prefix="mixmaster_analysis_") as temp:
         tracks, names = save_uploads(songs, Path(temp), count)
         results = inspect_tracks(tracks, names)
-        order = [t["name"] for t in arrange(results)]
-        return {"tracks": [{k: v for k, v in t.items() if k != "path"} for t in results], "order": order}
+        mix_plan = plan(results)
+        return {"tracks": [{k: v for k, v in t.items() if k != "path"} for t in results], "order": mix_plan["order"], "plan": mix_plan}
 
 
 @app.post("/api/mix")
@@ -88,7 +89,8 @@ def mix(songs: list[UploadFile] = File(...), count: int = Form(10), transition: 
         tmp = Path(temp)
         tracks, names = save_uploads(songs, tmp, count)
         analysis = inspect_tracks(tracks, names)
-        ordered = arrange(analysis)
+        mix_plan = plan(analysis, transition=transition)
+        ordered = [analysis[i] for i in mix_plan['order_indices']]
         out = tmp / "MixMaster_AI_Nonstop.mp3"
         try:
             render(ordered, out, transition=transition)

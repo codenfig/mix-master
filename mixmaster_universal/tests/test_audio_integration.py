@@ -47,3 +47,24 @@ def test_synthetic_mix_exports_stereo_mp3(tmp_path: Path):
     )
     assert "codec_name=mp3" in probe.stdout
     assert "channels=2" in probe.stdout
+
+
+@pytest.mark.skipif(shutil.which("ffmpeg") is None, reason="FFmpeg is required")
+def test_disk_backed_decode_and_chunked_export(tmp_path: Path):
+    from engine import decode_stereo_disk, _write_audio
+    sr = 22050
+    t = np.arange(sr * 2, dtype=np.float32) / sr
+    stereo = np.stack([0.1 * np.sin(2 * np.pi * 220 * t),
+                       0.1 * np.sin(2 * np.pi * 330 * t)], axis=1)
+    source = tmp_path / "stereo.wav"
+    sf.write(source, stereo, sr)
+    decoded_dir = tmp_path / "decoded"
+    decoded_dir.mkdir()
+    audio = decode_stereo_disk(source, decoded_dir, sr)
+    assert isinstance(audio, np.memmap)
+    assert audio.shape == stereo.shape
+    output = tmp_path / "chunked.raw"
+    with output.open("wb") as sink:
+        _write_audio(sink, audio, chunk_frames=257)
+    restored = np.fromfile(output, dtype="<f4").reshape(-1, 2)
+    np.testing.assert_allclose(restored, audio, atol=1e-6)
