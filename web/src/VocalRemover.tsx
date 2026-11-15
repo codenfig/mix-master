@@ -1,10 +1,12 @@
 import './styles/vocal-remover.css'
+import JSZip from 'jszip'
 import { useEffect, useRef, useState } from 'react'
 import { AudioLines, Download, FileAudio, LoaderCircle, MicOff, UploadCloud, X } from 'lucide-react'
 
 const accepted = ['mp3','wav','flac','m4a','ogg','aac']
 export default function VocalRemover() {
   const [file, setFile] = useState<File | null>(null)
+  const [mode,setMode] = useState<'instrumental'|'vocals'>('instrumental')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [output, setOutput] = useState<string | null>(null)
@@ -37,6 +39,21 @@ export default function VocalRemover() {
     try {
       const data = new FormData()
       data.append('song', file)
+      if (mode === 'vocals') {
+        const separation = await fetch('/api/stem-splitter', { method: 'POST', body: data, signal: abort.signal })
+        if (!separation.ok) throw new Error('Vocal extraction failed ('+separation.status+').')
+        const archive = await separation.blob()
+        if (!archive.size) throw new Error('Empty stem archive.')
+        const zip = await JSZip.loadAsync(archive)
+        const entry = zip.file('vocals.wav')
+        if (!entry) throw new Error('Vocal stem was not included in the output.')
+        const wav = await entry.async('blob')
+        const url = URL.createObjectURL(new Blob([wav], {type:'audio/wav'}))
+        if (outputRef.current) URL.revokeObjectURL(outputRef.current)
+        outputRef.current = url
+        setOutput(url)
+        return
+      }
       const response = await fetch('/api/vocal-remover/jobs', { method: 'POST', body: data, signal: abort.signal })
       if (!response.ok) {
         let detail = 'Unable to start vocal removal (' + response.status + ').'
@@ -76,12 +93,16 @@ export default function VocalRemover() {
       <input ref={input} type="file" accept=".mp3,.wav,.flac,.m4a,.ogg,.aac,audio/*" className="hidden" onChange={e=>{select(e.target.files?.[0]);e.target.value=''}}/>
       <div className="vocal-drop" role="button" tabIndex={0} onClick={()=>!busy&&input.current?.click()} onKeyDown={e=>{if((e.key==='Enter'||e.key===' ')&&!busy){e.preventDefault();input.current?.click()}}} onDragOver={e=>e.preventDefault()} onDrop={e=>{e.preventDefault();if(!busy)select(e.dataTransfer.files[0])}}><FileAudio size={38}/><strong>Drop your audio here</strong><span>or click to browse your files</span><span className="vocal-file-types">MP3 · WAV · FLAC · M4A · OGG · AAC · Up to 200 MiB</span></div>
       {file&&<div className="vocal-file"><FileAudio size={21}/><div><strong>{file.name}</strong><small>{(file.size/1048576).toFixed(1)} MiB · Ready for extraction</small></div><button type="button" disabled={busy} onClick={()=>{setFile(null);setOutput(null);if(outputRef.current)URL.revokeObjectURL(outputRef.current);outputRef.current=null}} aria-label="Remove selected file"><X size={18}/></button></div>}
-      <button className="vocal-action" type="button" disabled={!file||busy} onClick={extract}>{busy?<><LoaderCircle className="spin" size={19}/> Removing vocals…</>:<><MicOff size={19}/> Remove Vocals</>}</button>
+      <fieldset className="vocal-output-options"><legend>Output option</legend>
+        <label><input type="radio" name="vocal-output-mode" checked={mode==='instrumental'} disabled={busy} onChange={()=>{setMode('instrumental');setOutput(null);if(outputRef.current){URL.revokeObjectURL(outputRef.current);outputRef.current=null}}}/><span>Remove vocals (instrumental only)</span></label>
+        <label><input type="radio" name="vocal-output-mode" checked={mode==='vocals'} disabled={busy} onChange={()=>{setMode('vocals');setOutput(null);if(outputRef.current){URL.revokeObjectURL(outputRef.current);outputRef.current=null}}}/><span>Extract vocals (vocals only)</span></label>
+      </fieldset>
+      <button className="vocal-action" type="button" disabled={!file||busy} onClick={extract}>{busy?<><LoaderCircle className="spin" size={19}/> Processing audio…</>:<><MicOff size={19}/> {mode==='instrumental'?'Remove Vocals':'Extract Vocals'}</>}</button>
       {busy&&<div className="vocal-processing" role="status">Separating vocals and instrumental… {Math.floor(elapsed/60)}:{String(elapsed%60).padStart(2,'0')} elapsed. Processing may take several minutes. <button type="button" onClick={()=>controller.current?.abort()}>Cancel</button></div>}
       {error&&<p className="vocal-error" role="alert">{error}</p>}
     </section>
-    <section className="vocal-panel"><div className="vocal-panel-title"><AudioLines size={22}/><div><h3>Instrumental preview</h3><p>Listen to your track without lead vocals.</p></div></div>
-      {output?<div className="vocal-result"><div className="vocal-result-disc"><AudioLines size={45}/></div><strong>Instrumental ready</strong><p>AI-separated accompaniment · WAV</p><audio controls src={output} aria-label="Instrumental audio preview"/><a className="vocal-action" href={output} download><Download size={19}/> Download Instrumental</a></div>:<div className="vocal-empty"><MicOff size={49}/><h3>Your instrumental will appear here</h3><p>Upload a song and select Remove Vocals to hear the result.</p></div>}
+    <section className="vocal-panel"><div className="vocal-panel-title"><AudioLines size={22}/><div><h3>{mode==='instrumental'?'Instrumental preview':'Vocal preview'}</h3><p>{mode==='instrumental'?'Listen without lead vocals.':'Listen to your isolated vocal stem.'}</p></div></div>
+      {output?<div className="vocal-result"><div className="vocal-result-disc"><AudioLines size={45}/></div><strong>{mode==='instrumental'?'Instrumental ready':'Vocals ready'}</strong><p>AI-separated {mode==='instrumental'?'accompaniment':'vocal stem'} · WAV</p><audio controls src={output} aria-label="Instrumental audio preview"/><a className="vocal-action" href={output} download><Download size={19}/> Download {mode==='instrumental'?'Instrumental':'Vocals'}</a></div>:<div className="vocal-empty"><MicOff size={49}/><h3>Your {mode==='instrumental'?'instrumental':'vocals'} will appear here</h3><p>Upload a song and process it to hear the result.</p></div>}
     </section></div><p className="vocal-note">AI separation is approximate: some vocal residue or instrumental artifacts may remain. Process audio you have permission to use.</p>
   </div>
 }
