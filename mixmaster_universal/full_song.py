@@ -47,6 +47,8 @@ def validate_project(project: SongProject):
 def _engine_command(output='instrumental'):
     if output != 'instrumental':
         configured = os.environ.get('FULL_SONG_VOCAL_EXECUTABLE', '').strip()
+        if not configured and output == 'full_song' and os.environ.get('ACESTEP_API_URL', '').strip() and os.environ.get('ACESTEP_API_KEY', '').strip():
+            configured = str(Path(__file__).with_name('run_ace_step_gpu.sh'))
         if not configured:
             return None
         executable = Path(configured).expanduser().resolve()
