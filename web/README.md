@@ -6,7 +6,7 @@ A standalone **React + TypeScript + Vite** frontend for the existing Python Fast
 - Responsive dark DJ dashboard with track upload and drag-and-drop
 - 5, 10 or 20 song selection, audio extension and size validation
 - BPM, key, duration and energy analysis
-- Suggested energy-based play order
+- Autonomous energy- and harmonic-aware track planning with explainable compatibility scores
 - Adjustable 4–32-second crossfade settings
 - MP3 rendering, WaveSurfer waveform playback and download
 - Cancelable browser requests and readable error messages
