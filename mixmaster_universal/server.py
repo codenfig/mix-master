@@ -23,6 +23,13 @@ VALID_COUNTS = {5, 10, 20}
 MASTERING_PRESETS = {"off", "balanced", "club"}
 KICK_STYLES = {"soft", "club"}
 
+def validate_mastering_options(preset, target_lufs, true_peak, bass_db, treble_db):
+    if preset not in {"off", "balanced", "club", "custom"}:
+        raise HTTPException(400, "Unknown mastering preset.")
+    if not (-20 <= target_lufs <= -9 and -3 <= true_peak <= -0.5 and -6 <= bass_db <= 6 and -6 <= treble_db <= 6):
+        raise HTTPException(400, "Invalid mastering settings.")
+
+
 def validate_kick(style: str, level: float):
     if style not in KICK_STYLES or not 0 <= level <= 0.35:
         raise HTTPException(400, "Invalid kick style or level.")
@@ -90,10 +97,9 @@ def analyze_songs(songs: list[UploadFile] = File(...), count: int = Form(10)):
 
 
 @app.post("/api/mix")
-def mix(songs: list[UploadFile] = File(...), count: int = Form(10), transition: int = Form(12), mastering: str = Form("balanced"), kick_enabled: bool = Form(False), kick_style: str = Form("soft"), kick_level: float = Form(0.16)):
+def mix(songs: list[UploadFile] = File(...), count: int = Form(10), transition: int = Form(12), mastering: str = Form("balanced"), kick_enabled: bool = Form(False), kick_style: str = Form("soft"), kick_level: float = Form(0.16), target_lufs: float = Form(-14), true_peak: float = Form(-1.5), bass_db: float = Form(0), treble_db: float = Form(0), compression: bool = Form(False)):
     validate_settings(count, transition)
-    if mastering not in MASTERING_PRESETS:
-        raise HTTPException(400, "Unknown mastering preset.")
+    validate_mastering_options(mastering, target_lufs, true_peak, bass_db, treble_db)
     validate_kick(kick_style, kick_level)
     with TemporaryDirectory(prefix="mixmaster_") as temp:
         tmp = Path(temp)
@@ -103,7 +109,7 @@ def mix(songs: list[UploadFile] = File(...), count: int = Form(10), transition: 
         ordered = [analysis[i] for i in mix_plan['order_indices']]
         out = tmp / "MixMaster_AI_Nonstop.mp3"
         try:
-            quality = render(ordered, out, transition=transition, mastering=mastering, kick_enabled=kick_enabled, kick_style=kick_style, kick_level=kick_level)
+            quality = render(ordered, out, transition=transition, mastering=mastering, kick_enabled=kick_enabled, kick_style=kick_style, kick_level=kick_level, mastering_options={"target_lufs": target_lufs, "true_peak": true_peak, "bass_db": bass_db, "treble_db": treble_db, "compression": compression})
         except Exception as exc:
             raise HTTPException(422, "Audio rendering failed. Check track lengths and FFmpeg installation.") from exc
         saved = Path(tempfile.gettempdir()) / f"mixmaster_{uuid.uuid4().hex}.mp3"
