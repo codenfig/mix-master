@@ -75,3 +75,24 @@ The wrapper assumes the repository virtualenv exists at
 launcher or point `FULL_SONG_ENGINE_EXECUTABLE` at a custom executable.
 No model weights are committed to GitHub. Verify the model's license and
 test compatibility with your local PyTorch/Transformers versions.
+
+## Stage 5: dedicated singing-vocal engine interface
+
+A singing-capable local executable can be connected separately:
+
+```bash
+export FULL_SONG_VOCAL_EXECUTABLE="$HOME/MixMasterAI/engines/run-vocal-model"
+```
+
+This is **not** a bundled vocal model. The executable must follow the same
+two-argument project-JSON / output-PCM-WAV contract as the instrumental
+engine. For `output=full_song` it must create the **complete mixed song**
+(instrumental plus singing); for `output=vocals` it must create vocals only.
+The JSON includes `voice=female|male|duet`, `lyrics`, and other song settings.
+The external model is responsible for obeying these settings. MixMaster does
+not yet verify the sung words, voice identity, arrangement or song duration.
+
+`GET /api/full-song/engine` reports separate `capabilities` for
+instrumental, vocals and full_song. This indicates only that the executable
+exists and can be started, **not** that the model has been tested or supports
+all three voice modes. The MusicGen Small adapter remains instrumental-only.
