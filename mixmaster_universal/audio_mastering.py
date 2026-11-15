@@ -42,7 +42,7 @@ def _measure(path: Path) -> dict:
     process = subprocess.run(command, capture_output=True, text=True, timeout=900)
     if process.returncode:
         raise RuntimeError("Unable to analyze audio loudness.")
-    blocks = re.findall(r"\\{[^{}]*\"input_i\"[^{}]*\\}", process.stderr, re.S)
+    blocks = re.findall(r'\{[^{}]*"input_i"[^{}]*\}', process.stderr, re.S)
     if not blocks:
         raise RuntimeError("FFmpeg did not report audio loudness measurements.")
     values = json.loads(blocks[-1])
