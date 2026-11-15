@@ -135,7 +135,50 @@ def evaluate_raw_mix(path, chunk_frames=65536):
     }
 
 
-def add_kick_to_raw(source, destination, bpm, level=0.16, style="soft", sr=44100):
+def extract_kick_sample(path, sr=44100):
+    """Sample a filtered bass transient, not a separated drum stem."""
+    from scipy.signal import butter, sosfilt
+    probe_sr = 11025
+    decoded = subprocess.run(
+        ['ffmpeg', '-v', 'error', '-nostdin', '-i', str(path), '-t', '60',
+         '-ac', '1', '-ar', str(probe_sr), '-f', 'f32le', '-'],
+        capture_output=True, check=True)
+    audio = np.frombuffer(decoded.stdout, dtype='<f4')
+    if len(audio) < probe_sr * 2:
+        raise ValueError('Source song is too short for kick extraction')
+    low = sosfilt(butter(4, [35, 180], btype='bandpass', fs=probe_sr, output='sos'), audio)
+    hop = 110
+    n = len(low) // hop
+    rms = np.sqrt(np.mean(low[:n * hop].reshape(n, hop) ** 2, axis=1) + 1e-10)
+    baseline = np.maximum(0.003, np.convolve(rms, np.ones(12) / 12, mode='same'))
+    novelty = np.maximum(0, rms - np.roll(rms, 2)) / baseline
+    novelty[:30] = 0
+    novelty[-45:] = 0
+    scores = novelty * np.minimum(1, rms / 0.018)
+    onset = None
+    for index in np.argsort(scores)[-100:][::-1]:
+        start = max(0, index * hop - int(0.012 * probe_sr))
+        if np.max(np.abs(low[start:start + int(0.16 * probe_sr)])) > 0.015:
+            onset = start
+            break
+    if onset is None:
+        raise ValueError('No suitable low-frequency transient in selected song')
+    length = int(0.28 * probe_sr)
+    sample = np.zeros(length, dtype=np.float32)
+    available = low[onset:onset + length]
+    sample[:len(available)] = available
+    sample *= np.exp(-np.arange(length) / probe_sr * 15).astype(np.float32)
+    peak = float(np.max(np.abs(sample)))
+    if peak < 1e-5:
+        raise ValueError('Extracted kick is too quiet')
+    sample /= peak
+    sample = librosa.resample(sample, orig_sr=probe_sr, target_sr=sr)
+    fade = min(len(sample), int(0.025 * sr))
+    sample[-fade:] *= np.linspace(1, 0, fade, dtype=np.float32)
+    return np.asarray(sample, dtype=np.float32), round(onset / probe_sr, 2)
+
+
+def add_kick_to_raw(source, destination, bpm, level=0.16, style="soft", sr=44100, sample=None):
     """Overlay a globally phase-continuous synthetic four-on-the-floor kick.
 
     Stream in bounded chunks. Conservative level adaptation uses short-block
@@ -153,6 +196,11 @@ def add_kick_to_raw(source, destination, bpm, level=0.16, style="soft", sr=44100
     kick = (np.sin(phase) * envelope).astype(np.float32)
     if style == "club":
         kick += (0.12 * np.exp(-t * 120) * np.sin(2 * np.pi * 1400 * t)).astype(np.float32)
+    if sample is not None:
+        kick = np.asarray(sample, dtype=np.float32)
+        length = len(kick)
+        if length == 0 or not np.all(np.isfinite(kick)):
+            raise ValueError("Invalid extracted kick sample")
     beat_frames = sr * 60.0 / bpm
     frame = 0
     with open(source, "rb") as inp, open(destination, "wb") as out:
@@ -181,7 +229,7 @@ def add_kick_to_raw(source, destination, bpm, level=0.16, style="soft", sr=44100
             frame = end
 
 
-def render(tracks, output, transition=12, progress=None, beatmatch=True, optimize=True, mastering="balanced", kick_enabled=False, kick_style="soft", kick_level=0.16, mastering_options=None):
+def render(tracks, output, transition=12, progress=None, beatmatch=True, optimize=True, mastering="balanced", kick_enabled=False, kick_style="soft", kick_level=0.16, mastering_options=None, kick_source_index=None, source_tracks=None):
     """Disk-backed crossfade renderer with optional conservative tempo matching.
 
     Unstretched tracks remain on disk. Stretching a track still uses RAM, so
@@ -263,12 +311,24 @@ def render(tracks, output, transition=12, progress=None, beatmatch=True, optimiz
             if not 60 <= reference_bpm <= 180:
                 raise ValueError("Smart Kick requires an opening track between 60 and 180 BPM")
             with_kick = Path(tmp) / "mix_with_kick.raw"
-            add_kick_to_raw(raw, with_kick, reference_bpm, kick_level, kick_style, sr)
+            extracted = None
+            kick_offset = None
+            source_name = None
+            if kick_source_index is not None:
+                available = source_tracks if source_tracks is not None else tracks
+                if not 0 <= kick_source_index < len(available):
+                    raise ValueError("Kick source is outside the selected tracks")
+                source_track = available[kick_source_index]
+                source_name = source_track["name"]
+                extracted, kick_offset = extract_kick_sample(source_track["path"], sr)
+            add_kick_to_raw(raw, with_kick, reference_bpm, kick_level, kick_style, sr, sample=extracted)
             raw = with_kick
         report = evaluate_raw_mix(raw)
         report["kick"] = {"enabled": kick_enabled, "style": kick_style if kick_enabled else None,
                           "bpm": round(float(tracks[0].get("bpm", 0)), 1) if kick_enabled else None,
-                          "level": kick_level if kick_enabled else None}
+                          "level": kick_level if kick_enabled else None,
+                          "source": source_name if kick_enabled else None,
+                          "source_offset_seconds": kick_offset if kick_enabled else None}
         report['transitions'] = transition_reports
         report['transition_proxy_average'] = round(sum(t['proxy_score'] for t in transition_reports) / len(transition_reports), 1) if transition_reports else None
         # FFmpeg loudnorm performs EBU R128 loudness normalization and
