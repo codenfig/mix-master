@@ -185,3 +185,17 @@
 .dj-download,.dj-play-btn{box-shadow:0 0 23px #bc44e655}
 .dj-main-wave{filter:drop-shadow(0 0 9px #d246ed66)}
 @media(max-width:760px){.dj-banner{background-size:auto 100%;background-position:75% center}.dj-banner:after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,#100d23f5,#100d2377);pointer-events:none}.dj-banner-copy{z-index:2}}
+
+
+/* Animated audio vibration: playback-driven, reduced-motion aware */
+.mix-wave-stage{position:relative;min-width:0;isolation:isolate}
+.mix-wave-stage>.waveform{position:relative;z-index:2}
+.mix-vibration-bars{position:absolute;inset:5px 0;z-index:1;display:flex;justify-content:space-between;align-items:center;gap:3px;pointer-events:none;opacity:.16;transition:opacity .3s}
+.mix-vibration-bars i{display:block;flex:1;max-width:7px;height:calc(65% * var(--bar-scale));border-radius:9px;background:linear-gradient(180deg,#f453ee,#aa54f8 45%,#32c5f4);transform:scaleY(.24);transform-origin:center;box-shadow:0 0 9px #d748ef88}
+.mix-wave-stage.is-playing .mix-vibration-bars{opacity:.78}
+.mix-wave-stage.is-playing .mix-vibration-bars i{animation:mix-sound-vibrate .62s ease-in-out infinite alternate;animation-delay:var(--bar-delay)}
+.mix-vibration-glow{position:absolute;inset:15% 0;z-index:0;background:linear-gradient(90deg,#ea3de433,#8658f533,#26c6ef33);filter:blur(25px);opacity:0;pointer-events:none;transition:opacity .3s}
+.mix-wave-stage.is-playing .mix-vibration-glow{opacity:.8;animation:mix-vibration-pulse 1.4s ease-in-out infinite alternate}
+@keyframes mix-sound-vibrate{0%{transform:scaleY(.18)}45%{transform:scaleY(.82)}100%{transform:scaleY(1.2)}}
+@keyframes mix-vibration-pulse{from{opacity:.3}to{opacity:.9}}
+@media(prefers-reduced-motion:reduce){.mix-wave-stage.is-playing .mix-vibration-bars i,.mix-wave-stage.is-playing .mix-vibration-glow{animation:none}.mix-wave-stage.is-playing .mix-vibration-bars i{transform:scaleY(.65)}}
