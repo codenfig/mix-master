@@ -199,3 +199,11 @@
 @keyframes mix-sound-vibrate{0%{transform:scaleY(.18)}45%{transform:scaleY(.82)}100%{transform:scaleY(1.2)}}
 @keyframes mix-vibration-pulse{from{opacity:.3}to{opacity:.9}}
 @media(prefers-reduced-motion:reduce){.mix-wave-stage.is-playing .mix-vibration-bars i,.mix-wave-stage.is-playing .mix-vibration-glow{animation:none}.mix-wave-stage.is-playing .mix-vibration-bars i{transform:scaleY(.65)}}
+
+
+/* Turntable animation follows actual WaveSurfer play/pause events */
+.dj-cover-stack .dj-vinyl{transform-origin:center center;animation:dj-record-spin 2.4s linear infinite;animation-play-state:paused;will-change:transform}
+.dj-cover-stack.is-spinning .dj-vinyl{animation-play-state:running}
+.dj-cover-stack.is-spinning .dj-vinyl-center{box-shadow:0 0 20px #dc52f488,0 0 38px #7458f555}
+@keyframes dj-record-spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+@media(prefers-reduced-motion:reduce){.dj-cover-stack .dj-vinyl{animation:none!important}}
