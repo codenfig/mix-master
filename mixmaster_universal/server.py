@@ -1,91 +1,105 @@
+"""MixMaster AI HTTP API. Processing is synchronous in this MVP."""
 from pathlib import Path
 from tempfile import TemporaryDirectory
-import json, shutil, uuid
-from fastapi import FastAPI, File, HTTPException, UploadFile
+import shutil
+import tempfile
+import uuid
+
+from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
+from starlette.background import BackgroundTask
+
 from engine import analyze, arrange, render
 
 ROOT = Path(__file__).resolve().parent
-app = FastAPI(title='MixMaster AI Universal')
-app.mount('/static', StaticFiles(directory=ROOT/'static'), name='static')
-SUPPORTED = {'.mp3','.wav','.flac','.m4a','.ogg','.aac'}
+app = FastAPI(title="MixMaster AI Universal", version="0.2.0")
+app.mount("/static", StaticFiles(directory=ROOT / "static"), name="static")
+SUPPORTED = {".mp3", ".wav", ".flac", ".m4a", ".ogg", ".aac"}
 MAX_FILE_BYTES = 200 * 1024 * 1024
+VALID_COUNTS = {5, 10, 20}
 
-@app.get('/')
+
+@app.get("/")
 def index():
-    return FileResponse(ROOT/'static'/'index.html')
+    return FileResponse(ROOT / "static" / "index.html")
 
-@app.get('/health')
+
+@app.get("/health")
 def health():
-    return {'ok': True}
+    return {"ok": True, "version": "0.2.0"}
 
-@app.post('/api/analyze')
-def analyze_songs(songs: list[UploadFile] = File(...)):
-    if len(songs) != 10:
-        raise HTTPException(400, 'Select exactly 10 audio files.')
-    with TemporaryDirectory(prefix='mixmaster_analysis_') as temp:
-        tmp = Path(temp)
-        tracks = []
-        names = []
-        for idx, song in enumerate(songs):
-            name = song.filename or f'Track {idx + 1}'
-            ext = Path(name).suffix.lower()
-            if ext not in SUPPORTED:
-                raise HTTPException(400, f'Unsupported audio format: {name}')
-            dest = tmp / f'{idx:02d}{ext}'
-            size = 0
-            with dest.open('wb') as output:
-                while chunk := song.file.read(1024 * 1024):
-                    size += len(chunk)
-                    if size > MAX_FILE_BYTES:
-                        raise HTTPException(413, f'File too large: {name}')
-                    output.write(chunk)
-            tracks.append(dest)
-            names.append(name)
-        try:
-            results = [analyze(path) for path in tracks]
-            for result, name in zip(results, names):
-                result['name'] = name
-            order = [track['name'] for track in arrange(results)]
-            return {'tracks': [{k:v for k,v in t.items() if k != 'path'} for t in results], 'order': order}
-        except Exception as exc:
-            raise HTTPException(422, f'Audio analysis failed: {exc}') from exc
 
-@app.post('/api/mix')
-def mix(songs: list[UploadFile] = File(...)):
-    if len(songs) != 10:
-        raise HTTPException(400, 'Select exactly 10 audio files.')
-    with TemporaryDirectory(prefix='mixmaster_') as temp:
+def validate_settings(count: int, transition: int):
+    if count not in VALID_COUNTS:
+        raise HTTPException(400, "Song count must be 5, 10 or 20.")
+    if not 4 <= transition <= 32:
+        raise HTTPException(400, "Transition must be between 4 and 32 seconds.")
+
+
+def save_uploads(songs: list[UploadFile], directory: Path, count: int):
+    if len(songs) != count:
+        raise HTTPException(400, f"Select exactly {count} audio files.")
+    tracks, names = [], []
+    for idx, song in enumerate(songs):
+        name = Path(song.filename or f"Track {idx + 1}").name
+        ext = Path(name).suffix.lower()
+        if ext not in SUPPORTED:
+            raise HTTPException(400, f"Unsupported audio format: {name}")
+        dest = directory / f"{idx:02d}{ext}"
+        size = 0
+        with dest.open("wb") as output:
+            while chunk := song.file.read(1024 * 1024):
+                size += len(chunk)
+                if size > MAX_FILE_BYTES:
+                    raise HTTPException(413, f"File too large: {name}")
+                output.write(chunk)
+        if not size:
+            raise HTTPException(400, f"Empty audio file: {name}")
+        tracks.append(dest)
+        names.append(name)
+    return tracks, names
+
+
+def inspect_tracks(tracks, names):
+    try:
+        results = [analyze(path) for path in tracks]
+        for result, name in zip(results, names):
+            result["name"] = name
+        return results
+    except Exception as exc:
+        raise HTTPException(422, "Unable to decode or analyze one or more tracks.") from exc
+
+
+@app.post("/api/analyze")
+def analyze_songs(songs: list[UploadFile] = File(...), count: int = Form(10)):
+    validate_settings(count, 12)
+    with TemporaryDirectory(prefix="mixmaster_analysis_") as temp:
+        tracks, names = save_uploads(songs, Path(temp), count)
+        results = inspect_tracks(tracks, names)
+        order = [t["name"] for t in arrange(results)]
+        return {"tracks": [{k: v for k, v in t.items() if k != "path"} for t in results], "order": order}
+
+
+@app.post("/api/mix")
+def mix(songs: list[UploadFile] = File(...), count: int = Form(10), transition: int = Form(12)):
+    validate_settings(count, transition)
+    with TemporaryDirectory(prefix="mixmaster_") as temp:
         tmp = Path(temp)
-        tracks = []
-        for idx, song in enumerate(songs):
-            ext = Path(song.filename or '').suffix.lower()
-            if ext not in SUPPORTED:
-                raise HTTPException(400, f'Unsupported audio format: {song.filename}')
-            dest = tmp/f'{idx:02d}{ext}'
-            size = 0
-            with dest.open('wb') as output:
-                while chunk := song.file.read(1024*1024):
-                    size += len(chunk)
-                    if size > MAX_FILE_BYTES:
-                        raise HTTPException(413, f'File too large: {song.filename}')
-                    output.write(chunk)
-            tracks.append(dest)
+        tracks, names = save_uploads(songs, tmp, count)
+        analysis = inspect_tracks(tracks, names)
+        ordered = arrange(analysis)
+        out = tmp / "MixMaster_AI_Nonstop.mp3"
         try:
-            analysis = [analyze(path) for path in tracks]
-            ordered = arrange(analysis)
-            out = tmp/'MixMaster_AI_Nonstop.mp3'
-            render(ordered, out, transition=12)
-            # Streaming responses cannot reference files removed when the request ends.
-            # A temporary artifact copy is cleaned after the response is sent.
-            from starlette.background import BackgroundTask
-            from fastapi.responses import FileResponse
-            import tempfile
-            saved = Path(tempfile.gettempdir())/f'mixmaster_{uuid.uuid4().hex}.mp3'
-            shutil.copyfile(out, saved)
-            return FileResponse(saved, media_type='audio/mpeg', filename='MixMaster_AI_Nonstop.mp3', background=BackgroundTask(lambda: saved.unlink(missing_ok=True)), headers={'X-MixMaster-Track-Count':'10'})
-        except HTTPException:
-            raise
+            render(ordered, out, transition=transition)
         except Exception as exc:
-            raise HTTPException(422, f'Audio processing failed: {exc}') from exc
+            raise HTTPException(422, "Audio rendering failed. Check track lengths and FFmpeg installation.") from exc
+        saved = Path(tempfile.gettempdir()) / f"mixmaster_{uuid.uuid4().hex}.mp3"
+        shutil.copyfile(out, saved)
+        return FileResponse(
+            saved,
+            media_type="audio/mpeg",
+            filename="MixMaster_AI_Nonstop.mp3",
+            background=BackgroundTask(lambda: saved.unlink(missing_ok=True)),
+            headers={"X-MixMaster-Track-Count": str(count)},
+        )
