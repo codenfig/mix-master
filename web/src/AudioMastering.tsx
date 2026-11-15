@@ -1,3 +1,4 @@
+import './styles/audio-mastering.css'
 import { useEffect, useRef, useState } from 'react'
 import { AudioLines, Download, FileAudio, LoaderCircle, SlidersHorizontal, Sparkles, UploadCloud, X } from 'lucide-react'
 
