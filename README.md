@@ -159,3 +159,7 @@ See [PLATFORMS.md](PLATFORMS.md) and the README in each platform folder for addi
 ### Renderer memory behavior
 
 The renderer now decodes each track to a temporary disk-backed float32 file and writes the mixed PCM output in chunks. Transition overlaps remain in memory. Optional pitch-preserving tempo stretching still materializes the full track being stretched, so memory use can be high for long tracks. FFmpeg and adequate temporary disk space are required. Beat-grid and phrase alignment remain future work.
+
+### Beat-phase alignment (experimental)
+
+Analysis now records an estimated first beat offset. During rendering, when consecutive tempos are sufficiently close, the mixer may trim up to 0.8 seconds from the incoming track to align its estimated beat phase with the outgoing track at the crossfade. It falls back safely when beat information is unavailable. This is **not** downbeat detection, phrase alignment, or continuous beat-grid correction, and tempo estimates can be wrong. Listen to transitions before publishing a mix.
