@@ -20,6 +20,7 @@ from audio_mastering import router as mastering_router
 from voice_studio import router as voice_studio_router
 from generated_storage import router as generated_files_router, save_generated
 from text_to_song import router as text_to_song_router
+from full_song import router as full_song_router
 
 ROOT = Path(__file__).resolve().parent
 app = FastAPI(title="MixMaster AI Universal", version="0.2.0")
@@ -29,6 +30,7 @@ app.include_router(mastering_router)
 app.include_router(voice_studio_router)
 app.include_router(generated_files_router)
 app.include_router(text_to_song_router)
+app.include_router(full_song_router)
 app.mount("/static", StaticFiles(directory=ROOT / "static"), name="static")
 SUPPORTED = {".mp3", ".wav", ".flac", ".m4a", ".ogg", ".aac"}
 MAX_FILE_BYTES = 200 * 1024 * 1024
