@@ -16,12 +16,60 @@ export default function FullSongPage() {
   const [bpm, setBpm] = useState(110)
   const [minutes, setMinutes] = useState(3)
   const [saving, setSaving] = useState(false)
-  const [engineReady,setEngineReady] = useState(false)
+  const [planning,setPlanning] = useState(false)
+  const [plan,setPlan] = useState<{estimated_seconds:number;total_bars:number;sections:{name:string;bars:number;start_seconds:number;duration_seconds:number;energy:number}[]}|null>(null)
+  async function previewArrangement(){setPlanning(true);setError('');setPlan(null);const controller=new AbortController();const timer=window.setTimeout(()=>controller.abort(),10000);try{const response=await fetch('/api/full-song/arrangement',{method:'POST',headers:{'Content-Type':'application/json'},signal:controller.signal,body:JSON.stringify({title,description,lyrics,voice,genre,output,bpm,minutes})});if(!response.ok)throw new Error('Could not plan arrangement ('+response.status+').');setPlan(await response.json())}catch(e){setError(controller.signal.aborted?'Arrangement preview timed out.':e instanceof Error?e.message:'Could not preview arrangement.')}finally{window.clearTimeout(timer);setPlanning(false)}}
+  const [capabilities,setCapabilities] = useState({instrumental:false,vocals:false,full_song:false})
   const [engineMessage,setEngineMessage] = useState('Checking local engine…')
   const [generating,setGenerating] = useState(false)
   const [audio,setAudio] = useState<{file:{id:string;name:string};download_url:string}|null>(null)
-  useEffect(()=>{const controller=new AbortController();const timer=window.setTimeout(()=>controller.abort(),8000);void fetch('/api/full-song/engine',{signal:controller.signal}).then(async response=>{if(!response.ok)throw new Error('Backend unavailable');return response.json() as Promise<{generation_available:boolean;reason:string|null}>}).then(data=>{setEngineReady(data.generation_available);setEngineMessage(data.generation_available?'Local engine configured':data.reason||'Engine unavailable')}).catch(()=>setEngineMessage('Backend unavailable. Restart Python server.')).finally(()=>window.clearTimeout(timer));return ()=>{controller.abort();window.clearTimeout(timer)}},[])
-  async function generate(){setGenerating(true);setError('');setAudio(null);const controller=new AbortController();const timer=window.setTimeout(()=>controller.abort(),310000);try{const response=await fetch('/api/full-song/generate',{method:'POST',headers:{'Content-Type':'application/json'},signal:controller.signal,body:JSON.stringify({title,description,lyrics,voice,genre,output,bpm,minutes})});if(!response.ok){const body=await response.json().catch(()=>({}));throw new Error(typeof body.detail==='string'?body.detail:'Generation failed ('+response.status+').')}setAudio(await response.json() as {file:{id:string;name:string};download_url:string})}catch(e){setError(controller.signal.aborted?'Local engine timed out.':e instanceof Error?e.message:'Generation failed.')}finally{window.clearTimeout(timer);setGenerating(false)}}
+  useEffect(()=>{const controller=new AbortController();const timer=window.setTimeout(()=>controller.abort(),8000);void fetch('/api/full-song/engine',{signal:controller.signal}).then(async response=>{if(!response.ok)throw new Error('Backend unavailable');return response.json() as Promise<{generation_available:boolean;reason:string|null;capabilities?:{instrumental:boolean;vocals:boolean;full_song:boolean}}>}).then(data=>{setCapabilities(data.capabilities||{instrumental:false,vocals:false,full_song:false});setEngineMessage(data.generation_available?'Local engine configured':data.reason||'Engine unavailable')}).catch(()=>setEngineMessage('Backend unavailable. Restart Python server.')).finally(()=>window.clearTimeout(timer));return ()=>{controller.abort();window.clearTimeout(timer)}},[])
+  const [jobId,setJobId] = useState('')
+  const [jobStage,setJobStage] = useState('')
+  const [jobElapsed,setJobElapsed] = useState(0)
+  useEffect(()=>{
+    if(jobId)window.sessionStorage.setItem('mixmaster-full-song-job',jobId)
+    else window.sessionStorage.removeItem('mixmaster-full-song-job')
+  },[jobId])
+  useEffect(()=>{
+    if(!jobId)return
+    let stopped=false
+    const poll=async()=>{
+      try{
+        const response=await fetch('/api/full-song/jobs/'+jobId)
+        if(!response.ok)throw new Error('Could not retrieve job status ('+response.status+').')
+        const job=await response.json() as {status:string;stage:string;elapsed_seconds:number;error:string|null;file:{id:string;name:string}|null;download_url:string|null}
+        if(stopped)return
+        setJobStage(job.stage);setJobElapsed(job.elapsed_seconds)
+        if(job.status==='completed'&&job.file&&job.download_url){setAudio({file:job.file,download_url:job.download_url});setGenerating(false);setJobId('')}
+        else if(job.status==='failed'||job.status==='cancelled'){setError(job.error|| (job.status==='cancelled'?'Generation cancelled.':'Generation failed.'));setGenerating(false);setJobId('')}
+      }catch(e){if(!stopped){setError(e instanceof Error?e.message:'Unable to check generation status.');setGenerating(false);if(e instanceof Error && e.message.includes('404'))setJobId('')}}
+    }
+    setGenerating(true)
+    void poll()
+    const interval=window.setInterval(()=>void poll(),2000)
+    return ()=>{stopped=true;window.clearInterval(interval)}
+  },[jobId])
+  async function generate(){
+    setGenerating(true);setError('');setAudio(null);setJobElapsed(0);setJobStage('queued')
+    const controller=new AbortController()
+    const timer=window.setTimeout(()=>controller.abort(),10000)
+    try{
+      const response=await fetch('/api/full-song/jobs',{method:'POST',headers:{'Content-Type':'application/json'},signal:controller.signal,body:JSON.stringify({title,description,lyrics,voice,genre,output,bpm,minutes})})
+      if(!response.ok){const body=await response.json().catch(()=>({}));throw new Error(typeof body.detail==='string'?body.detail:'Could not start generation ('+response.status+').')}
+      const job=await response.json() as {id:string}
+      setJobId(job.id)
+    }catch(e){setError(controller.signal.aborted?'Backend did not accept the job within 10 seconds.':e instanceof Error?e.message:'Could not start generation.');setGenerating(false)}
+    finally{window.clearTimeout(timer)}
+  }
+  async function cancelGeneration(){
+    if(!jobId)return
+    try{
+      const response=await fetch('/api/full-song/jobs/'+jobId+'/cancel',{method:'POST'})
+      if(!response.ok)throw new Error('Cancellation request failed ('+response.status+').')
+      setJobStage('cancelling')
+    }catch(e){setError(e instanceof Error?e.message:'Could not cancel job.')}
+  }
   const [status, setStatus] = useState('')
   const [error, setError] = useState('')
   async function saveDraft() {
@@ -49,8 +97,10 @@ export default function FullSongPage() {
       <label>Target length<select value={minutes} onChange={e=>setMinutes(Number(e.target.value))}><option value={2}>2 minutes</option><option value={3}>3 minutes</option><option value={4}>4 minutes</option></select></label>
       <label>Output<select value={output} onChange={e=>setOutput(e.target.value as Output)}><option value="full_song">Full song + vocals</option><option value="instrumental">Instrumental</option><option value="vocals">Vocals only</option></select></label>
     </div>
-    <div className="fullsong-actions"><button type="button" disabled={saving} onClick={()=>void saveDraft()}>{saving?"Saving…":"Save draft to backend"}</button><button type="button" onClick={()=>{const data={title,description,lyrics,voice,genre,output,bpm,minutes};const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});const url=URL.createObjectURL(blob);const link=document.createElement('a');link.href=url;link.download='mixmaster-song-project.json';link.click();window.setTimeout(()=>URL.revokeObjectURL(url),1000)}}><Music2 size={17}/> Export song project</button><button type="button" disabled={!engineReady||generating} onClick={()=>void generate()} title={engineMessage}><Mic2 size={17}/>{generating?"Generating…":engineReady?"Generate with local engine":"Engine not installed"}</button></div>
-    <p className="fullsong-footnote" role="status">Engine status: {engineMessage}</p>
+    <div className="fullsong-actions"><button type="button" disabled={planning} onClick={()=>void previewArrangement()}>{planning?"Planning…":"Preview arrangement"}</button><button type="button" disabled={saving} onClick={()=>void saveDraft()}>{saving?"Saving…":"Save draft to backend"}</button><button type="button" onClick={()=>{const data={title,description,lyrics,voice,genre,output,bpm,minutes};const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});const url=URL.createObjectURL(blob);const link=document.createElement('a');link.href=url;link.download='mixmaster-song-project.json';link.click();window.setTimeout(()=>URL.revokeObjectURL(url),1000)}}><Music2 size={17}/> Export song project</button><button type="button" disabled={!capabilities[output]||generating} onClick={()=>void generate()} title={!capabilities[output]?"No compatible local engine configured for this output.":engineMessage}><Mic2 size={17}/>{generating?"Generating…":capabilities[output]?(output==="instrumental"?"Generate instrumental preview":"Generate with vocal engine"):"Compatible engine not installed"}</button>{generating&&<button type="button" onClick={()=>void cancelGeneration()}>Cancel generation</button>}</div>
+    {generating&&<p role="status" className="fullsong-footnote">Generation: {jobStage} · {Math.round(jobElapsed)} seconds elapsed</p>}
+    {plan&&<div className="fullsong-banner"><strong>Arrangement · {plan.total_bars} bars · ~{Math.round(plan.estimated_seconds)} seconds</strong><div className="fullsong-timeline">{plan.sections.map((section,index)=><div key={index} className="fullsong-section" style={{flexGrow:section.bars,opacity:0.65+section.energy*0.35}} title={section.name+" · "+section.bars+" bars"}><span>{section.name}</span><small>{section.bars} bars</small></div>)}</div><p className="fullsong-footnote">Planning only: your installed audio engine must implement the arrangement for it to be audible.</p></div>}
+    <p className="fullsong-footnote" role="status">Engine status: {engineMessage}. Instrumental: {capabilities.instrumental?"ready":"not installed"}. Singing: {capabilities.vocals?"engine configured":"not installed"}. A configured vocal adapter must independently support your selected voice and lyrics; model quality is not verified.</p>
     {audio&&<div className="fullsong-banner"><strong>Audio generated: {audio.file.name}</strong><audio controls src={"/api/generated-files/"+audio.file.id+"/stream"}/><a href={audio.download_url}>Download WAV</a></div>}
     {status&&<p role="status" className="fullsong-banner">{status}</p>}
     {error&&<p role="alert" className="textsong-error">{error}</p>}
