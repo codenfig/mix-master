@@ -1,0 +1,40 @@
+/* MixMaster AI | unified flat dark theme
+   Deliberately loaded after all page styles. No gradient UI surfaces.
+   Brand artwork, user-uploaded covers and waveform visualizations are preserved. */
+:root{color-scheme:dark;--mm-bg:#08090b;--mm-sidebar:#0d0f11;--mm-panel:#141619;--mm-raised:#1c2024;--mm-border:#30363c;--mm-text:#f5f7fa;--mm-muted:#a7b0b9;--mm-cyan:#00dde5;--mm-cyan-hover:#22eef3;--mm-gold:#ffd600;--mm-danger:#ff7b87;font-family:'DM Sans',sans-serif;background:var(--mm-bg);color:var(--mm-text)}
+html,body,#root,.app,.main{background:var(--mm-bg);color:var(--mm-text)}
+/* Enforce flat surfaces even in older feature-specific stylesheets. SVG logo, img, canvas and audio artwork remain intact. */
+#root :where(*):not(svg):not(svg *){background-image:none!important}
+
+:where(.sidebar,.topbar,.panel,.hero,.help-box,.drop-zone,.settings,.onboard-page,.onboard-features button,.onboard-primary,.onboard-secondary,.onboard-text-link,.onboard-back,.mm-generator-top,.mm-generator-compose,.mm-generator-library,.mm-generator-detail,.mm-generator-empty,.mm-generator-track,.mm-generator-player,.mm-generator-primary,.mm-generator-plan-link,.mm-generator-tags button,.mm-generator-settings,.mm-generator-song-row,.mm-song-art,.mm-detail-art,.mm-pricing,.mm-pricing-hero,.mm-pricing-card,.mm-pricing-featured,.mm-pricing-start,.mm-pricing-notes>div,.generated-toolbar,.generated-item,.generated-file-icon,.generated-empty,.generated-toolbar button,.generated-filters button,.fullsong,.fullsong-banner,.fullsong-section,.fullsong-mode-bar,.fullsong-mode-bar button.active,.fullsong-switch,.fullsong-actions button,.fullsong input,.fullsong textarea,.fullsong select,.mm-generator-search,.mm-generator-search input,.disc-inner,.hero-disc,.energy-bar span,.brand-icon,.browse-button,.nav.active,.nav:hover,.pill,.step-number.done,.upload-icon,.mm-generator-progress,.mm-generator-advanced,.mm-generator-info){background-image:none!important;box-shadow:none}
+.sidebar{background:var(--mm-sidebar);border-color:var(--mm-border)}
+.topbar{background:var(--mm-sidebar);border-color:var(--mm-border)}
+:where(.panel,.hero,.help-box,.settings,.onboard-features button,.mm-generator-top,.mm-generator-compose,.mm-generator-library,.mm-generator-detail,.mm-pricing-hero,.mm-pricing-card,.mm-pricing-notes>div,.generated-toolbar,.generated-item,.fullsong,.fullsong-banner,.mm-generator-track){background-color:var(--mm-panel);border-color:var(--mm-border);color:var(--mm-text)}
+:where(.drop-zone,.mm-generator-empty,.generated-empty,.fullsong-mode-bar,.fullsong-switch,.mm-generator-settings,.mm-generator-search,.mm-generator-advanced){background-color:var(--mm-raised);border-color:var(--mm-border)}
+:where(.mm-generator-song-row.selected,.nav.active,.nav:hover,.generated-filters button.active,.fullsong-mode-bar button.active){background-color:#123136!important;border-color:var(--mm-cyan)!important;color:var(--mm-cyan)!important}
+:where(.nav,.breadcrumb,.top-status,.panel-heading p,.hero p,.mm-generator-top p,.mm-generator-empty p,.mm-generator-detail>p,.mm-pricing-card p,.mm-pricing-hero p,.generated-toolbar p,.generated-file-info small,.fullsong-footnote,.onboard-lead){color:var(--mm-muted)}
+:where(.brand strong span,.hero h1 span,.eyebrow,.onboard-eyebrow,.mm-generator-kicker,.mm-pricing-eyebrow,.mm-generator-library-head svg,.mm-generator-panel-head svg,.panel h2 svg,.mm-generator-library-footer a,.mm-pricing-credits,.generated-file-icon,.onboard-features button,.onboard-main h1 em){color:var(--mm-cyan)!important}
+.onboard-main h1 em{-webkit-text-fill-color:var(--mm-cyan);background:none!important}
+.brand-icon{background-color:transparent;padding:2px}
+.brand-icon img{display:block;object-fit:contain}
+:where(.mm-generator-primary,.browse-button,.onboard-primary,.mm-pricing-start){background:var(--mm-cyan)!important;color:#071114!important;border-color:var(--mm-cyan)!important;box-shadow:none!important}
+:where(.mm-generator-primary,.browse-button,.onboard-primary,.mm-pricing-start):hover:not(:disabled){background:var(--mm-cyan-hover)!important}
+:where(.mm-generator-plan-link,.mm-detail-actions a,.mm-generator-library-actions button,.generated-toolbar button,.generated-item a,.generated-filters button,.mm-generator-tags button,.onboard-secondary,.onboard-text-link,.onboard-back){background-color:var(--mm-raised);border-color:var(--mm-border);color:var(--mm-text)}
+:where(.mm-generator-plan-link,.mm-pricing-featured,.mm-pricing-tag){border-color:var(--mm-gold)!important;color:var(--mm-gold)}
+.mm-pricing-featured{background:var(--mm-panel)!important}
+:where(.mm-pricing-featured h3,.mm-pricing-featured .mm-pricing-price,.mm-pricing-featured .mm-pricing-credits){color:var(--mm-gold)}
+:where(.fullsong input,.fullsong textarea,.fullsong select,.mm-generator-search input,input,textarea,select){accent-color:var(--mm-cyan)}
+:where(.fullsong input,.fullsong textarea,.fullsong select,.mm-generator-search input){background-color:#0d1012;border-color:var(--mm-border);color:var(--mm-text)}
+:where(input,textarea,select,button,a):focus-visible{outline:2px solid var(--mm-cyan);outline-offset:2px}
+:where(.fullsong-switch input,.generated-filters button.active){accent-color:var(--mm-cyan)}
+:where(.step-number.done,.tabs button.selected,.pill,.upload-icon){background-color:#123136;color:var(--mm-cyan);border-color:var(--mm-cyan)}
+:where(.energy-bar span,.disc-inner){background-color:var(--mm-cyan)}
+:where(.mm-generator-progress,.mm-generator-player,.mm-generator-info,.generated-file-icon){background-color:var(--mm-raised);border-color:var(--mm-border)}
+.mm-song-art{background-color:#143d42!important;color:var(--mm-cyan)}
+.mm-detail-art{background-color:#13282c!important;color:var(--mm-cyan)}
+.mm-generator-tags button:hover,.mm-generator-song-row:hover{background-color:#193238;border-color:var(--mm-cyan)}
+.mm-generator-primary:disabled{background:#305458!important;color:#adc5c6!important}
+.mm-pricing-card button{background:#222629;color:#aeb5bb;border-color:var(--mm-border)}
+/* Any native accent and progress tracks should use the same palette. */
+progress{accent-color:var(--mm-cyan)}
+::selection{background:#075d63;color:#fff}
