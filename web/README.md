@@ -56,4 +56,4 @@ The legacy HTML frontend remains at `mixmaster_universal/static/index.html`; it 
 
 ## Important limitations
 
-This is a development MVP, not a production deployment. Rendering remains synchronous; canceling a browser request does not guarantee cancellation of backend processing. Upload progress and server-side job status are not yet available. WaveSurfer decodes rendered audio in the browser and can use significant memory for long mixes. Authentication, background jobs, quotas, production security and real-audio testing remain necessary.
+This is a development MVP, not a production deployment. Rendering uses conservative pitch-preserving tempo matching when BPMs are close, but beat-grid and phrase alignment are not yet implemented. Rendering remains synchronous; canceling a browser request does not guarantee cancellation of backend processing. Upload progress and server-side job status are not yet available. WaveSurfer decodes rendered audio in the browser and can use significant memory for long mixes. Authentication, background jobs, quotas, production security and real-audio testing remain necessary.
