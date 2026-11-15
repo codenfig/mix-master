@@ -57,6 +57,7 @@ export default function App() {
   const [masteringResult, setMasteringResult] = useState<{ preset: string; target_lufs: number | null; true_peak_limit_dbtp: number | null } | null>(null)
   const [playSignal, setPlaySignal] = useState(0)
   const [playReady, setPlayReady] = useState(false)
+  const [isPlaying, setIsPlaying] = useState(false)
   const [current, setCurrent] = useState(0)
   const [duration, setDuration] = useState(0)
   const input = useRef<HTMLInputElement>(null)
@@ -76,6 +77,7 @@ export default function App() {
     setTransitionChecks([])
     setProgress(null)
     setPlayReady(false)
+    setIsPlaying(false)
     setCurrent(0)
     setDuration(0)
   }
@@ -351,8 +353,8 @@ export default function App() {
         {page === 'preview' && <div className="dj-preview">
           <div className="dj-banner"><div className="dj-banner-copy"><span className="dj-kicker">MIXMASTER WORKSPACE</span><h2>Mix Preview</h2><p>Listen, analyze and export your AI-powered DJ mix</p></div><div className="dj-banner-eq" aria-hidden="true">{Array.from({length:42},(_,i)=><i key={i} style={{height: (15+Math.abs(Math.sin(i*.67)*Math.cos(i*.17))*76)+'%'}}/>)}</div><div className="dj-headphones" aria-hidden="true"/></div>
           <section className="dj-main-deck">
-            <div className="dj-cover-stack" aria-hidden="true"><div className="dj-vinyl"><div className="dj-vinyl-center"/></div><div className="dj-cover" role="img" aria-label="Neon DJ silhouette and AI DJ MIX album cover"/></div>
-            <div className="dj-deck-center"><div className="dj-track-heading"><div><div className="dj-track-title"><h3>My DJ Mix</h3><span>AI MIX</span></div><p>Continuous set <b>•</b> AI arranged <b>•</b> Studio master</p></div></div><div className="dj-main-wave"><Waveform url={url} onTime={(t,d)=>{setCurrent(t);setDuration(d)}} onReady={setPlayReady} playSignal={playSignal}/></div><div className="dj-timeline"><span>{formatTime(current)}</span><div className="dj-progress-track"><div style={{width:duration?Math.min(100,current/duration*100)+'%':'0%'}}/></div><span>{formatTime(duration)}</span></div><div className="dj-player-actions"><span className="dj-player-label"><Headphones size={15}/> STUDIO LISTENING</span><button type="button" className="dj-play-btn" disabled={!playReady} onClick={()=>setPlaySignal(v=>v+1)} aria-label="Play or pause mix"><Play size={25} fill="currentColor"/></button><span className="dj-player-label">MP3 · EXPORT READY</span></div></div>
+            <div className={"dj-cover-stack" + (isPlaying ? " is-spinning" : "")} aria-hidden="true"><div className="dj-vinyl"><div className="dj-vinyl-center"/></div><div className="dj-cover" role="img" aria-label="Neon DJ silhouette and AI DJ MIX album cover"/></div>
+            <div className="dj-deck-center"><div className="dj-track-heading"><div><div className="dj-track-title"><h3>My DJ Mix</h3><span>AI MIX</span></div><p>Continuous set <b>•</b> AI arranged <b>•</b> Studio master</p></div></div><div className="dj-main-wave"><Waveform url={url} onTime={(t,d)=>{setCurrent(t);setDuration(d)}} onReady={setPlayReady} playSignal={playSignal} onPlayingChange={setIsPlaying}/></div><div className="dj-timeline"><span>{formatTime(current)}</span><div className="dj-progress-track"><div style={{width:duration?Math.min(100,current/duration*100)+'%':'0%'}}/></div><span>{formatTime(duration)}</span></div><div className="dj-player-actions"><span className="dj-player-label"><Headphones size={15}/> STUDIO LISTENING</span><button type="button" className="dj-play-btn" disabled={!playReady} onClick={()=>setPlaySignal(v=>v+1)} aria-label="Play or pause mix"><Play size={25} fill="currentColor"/></button><span className="dj-player-label">MP3 · EXPORT READY</span></div></div>
             <aside className="dj-summary"><span className="dj-card-label">MIX SUMMARY</span><div className="dj-summary-row"><Music2 size={20}/><div><strong>{url?formatTime(duration):'--:--'}</strong><small>Total Mix Duration</small></div></div><div className="dj-summary-row"><ListMusic size={20}/><div><strong>{url?count:'—'}</strong><small>Tracks Mixed</small></div></div><div className="dj-summary-row"><Activity size={20}/><div><strong>{url?Math.max(0,count-1):'—'}</strong><small>Transitions · {transition}s each</small></div></div>{url?<a className="dj-download" href={url} download="MixMaster_AI_Nonstop.mp3"><Download size={18}/> Download MP3</a>:<button className="dj-download" disabled><Download size={18}/> {activeJob?'Rendering mix':'No mix yet'}</button>}</aside>
           </section>
           <div className="dj-console-grid">
