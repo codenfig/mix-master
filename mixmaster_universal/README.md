@@ -65,3 +65,11 @@ python -m uvicorn server:app --reload --host 127.0.0.1 --port 8000
 ```
 
 If `llvmlite` still tries to compile, inspect the Python version and architecture with `python -c "import platform,sys; print(sys.version,platform.machine())"`. Avoid mixing x86_64 Python with arm64 Homebrew packages.
+
+## Experimental phrase-grid transitions and automatic evaluation
+
+The engine estimates 4/4, four-bar phrase entry points from detected tempo and first-beat offset. When safe for track length, it trims incoming intros toward those grid positions. This is a heuristic, not reliable detection of verses, choruses, drops or downbeats.
+
+For each crossfade the engine evaluates up to four candidate entry offsets (0, 0.25, 0.5 and 0.75 seconds), scoring short-time loudness mismatch, spectral centroid mismatch and peak overload. It selects the highest-scoring candidate and reports the score and number of attempts via the async job status API. These are signal-based proxy scores, **not learned perceptual ratings**. Optimization is local to each crossfade; it does not rerender entire mixes, analyze human preferences or guarantee professional results. The frontend displays the per-transition report after rendering.
+
+Run regression tests from this directory with `python -m pytest tests -q` after installing the test dependencies and FFmpeg.
