@@ -53,7 +53,7 @@ export async function mix(files: File[], count: number, transition: number, sign
   } }
 }
 
-export type MixJob = { id: string; status: 'queued' | 'processing' | 'done' | 'failed'; completed_tracks: number; total_tracks: number; error: string | null; metrics: { peak: number; rms: number; near_silence_fraction: number; clipping_risk: boolean } | null }
+export type MixJob = { id: string; status: 'queued' | 'processing' | 'done' | 'failed'; completed_tracks: number; total_tracks: number; error: string | null; metrics: { peak: number; rms: number; near_silence_fraction: number; clipping_risk: boolean; transition_proxy_average?: number | null; transitions?: { from: string; to: string; proxy_score: number; loudness_gap_db: number; attempts: number }[] } | null }
 export async function queueMix(files: File[], count: number, transition: number, signal?: AbortSignal): Promise<{ id: string }> {
   return (await post('/api/jobs', files, count, transition, signal)).json()
 }

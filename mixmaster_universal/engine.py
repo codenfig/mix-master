@@ -4,6 +4,7 @@ import tempfile
 import numpy as np
 import librosa
 import soundfile as sf
+from transitions import phrase_trim, optimize_transition
 
 SR = 22050
 KEYS = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B']
@@ -134,7 +135,7 @@ def evaluate_raw_mix(path, chunk_frames=65536):
     }
 
 
-def render(tracks, output, transition=12, progress=None, beatmatch=True):
+def render(tracks, output, transition=12, progress=None, beatmatch=True, optimize=True):
     """Disk-backed crossfade renderer with optional conservative tempo matching.
 
     Unstretched tracks remain on disk. Stretching a track still uses RAM, so
@@ -145,6 +146,7 @@ def render(tracks, output, transition=12, progress=None, beatmatch=True):
     previous_bpm = None
     previous_beat_offset = None
     previous_duration = None
+    transition_reports = []
     with tempfile.TemporaryDirectory() as tmp:
         raw = Path(tmp) / 'mix.raw'
         with raw.open('wb') as out:
@@ -171,6 +173,10 @@ def render(tracks, output, transition=12, progress=None, beatmatch=True):
                             previous_duration, transition, previous_beat_offset,
                             incoming_offset, effective_bpm)
                         trim_frames = round(trim_seconds * sr)
+                    if i > 0 and incoming_offset is not None:
+                        phrase_seconds = phrase_trim(len(audio) / sr, effective_bpm, incoming_offset)
+                        if phrase_seconds and len(audio) - round(phrase_seconds * sr) >= 2 * fade:
+                            trim_frames = max(trim_frames, round(phrase_seconds * sr))
                     if trim_frames:
                         audio = audio[trim_frames:]
                         if incoming_offset is not None:
@@ -181,6 +187,11 @@ def render(tracks, output, transition=12, progress=None, beatmatch=True):
                         _write_audio(out, audio[:-fade])
                     else:
                         n = min(len(tail), fade)
+                        if optimize:
+                            extra, assessment, attempts = optimize_transition(tail, audio, n, sr=sr)
+                            if extra and len(audio) - extra >= 2 * fade:
+                                audio = audio[extra:]
+                            transition_reports.append({'from': tracks[i - 1]['name'], 'to': track['name'], 'proxy_score': assessment['score'], 'loudness_gap_db': assessment['loudness_gap_db'], 'attempts': attempts, 'selected_offset_seconds': round(extra / sr, 3)})
                         # Compute only the transition in memory.
                         phase = np.linspace(0, np.pi / 2, n, dtype=np.float32)[:, None]
                         overlap = tail[-n:] * np.cos(phase) + audio[:n] * np.sin(phase)
@@ -195,6 +206,8 @@ def render(tracks, output, transition=12, progress=None, beatmatch=True):
             if tail is not None:
                 _write_audio(out, tail)
         report = evaluate_raw_mix(raw)
+        report['transitions'] = transition_reports
+        report['transition_proxy_average'] = round(sum(t['proxy_score'] for t in transition_reports) / len(transition_reports), 1) if transition_reports else None
         subprocess.run(
             ['ffmpeg', '-y', '-v', 'error', '-nostdin', '-f', 'f32le',
              '-ar', str(sr), '-ac', '2', '-i', str(raw),
