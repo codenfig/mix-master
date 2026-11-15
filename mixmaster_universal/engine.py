@@ -4,7 +4,7 @@ import tempfile
 import numpy as np
 import librosa
 import soundfile as sf
-from transitions import phrase_trim, optimize_transition
+from transitions import optimize_transition
 
 SR = 22050
 KEYS = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B']
@@ -135,7 +135,7 @@ def evaluate_raw_mix(path, chunk_frames=65536):
     }
 
 
-def render(tracks, output, transition=12, progress=None, beatmatch=True, optimize=True):
+def render(tracks, output, transition=12, progress=None, beatmatch=True, optimize=True, mastering="balanced"):
     """Disk-backed crossfade renderer with optional conservative tempo matching.
 
     Unstretched tracks remain on disk. Stretching a track still uses RAM, so
@@ -215,10 +215,21 @@ def render(tracks, output, transition=12, progress=None, beatmatch=True, optimiz
         report = evaluate_raw_mix(raw)
         report['transitions'] = transition_reports
         report['transition_proxy_average'] = round(sum(t['proxy_score'] for t in transition_reports) / len(transition_reports), 1) if transition_reports else None
+        # FFmpeg loudnorm performs EBU R128 loudness normalization and
+        # true-peak limiting. Single-pass mode is intentionally conservative:
+        # it does not pretend to restore fidelity lost in source recordings.
+        profiles = {
+            'off': 'alimiter=limit=0.95',
+            'balanced': 'loudnorm=I=-14:TP=-1.5:LRA=11',
+            'club': 'loudnorm=I=-12:TP=-1.5:LRA=9',
+        }
+        if mastering not in profiles:
+            raise ValueError('Unknown mastering preset')
         subprocess.run(
             ['ffmpeg', '-y', '-v', 'error', '-nostdin', '-f', 'f32le',
              '-ar', str(sr), '-ac', '2', '-i', str(raw),
-             '-af', 'alimiter=limit=0.95', '-codec:a', 'libmp3lame',
-             '-b:a', '320k', str(output)], check=True,
+             '-af', profiles[mastering], '-ar', str(sr),
+             '-codec:a', 'libmp3lame', '-b:a', '320k', str(output)], check=True,
         )
+        report['mastering'] = {'preset': mastering, 'target_lufs': {'off': None, 'balanced': -14, 'club': -12}[mastering], 'true_peak_limit_dbtp': -1.5 if mastering != 'off' else None}
         return report
