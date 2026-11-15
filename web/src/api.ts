@@ -52,3 +52,18 @@ export async function mix(files: File[], count: number, transition: number, sign
     clippingRisk: response.headers.get('X-MixMaster-Clipping-Risk') === 'true',
   } }
 }
+
+export type MixJob = { id: string; status: 'queued' | 'processing' | 'done' | 'failed'; completed_tracks: number; total_tracks: number; error: string | null; metrics: MixMetrics | null }
+export async function queueMix(files: File[], count: number, transition: number, signal?: AbortSignal): Promise<{ id: string }> {
+  return (await post('/api/jobs', files, count, transition, signal)).json()
+}
+export async function fetchJob(id: string, signal?: AbortSignal): Promise<MixJob> {
+  const response = await fetch('/api/jobs/' + encodeURIComponent(id), { signal })
+  if (!response.ok) throw new Error('Unable to retrieve mixing progress.')
+  return response.json()
+}
+export async function downloadJob(id: string, signal?: AbortSignal): Promise<Blob> {
+  const response = await fetch('/api/jobs/' + encodeURIComponent(id) + '/download', { signal })
+  if (!response.ok) throw new Error('Mix download is unavailable.')
+  return response.blob()
+}
