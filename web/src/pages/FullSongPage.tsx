@@ -1,0 +1,34 @@
+import { useState } from 'react'
+import { Mic2, Music2, Sparkles } from 'lucide-react'
+import '../styles/full-song.css'
+
+type Voice = 'female' | 'male' | 'duet'
+type Output = 'full_song' | 'instrumental' | 'vocals'
+const genres = ['Afro-pop', 'Rumba', 'Dancehall', 'Bongo Flava', 'Pop', 'Afrobeat', 'Country Pop']
+
+export default function FullSongPage() {
+  const [title, setTitle] = useState('I See You')
+  const [description, setDescription] = useState('Uplifting Afro-pop with joyful rumba guitar, dancehall bounce, melodic bass, skanking keys, whistles and a wide uplifting chorus.')
+  const [lyrics, setLyrics] = useState('[Verse 1]\n\n[Pre-Chorus]\n\n[Chorus]\nI see you\n\n[Verse 2]\n\n[Bridge]\n\n[Final Chorus]')
+  const [voice, setVoice] = useState<Voice>('female')
+  const [genre, setGenre] = useState('Afro-pop')
+  const [output, setOutput] = useState<Output>('full_song')
+  const [bpm, setBpm] = useState(110)
+  const [minutes, setMinutes] = useState(3)
+  return <section className="fullsong">
+    <header className="fullsong-heading"><Sparkles size={24}/><div><h2>Full Song Studio</h2><p>Design complete songs with lyrics, vocal direction and arrangements. Local AI generation is not connected yet.</p></div></header>
+    <div className="fullsong-banner" role="status"><strong>Stage 1 · Song design</strong><span>Save your creative direction here while the offline audio and singing engines are being integrated. Generate is intentionally unavailable until an engine is ready.</span></div>
+    <label>Song title<input value={title} maxLength={120} onChange={e=>setTitle(e.target.value)}/></label>
+    <label>Music description<textarea rows={4} value={description} maxLength={2000} onChange={e=>setDescription(e.target.value)}/></label>
+    <label>Lyrics and song sections<textarea rows={12} value={lyrics} maxLength={12000} onChange={e=>setLyrics(e.target.value)}/></label>
+    <div className="fullsong-grid">
+      <label>Lead vocal<select value={voice} onChange={e=>setVoice(e.target.value as Voice)}><option value="female">Female</option><option value="male">Male</option><option value="duet">Duet</option></select></label>
+      <label>Style<select value={genre} onChange={e=>setGenre(e.target.value)}>{genres.map(g=><option key={g}>{g}</option>)}</select></label>
+      <label>Tempo (BPM)<input type="number" min={60} max={180} value={bpm} onChange={e=>setBpm(Number(e.target.value))}/></label>
+      <label>Target length<select value={minutes} onChange={e=>setMinutes(Number(e.target.value))}><option value={2}>2 minutes</option><option value={3}>3 minutes</option><option value={4}>4 minutes</option></select></label>
+      <label>Output<select value={output} onChange={e=>setOutput(e.target.value as Output)}><option value="full_song">Full song + vocals</option><option value="instrumental">Instrumental</option><option value="vocals">Vocals only</option></select></label>
+    </div>
+    <div className="fullsong-actions"><button type="button" onClick={()=>{const data={title,description,lyrics,voice,genre,output,bpm,minutes};const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});const url=URL.createObjectURL(blob);const link=document.createElement('a');link.href=url;link.download='mixmaster-song-project.json';link.click();window.setTimeout(()=>URL.revokeObjectURL(url),1000)}}><Music2 size={17}/> Export song project</button><button type="button" disabled title="Offline full-song model not yet installed"><Mic2 size={17}/> Generate full song · Coming soon</button></div>
+    <p className="fullsong-footnote">Export stores your song settings and lyrics as JSON, not audio. The existing Text to Song page can still produce basic offline instrumentals.</p>
+  </section>
+}
