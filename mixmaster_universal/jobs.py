@@ -48,7 +48,7 @@ def _prune():
             shutil.rmtree(job.directory, ignore_errors=True)
             del _jobs[key]
 
-def create_job(analysis: list[dict], transition: int, directory: Path) -> str:
+def create_job(analysis: list[dict], transition: int, directory: Path, mastering: str = "balanced") -> str:
     with _lock:
         _prune()
         if len(_jobs) >= MAX_JOBS:
@@ -56,10 +56,10 @@ def create_job(analysis: list[dict], transition: int, directory: Path) -> str:
         job_id = uuid4().hex
         job = Job(id=job_id, directory=directory, total_tracks=len(analysis))
         _jobs[job_id] = job
-    _executor.submit(_run, job_id, analysis, transition)
+    _executor.submit(_run, job_id, analysis, transition, mastering)
     return job_id
 
-def _run(job_id: str, analysis: list[dict], transition: int):
+def _run(job_id: str, analysis: list[dict], transition: int, mastering: str = "balanced"):
     with _lock:
         job = _jobs[job_id]
         job.status = "processing"
@@ -71,7 +71,7 @@ def _run(job_id: str, analysis: list[dict], transition: int):
             job.updated = time()
     try:
         ordered = [analysis[i] for i in plan(analysis, transition)["order_indices"]]
-        metrics = render(ordered, job.directory / "mix.mp3", transition=transition, progress=progress)
+        metrics = render(ordered, job.directory / "mix.mp3", transition=transition, progress=progress, mastering=mastering)
         with _lock:
             job.metrics = metrics
             job.status = "done"
