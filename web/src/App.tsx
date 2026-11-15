@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Activity, AudioLines, Check, CircleHelp, Download, FileAudio, FolderOpen, Headphones, ListMusic, LoaderCircle, Music2, Play, RotateCcw, Settings2, SlidersHorizontal, Sparkles, UploadCloud, X } from 'lucide-react'
-import { analyze, mix, type AnalysisResult } from './api'
+import { analyze, mix, type AnalysisResult, type MixMetrics } from './api'
 import Waveform from './Waveform'
 
 const extensions = new Set(['mp3', 'wav', 'flac', 'm4a', 'ogg', 'aac'])
@@ -19,6 +19,7 @@ export default function App() {
   const [message, setMessage] = useState('Upload your tracks to start creating your mix.')
   const [error, setError] = useState(false)
   const [url, setUrl] = useState<string | null>(null)
+  const [metrics, setMetrics] = useState<MixMetrics | null>(null)
   const [playSignal, setPlaySignal] = useState(0)
   const [playReady, setPlayReady] = useState(false)
   const [current, setCurrent] = useState(0)
@@ -34,6 +35,7 @@ export default function App() {
     if (outputUrl.current) URL.revokeObjectURL(outputUrl.current)
     outputUrl.current = null
     setUrl(null)
+    setMetrics(null)
     setPlayReady(false)
     setCurrent(0)
     setDuration(0)
@@ -93,12 +95,14 @@ export default function App() {
         setMessage('Analysis complete. Your mix is ready to render.')
       } else {
         resetOutput()
-        const blob = await mix(files, count, transition, controller.signal)
+        const result = await mix(files, count, transition, controller.signal)
+        const blob = result.audio
+        setMetrics(result.metrics)
         if (!blob.size) throw new Error('The server returned an empty audio file.')
         const nextUrl = URL.createObjectURL(blob)
         outputUrl.current = nextUrl
         setUrl(nextUrl)
-        setMessage('Mix ready! Preview and download your MP3.')
+        setMessage(result.metrics.clippingRisk ? 'Mix ready. Signal peak exceeded the safe threshold before limiting; listen carefully.' : 'Mix ready! Preview and download your MP3.')
         setHistory(previous => { const next = [{ tracks: count, created: new Date().toLocaleString() }, ...previous].slice(0, 12); try { localStorage.setItem('mixmaster_history', JSON.stringify(next)) } catch { /* Storage may be unavailable */ } return next })
       }
     } catch (err) {
@@ -176,6 +180,7 @@ export default function App() {
         </div>
 
         <section className="panel preview" id="preview"><div className="preview-main"><div className="panel-heading"><div><h2><AudioLines size={20}/> Mix Preview <span className="muted">{url ? '· Ready to play' : '· Awaiting your mix'}</span></h2><p>Listen to your finished mix before downloading.</p></div></div><div className="player"><button className="play" disabled={!playReady} aria-label="Play or pause mix" onClick={() => setPlaySignal(n => n+1)}><Play size={21} fill="currentColor"/></button><div className="wave-area"><Waveform url={url} onTime={(t,d) => {setCurrent(t);setDuration(d)}} onReady={setPlayReady} playSignal={playSignal}/><div className="time"><span>{formatTime(current)}</span><span>{formatTime(duration)}</span></div></div></div></div><div className="preview-summary"><div className="summary-title">MIX SUMMARY</div><strong>{url ? formatTime(duration) : '--:--'}</strong><span>Total Mix Duration</span><div className="summary-divider"/><p>{Math.max(0,count-1)} transitions · {transition}s each</p>{url && <a className="download" href={url} download="MixMaster_AI_Nonstop.mp3"><Download size={17}/> Download MP3</a>}</div></section>
+        {metrics && <section className="panel signal-panel"><div className="panel-heading"><div><h2><Activity size={20}/> Audio Signal Check</h2><p>Measured on the mix before final limiting; not an assessment of musical transition quality.</p></div></div><div className="signal-metrics"><span>Peak amplitude <strong>{metrics.peak.toFixed(3)}</strong></span><span>RMS level <strong>{metrics.rms.toFixed(3)}</strong></span><span>Near-silence <strong>{(metrics.nearSilence * 100).toFixed(1)}%</strong></span><span>Clipping risk <strong>{metrics.clippingRisk ? 'Review mix' : 'Not detected'}</strong></span></div></section>}
         <section className="panel history-panel" id="history"><div className="panel-heading"><div><h2><RotateCcw size={20}/> Mix History</h2><p>Completed mix metadata saved in this browser only. Audio is not retained.</p></div><button className="subtle" disabled={!history.length} onClick={() => { setHistory([]); try { localStorage.removeItem('mixmaster_history') } catch { /* Storage may be unavailable */ } }}>Clear</button></div>{history.length ? <div className="history-list">{history.map((item,i) => <div className="history-item" key={i}><strong>MixMaster AI Nonstop</strong><span>{item.tracks} tracks · {item.created}</span></div>)}</div> : <p className="history-empty">Your completed mixes will appear here.</p>}</section>
         <footer><span>MixMaster AI · Development MVP · Experimental beat-phase alignment · Phrase matching pending</span><span>Only upload audio you have permission to use.</span></footer>
       </div>
