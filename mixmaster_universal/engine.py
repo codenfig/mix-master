@@ -103,6 +103,37 @@ def beat_aligned_trim(outgoing_duration, fade_seconds, outgoing_beat_offset,
     return float(trim) if trim <= max_trim else 0.0
 
 
+def evaluate_raw_mix(path, chunk_frames=65536):
+    """Bounded-memory stereo PCM signal health metrics, not perceptual quality."""
+    peak = 0.0
+    squares = 0.0
+    silent = 0
+    frames = 0
+    with Path(path).open('rb') as source:
+        while True:
+            block = np.fromfile(source, dtype='<f4', count=chunk_frames * 2)
+            if not len(block):
+                break
+            if len(block) % 2:
+                raise ValueError('Invalid stereo PCM')
+            stereo = block.reshape(-1, 2)
+            if not np.all(np.isfinite(stereo)):
+                raise ValueError('Non-finite audio')
+            peak = max(peak, float(np.max(np.abs(stereo))))
+            squares += float(np.sum(np.square(stereo.astype(np.float64))))
+            silent += int(np.count_nonzero(np.max(np.abs(stereo), axis=1) < 0.001))
+            frames += len(stereo)
+    if not frames:
+        raise ValueError('Empty mix')
+    return {
+        'peak': round(peak, 5),
+        'rms': round(float(np.sqrt(squares / (frames * 2))), 5),
+        'near_silence_fraction': round(silent / frames, 4),
+        'clipping_risk': peak > 0.99,
+        'duration_seconds': round(frames / 44100, 2),
+    }
+
+
 def render(tracks, output, transition=12, progress=None, beatmatch=True):
     """Disk-backed crossfade renderer with optional conservative tempo matching.
 
@@ -163,9 +194,11 @@ def render(tracks, output, transition=12, progress=None, beatmatch=True):
                     progress(i + 1, len(tracks))
             if tail is not None:
                 _write_audio(out, tail)
+        report = evaluate_raw_mix(raw)
         subprocess.run(
             ['ffmpeg', '-y', '-v', 'error', '-nostdin', '-f', 'f32le',
              '-ar', str(sr), '-ac', '2', '-i', str(raw),
              '-af', 'alimiter=limit=0.95', '-codec:a', 'libmp3lame',
              '-b:a', '320k', str(output)], check=True,
         )
+        return report
