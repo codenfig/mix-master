@@ -57,3 +57,12 @@ The legacy HTML frontend remains at `mixmaster_universal/static/index.html`; it 
 ## Important limitations
 
 This is a development MVP, not a production deployment. Rendering uses conservative pitch-preserving tempo matching when BPMs are close, but beat-grid and phrase alignment are not yet implemented. Rendering remains synchronous; canceling a browser request does not guarantee cancellation of backend processing. Upload progress and server-side job status are not yet available. WaveSurfer decodes rendered audio in the browser and can use significant memory for long mixes. Authentication, background jobs, quotas, production security and real-audio testing remain necessary.
+
+## DJ dashboard features
+
+- Energy journey chart generated from the backend's planned track order.
+- Transition presets: Quick (6 seconds), Balanced (12 seconds), Smooth (20 seconds). These affect crossfade length only, not separate DJ algorithms.
+- Browser-local mix history records the completion time and track count. It does **not** retain uploaded songs or generated MP3s; download completed mixes before leaving the page.
+- Transition compatibility scores are estimates based on metadata, not audible-quality assessments.
+
+Planned, not implemented: persistent cloud library, downloadable mix history, phrase-aware transition placement, audio-quality evaluation, background jobs, and true iterative optimization. No chatbot is included.
