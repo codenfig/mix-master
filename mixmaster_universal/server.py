@@ -117,13 +117,20 @@ def save_uploads(songs: list[UploadFile], directory: Path, count: int):
 
 
 def inspect_tracks(tracks, names):
-    try:
-        results = [analyze(path) for path in tracks]
-        for result, name in zip(results, names):
-            result["name"] = name
-        return results
-    except Exception as exc:
-        raise HTTPException(422, "Unable to decode or analyze one or more tracks.") from exc
+    results = []
+    for index, (path, name) in enumerate(zip(tracks, names), start=1):
+        try:
+            result = analyze(path)
+        except Exception as exc:
+            # Identify the failed upload without leaking server filesystem paths.
+            raise HTTPException(
+                422,
+                f"Track {index} ({name}) could not be decoded or analyzed. "
+                "Check the audio file with FFmpeg or replace it with a valid MP3/WAV."
+            ) from exc
+        result["name"] = name
+        results.append(result)
+    return results
 
 
 @app.post("/api/analyze")
