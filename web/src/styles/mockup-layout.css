@@ -110,3 +110,8 @@ body{font-family:'DM Sans',sans-serif!important}
 .vocal-output-options{display:grid;gap:9px}.vocal-output-options label:has(input:checked){border-color:#00dde5;background:#12282b}
 .vocal-output-options label:has(input:disabled){cursor:default}
 @media(max-width:520px){.stem-output-selection>div{grid-template-columns:1fr}}
+
+/* Artwork is a generic MixMaster placeholder, never a fabricated user-uploaded cover. */
+.mm-song-art{overflow:hidden;border:1px solid #30393c;padding:0}.mm-song-art img{display:block;width:100%;height:100%;object-fit:cover}
+.mm-detail-vinyl-core{overflow:hidden}.mm-detail-vinyl-core img{display:block;width:100%;height:100%;object-fit:cover;border-radius:50%}
+.mm-player-art{overflow:hidden;padding:0}.mm-player-art img{width:100%;height:100%;object-fit:cover}
