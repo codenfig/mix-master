@@ -76,9 +76,9 @@ def save_cover(cover: UploadFile | None, directory: Path) -> Path | None:
     if not size:
         raise HTTPException(400, "Cover image is empty.")
     header = destination.read_bytes()[:8]
-    if extension == ".png" and header != b"\x89PNG\r\n\\x1a\n":
+    if extension == ".png" and header != bytes.fromhex("89504e470d0a1a0a"):
         raise HTTPException(400, "Invalid PNG image.")
-    if extension in {".jpg", ".jpeg"} and not header.startswith(b"\xff\\xd8\\xff"):
+    if extension in {".jpg", ".jpeg"} and not header.startswith(bytes.fromhex("ffd8ff")):
         raise HTTPException(400, "Invalid JPEG image.")
     return destination
 
