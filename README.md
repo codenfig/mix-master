@@ -14,8 +14,12 @@ mix-master/
 │   ├── pubspec.yaml                  # Flutter dependencies and metadata
 │   ├── lib/main.dart                 # Track selection, API calls, MP3 save dialog
 │   └── README.md                     # Flutter setup and limitations
-├── web/
-│   └── README.md                     # Web app entry point and startup instructions
+├── web/                              # Standalone React + TypeScript + Vite studio
+│   ├── package.json                  # Web dependencies and build scripts
+│   ├── vite.config.ts                # Local FastAPI proxy
+│   ├── index.html                    # React application entry
+│   ├── src/                          # Dashboard, API client, waveform and styles
+│   └── README.md                     # Web development and deployment guide
 ├── windows/
 │   └── README.md                     # Windows desktop setup; packaging pending
 ├── mac/
@@ -43,7 +47,7 @@ mix-master/
 | Directory | Responsibility | Current state |
 | --- | --- | --- |
 | `flutter/` | Flutter UI for selecting tracks, calling the API, and saving MP3 output | Starter implementation; device validation pending |
-| `web/` | Documentation for running the browser application | Browser UI is in `mixmaster_universal/static/` |
+| `web/` | Independent React + TypeScript DJ dashboard | Implemented in source; build validation pending |
 | `windows/` | Windows-specific run instructions and future installer assets | Uses shared desktop launcher; no .exe installer yet |
 | `mac/` | macOS-specific run instructions and future app packaging | Uses shared desktop launcher; no signed .app/.dmg yet |
 | `linux/` | Linux-specific run instructions and future packages | Uses shared desktop launcher; no AppImage/.deb yet |
@@ -85,7 +89,7 @@ python -m uvicorn server:app --host 127.0.0.1 --port 8000
 
 Open **http://127.0.0.1:8000** in your browser. API health: **http://127.0.0.1:8000/health**.
 
-The browser UI is served from `mixmaster_universal/static/index.html`. The `web/` folder currently documents this shared implementation rather than duplicating the frontend.
+This runs the legacy browser UI served from `mixmaster_universal/static/index.html`. The new React web studio is separate: run `cd web && npm install && npm run dev` from the repository root in another terminal, then open http://localhost:5173. The Vite development server proxies API requests to FastAPI on port 8000.
 
 ## 🖥 Run Windows, macOS or Linux desktop
 
