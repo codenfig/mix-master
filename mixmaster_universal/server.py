@@ -128,17 +128,16 @@ def mix(songs: list[UploadFile] = File(...), count: int = Form(10), transition: 
 
 
 @app.post("/api/jobs", status_code=202)
-def queue_mix(songs: list[UploadFile] = File(...), count: int = Form(10), transition: int = Form(12), mastering: str = Form("balanced"), kick_enabled: bool = Form(False), kick_style: str = Form("soft"), kick_level: float = Form(0.16)):
+def queue_mix(songs: list[UploadFile] = File(...), count: int = Form(10), transition: int = Form(12), mastering: str = Form("balanced"), kick_enabled: bool = Form(False), kick_style: str = Form("soft"), kick_level: float = Form(0.16), target_lufs: float = Form(-14), true_peak: float = Form(-1.5), bass_db: float = Form(0), treble_db: float = Form(0), compression: bool = Form(False)):
     """Accept uploads, analyze, then render asynchronously in one bounded worker."""
     validate_settings(count, transition)
-    if mastering not in MASTERING_PRESETS:
-        raise HTTPException(400, "Unknown mastering preset.")
+    validate_mastering_options(mastering, target_lufs, true_peak, bass_db, treble_db)
     validate_kick(kick_style, kick_level)
     directory = allocate_directory()
     try:
         tracks, names = save_uploads(songs, directory, count)
         analysis = inspect_tracks(tracks, names)
-        job_id = create_job(analysis, transition, directory, mastering=mastering, kick_enabled=kick_enabled, kick_style=kick_style, kick_level=kick_level)
+        job_id = create_job(analysis, transition, directory, mastering=mastering, kick_enabled=kick_enabled, kick_style=kick_style, kick_level=kick_level, mastering_options={"target_lufs": target_lufs, "true_peak": true_peak, "bass_db": bass_db, "treble_db": treble_db, "compression": compression})
         return {"id": job_id, "status": "queued", "status_url": f"/api/jobs/{job_id}"}
     except RuntimeError as exc:
         shutil.rmtree(directory, ignore_errors=True)
