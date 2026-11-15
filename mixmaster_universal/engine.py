@@ -4,7 +4,7 @@ import tempfile
 import numpy as np
 import librosa
 import soundfile as sf
-from transitions import phrase_trim, optimize_transition
+from transitions import optimize_transition
 
 SR = 22050
 KEYS = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B']
@@ -135,7 +135,101 @@ def evaluate_raw_mix(path, chunk_frames=65536):
     }
 
 
-def render(tracks, output, transition=12, progress=None, beatmatch=True, optimize=True):
+def extract_kick_sample(path, sr=44100):
+    """Sample a filtered bass transient, not a separated drum stem."""
+    from scipy.signal import butter, sosfilt
+    probe_sr = 11025
+    decoded = subprocess.run(
+        ['ffmpeg', '-v', 'error', '-nostdin', '-i', str(path), '-t', '60',
+         '-ac', '1', '-ar', str(probe_sr), '-f', 'f32le', '-'],
+        capture_output=True, check=True)
+    audio = np.frombuffer(decoded.stdout, dtype='<f4')
+    if len(audio) < probe_sr * 2:
+        raise ValueError('Source song is too short for kick extraction')
+    low = sosfilt(butter(4, [35, 180], btype='bandpass', fs=probe_sr, output='sos'), audio)
+    hop = 110
+    n = len(low) // hop
+    rms = np.sqrt(np.mean(low[:n * hop].reshape(n, hop) ** 2, axis=1) + 1e-10)
+    baseline = np.maximum(0.003, np.convolve(rms, np.ones(12) / 12, mode='same'))
+    novelty = np.maximum(0, rms - np.roll(rms, 2)) / baseline
+    novelty[:30] = 0
+    novelty[-45:] = 0
+    scores = novelty * np.minimum(1, rms / 0.018)
+    onset = None
+    for index in np.argsort(scores)[-100:][::-1]:
+        start = max(0, index * hop - int(0.012 * probe_sr))
+        if np.max(np.abs(low[start:start + int(0.16 * probe_sr)])) > 0.015:
+            onset = start
+            break
+    if onset is None:
+        raise ValueError('No suitable low-frequency transient in selected song')
+    length = int(0.28 * probe_sr)
+    sample = np.zeros(length, dtype=np.float32)
+    available = low[onset:onset + length]
+    sample[:len(available)] = available
+    sample *= np.exp(-np.arange(length) / probe_sr * 15).astype(np.float32)
+    peak = float(np.max(np.abs(sample)))
+    if peak < 1e-5:
+        raise ValueError('Extracted kick is too quiet')
+    sample /= peak
+    sample = librosa.resample(sample, orig_sr=probe_sr, target_sr=sr)
+    fade = min(len(sample), int(0.025 * sr))
+    sample[-fade:] *= np.linspace(1, 0, fade, dtype=np.float32)
+    return np.asarray(sample, dtype=np.float32), round(onset / probe_sr, 2)
+
+
+def add_kick_to_raw(source, destination, bpm, level=0.16, style="soft", sr=44100, sample=None):
+    """Overlay a globally phase-continuous synthetic four-on-the-floor kick.
+
+    Stream in bounded chunks. Conservative level adaptation uses short-block
+    RMS as a proxy for existing density; this is not kick-source separation.
+    """
+    if not 60 <= bpm <= 180 or not 0 <= level <= 0.35:
+        raise ValueError("Invalid kick tempo or level")
+    if style not in {"soft", "club"}:
+        raise ValueError("Unknown kick style")
+    length = round((0.19 if style == "soft" else 0.24) * sr)
+    t = np.arange(length, dtype=np.float64) / sr
+    freq = (58 if style == "soft" else 68) * np.exp(-t * (24 if style == "soft" else 28)) + (48 if style == "soft" else 44)
+    phase = 2 * np.pi * np.cumsum(freq) / sr
+    envelope = (1 - np.exp(-t * 850)) * np.exp(-t * (27 if style == "soft" else 20))
+    kick = (np.sin(phase) * envelope).astype(np.float32)
+    if style == "club":
+        kick += (0.12 * np.exp(-t * 120) * np.sin(2 * np.pi * 1400 * t)).astype(np.float32)
+    if sample is not None:
+        kick = np.asarray(sample, dtype=np.float32)
+        length = len(kick)
+        if length == 0 or not np.all(np.isfinite(kick)):
+            raise ValueError("Invalid extracted kick sample")
+    beat_frames = sr * 60.0 / bpm
+    frame = 0
+    with open(source, "rb") as inp, open(destination, "wb") as out:
+        while True:
+            block = np.fromfile(inp, dtype="<f4", count=65536 * 2)
+            if block.size == 0:
+                break
+            if block.size % 2:
+                raise ValueError("Invalid stereo PCM")
+            stereo = block.reshape(-1, 2).copy()
+            end = frame + len(stereo)
+            first = max(0, int(np.ceil((frame - length + 1) / beat_frames)))
+            last = int(np.floor((end - 1) / beat_frames))
+            # Keep the kick's timing anchored to sample zero across every song.
+            for beat in range(first, last + 1):
+                onset = round(beat * beat_frames)
+                a = max(frame, onset)
+                b = min(end, onset + length)
+                if b <= a:
+                    continue
+                section = stereo[a - frame:b - frame]
+                density = float(np.sqrt(np.mean(section * section) + 1e-10))
+                gain = level * (0.45 if density > 0.20 else 0.65 if density > 0.12 else 1.0)
+                section += (gain * kick[a - onset:b - onset])[:, None]
+            out.write(stereo.astype("<f4", copy=False).tobytes())
+            frame = end
+
+
+def render(tracks, output, transition=12, progress=None, beatmatch=True, optimize=True, mastering="balanced", kick_enabled=False, kick_style="soft", kick_level=0.16, mastering_options=None, kick_source_index=None, source_tracks=None):
     """Disk-backed crossfade renderer with optional conservative tempo matching.
 
     Unstretched tracks remain on disk. Stretching a track still uses RAM, so
@@ -212,13 +306,73 @@ def render(tracks, output, transition=12, progress=None, beatmatch=True, optimiz
                     progress(i + 1, len(tracks))
             if tail is not None:
                 _write_audio(out, tail)
+        if kick_enabled:
+            reference_bpm = float(tracks[0].get("bpm", 0)) if tracks else 0
+            if not 60 <= reference_bpm <= 180:
+                raise ValueError("Smart Kick requires an opening track between 60 and 180 BPM")
+            with_kick = Path(tmp) / "mix_with_kick.raw"
+            extracted = None
+            kick_offset = None
+            source_name = None
+            if kick_source_index is not None:
+                available = source_tracks if source_tracks is not None else tracks
+                if not 0 <= kick_source_index < len(available):
+                    raise ValueError("Kick source is outside the selected tracks")
+                source_track = available[kick_source_index]
+                source_name = source_track["name"]
+                extracted, kick_offset = extract_kick_sample(source_track["path"], sr)
+            add_kick_to_raw(raw, with_kick, reference_bpm, kick_level, kick_style, sr, sample=extracted)
+            raw = with_kick
         report = evaluate_raw_mix(raw)
+        report["kick"] = {"enabled": kick_enabled, "style": kick_style if kick_enabled else None,
+                          "bpm": round(float(tracks[0].get("bpm", 0)), 1) if kick_enabled else None,
+                          "level": kick_level if kick_enabled else None,
+                          "source": source_name if kick_enabled else None,
+                          "source_offset_seconds": kick_offset if kick_enabled else None}
         report['transitions'] = transition_reports
         report['transition_proxy_average'] = round(sum(t['proxy_score'] for t in transition_reports) / len(transition_reports), 1) if transition_reports else None
+        # FFmpeg loudnorm performs EBU R128 loudness normalization and
+        # true-peak limiting. Single-pass mode is intentionally conservative:
+        # it does not pretend to restore fidelity lost in source recordings.
+        profiles = {
+            'off': None,
+            'balanced': (-14.0, -1.5, 11.0),
+            'club': (-12.0, -1.5, 9.0),
+            'custom': None,
+        }
+        if mastering not in profiles:
+            raise ValueError('Unknown mastering preset')
+        opts = mastering_options or {}
+        if mastering == 'custom':
+            target = float(opts.get('target_lufs', -14))
+            peak_limit = float(opts.get('true_peak', -1.5))
+            bass = float(opts.get('bass_db', 0))
+            treble = float(opts.get('treble_db', 0))
+            compression = bool(opts.get('compression', False))
+            if not (-20 <= target <= -9 and -3 <= peak_limit <= -0.5
+                    and -6 <= bass <= 6 and -6 <= treble <= 6):
+                raise ValueError('Invalid custom mastering settings')
+            lra = 9.0 if compression else 11.0
+        else:
+            target, peak_limit, lra = profiles[mastering] if mastering != 'off' else (None, None, None)
+            bass = treble = 0.0
+            compression = False
+        filters = ['highpass=f=25']
+        if bass:
+            filters.append(f'equalizer=f=110:t=o:w=1:g={bass:.2f}')
+        if treble:
+            filters.append(f'equalizer=f=8500:t=o:w=1:g={treble:.2f}')
+        if compression:
+            filters.append('acompressor=threshold=0.125:ratio=2:attack=20:release=250:makeup=1')
+        if target is not None:
+            filters.append(f'loudnorm=I={target}:TP={peak_limit}:LRA={lra}')
+        else:
+            filters.append('alimiter=limit=0.95')
         subprocess.run(
             ['ffmpeg', '-y', '-v', 'error', '-nostdin', '-f', 'f32le',
              '-ar', str(sr), '-ac', '2', '-i', str(raw),
-             '-af', 'alimiter=limit=0.95', '-codec:a', 'libmp3lame',
-             '-b:a', '320k', str(output)], check=True,
+             '-af', ','.join(filters), '-ar', str(sr),
+             '-codec:a', 'libmp3lame', '-b:a', '320k', str(output)], check=True,
         )
+        report['mastering'] = {'preset': mastering, 'target_lufs': target, 'true_peak_limit_dbtp': peak_limit, 'bass_db': bass, 'treble_db': treble, 'compression': compression}
         return report

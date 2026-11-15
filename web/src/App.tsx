@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Activity, AudioLines, Check, CircleHelp, Download, FileAudio, FolderOpen, Headphones, ListMusic, LoaderCircle, Music2, Play, RotateCcw, Settings2, SlidersHorizontal, Sparkles, UploadCloud, X, LayoutDashboard, ArrowRight } from 'lucide-react'
-import { analyze, queueMix, fetchJob, downloadJob, type AnalysisResult, type MixMetrics } from './api'
+import { analyze, queueMix, fetchJob, downloadJob, type AnalysisResult, type MixMetrics, type MixJob } from './api'
 import Waveform from './Waveform'
 
 type Page = 'overview' | 'studio' | 'library' | 'preview' | 'history' | 'settings'
@@ -30,6 +30,17 @@ export default function App() {
   const navigate = (next: Page) => { window.location.hash = '/' + next; setPage(next); window.scrollTo(0, 0) }
   const [count, setCount] = useState<5 | 10 | 20>(10)
   const [transition, setTransition] = useState(12)
+  const [mastering, setMastering] = useState<'off' | 'balanced' | 'club' | 'custom'>('balanced')
+  const [targetLufs, setTargetLufs] = useState(-14)
+  const [truePeak, setTruePeak] = useState(-1.5)
+  const [bassDb, setBassDb] = useState(0)
+  const [trebleDb, setTrebleDb] = useState(0)
+  const [compression, setCompression] = useState(false)
+  const [activeJob, setActiveJob] = useState<string | null>(() => { try { return localStorage.getItem('mixmaster_active_job') } catch { return null } })
+  const [kickEnabled, setKickEnabled] = useState(false)
+  const [kickStyle, setKickStyle] = useState<'soft' | 'club'>('soft')
+  const [kickLevel, setKickLevel] = useState(16)
+  const [kickResult, setKickResult] = useState<{ enabled: boolean; style: string | null; bpm: number | null; level: number | null } | null>(null)
   const [preset, setPreset] = useState<'smooth' | 'balanced' | 'quick'>('balanced')
   const [history, setHistory] = useState<{ tracks: number; created: string }[]>(() => { try { return JSON.parse(localStorage.getItem('mixmaster_history') || '[]') } catch { return [] } })
   const [files, setFiles] = useState<File[]>([])
@@ -42,6 +53,7 @@ export default function App() {
   const [metrics, setMetrics] = useState<MixMetrics | null>(null)
   const [progress, setProgress] = useState<string | null>(null)
   const [transitionChecks, setTransitionChecks] = useState<{ from: string; to: string; proxy_score: number; loudness_gap_db: number; attempts: number }[]>([])
+  const [masteringResult, setMasteringResult] = useState<{ preset: string; target_lufs: number | null; true_peak_limit_dbtp: number | null } | null>(null)
   const [playSignal, setPlaySignal] = useState(0)
   const [playReady, setPlayReady] = useState(false)
   const [current, setCurrent] = useState(0)
@@ -49,7 +61,7 @@ export default function App() {
   const input = useRef<HTMLInputElement>(null)
   const request = useRef<AbortController | null>(null)
   const outputUrl = useRef<string | null>(null)
-  const ready = files.length === count && !busy
+  const ready = files.length === count && !busy && !activeJob
   const plannedTracks = analysis?.plan?.order_indices?.map(i => analysis.tracks[i]) ?? []
   const energyMax = Math.max(0.000001, ...(analysis?.tracks.map(t => t.energy) || []))
 
@@ -58,6 +70,8 @@ export default function App() {
     outputUrl.current = null
     setUrl(null)
     setMetrics(null)
+    setMasteringResult(null)
+    setKickResult(null)
     setTransitionChecks([])
     setProgress(null)
     setPlayReady(false)
@@ -124,9 +138,66 @@ export default function App() {
 
   function cancel() {
     request.current?.abort()
-    setMessage('Request canceled.')
+    setMessage(activeJob ? 'Stopped monitoring. Mixing continues on the server.' : 'Request canceled.')
     setError(false)
   }
+
+  async function completeJob(id: string, job: MixJob, signal?: AbortSignal) {
+    const blob = await downloadJob(id, signal)
+    if (!blob.size) throw new Error('The server returned an empty audio file.')
+    const result = { peak: job.metrics?.peak ?? 0, rms: job.metrics?.rms ?? 0, nearSilence: job.metrics?.near_silence_fraction ?? 0, clippingRisk: job.metrics?.clipping_risk ?? false }
+    setMetrics(result)
+    setMasteringResult(job.metrics?.mastering || null)
+    setKickResult(job.metrics?.kick || null)
+    setTransitionChecks(job.metrics?.transitions || [])
+    if (outputUrl.current) URL.revokeObjectURL(outputUrl.current)
+    const nextUrl = URL.createObjectURL(blob)
+    outputUrl.current = nextUrl
+    setUrl(nextUrl)
+    setActiveJob(null)
+    try { localStorage.removeItem('mixmaster_active_job') } catch { /* Storage may be unavailable */ }
+    navigate('preview')
+    setMessage(result.clippingRisk ? 'Mix ready. Check peaks before limiting.' : 'Mix ready! Preview and download your MP3.')
+    setHistory(previous => { const next = [{ tracks: job.total_tracks, created: new Date().toLocaleString() }, ...previous].slice(0, 12); try { localStorage.setItem('mixmaster_history', JSON.stringify(next)) } catch { /* Storage may be unavailable */ } return next })
+  }
+
+  // Recover a queued job after a browser refresh. The server owns rendering;
+  // aborting browser polling does not stop the background worker.
+  useEffect(() => {
+    let saved: string | null = null
+    try { saved = localStorage.getItem('mixmaster_active_job') } catch { /* Storage may be unavailable */ }
+    if (!saved) return
+    const controller = new AbortController()
+    const resume = async () => {
+      setBusy('mix')
+      setMessage('Reconnected to your background mix.')
+      try {
+        let job = await fetchJob(saved!, controller.signal)
+        while (job.status === 'queued' || job.status === 'processing') {
+          setProgress(job.status === 'queued' ? 'Queued in background…' : 'Mixing in background: ' + job.completed_tracks + '/' + job.total_tracks + ' tracks')
+          await new Promise<void>((resolve, reject) => {
+            const timer = window.setTimeout(() => { controller.signal.removeEventListener('abort', onAbort); resolve() }, 1500)
+            const onAbort = () => { window.clearTimeout(timer); reject(new DOMException('Canceled', 'AbortError')) }
+            controller.signal.addEventListener('abort', onAbort, { once: true })
+          })
+          job = await fetchJob(saved!, controller.signal)
+        }
+        if (job.status !== 'done') throw new Error(job.error || 'Background mixing failed.')
+        await completeJob(saved!, job, controller.signal)
+      } catch (err) {
+        if (!controller.signal.aborted) {
+          setError(true)
+          setMessage(err instanceof Error ? err.message : 'Could not recover the background job.')
+          setActiveJob(null)
+          try { localStorage.removeItem('mixmaster_active_job') } catch { /* Storage may be unavailable */ }
+        }
+      } finally {
+        if (!controller.signal.aborted) { setBusy(null); setProgress(null) }
+      }
+    }
+    void resume()
+    return () => controller.abort()
+  }, [])
 
   async function run(mode: 'analysis' | 'mix') {
     if (!ready) return
@@ -144,7 +215,9 @@ export default function App() {
         setMessage('Analysis complete. Your mix is ready to render.')
       } else {
         resetOutput()
-        const queued = await queueMix(files, count, transition, controller.signal)
+        const queued = await queueMix(files, count, transition, controller.signal, mastering, { enabled: kickEnabled, style: kickStyle, level: kickLevel / 100 }, { target_lufs: targetLufs, true_peak: truePeak, bass_db: bassDb, treble_db: trebleDb, compression })
+        setActiveJob(queued.id)
+        try { localStorage.setItem('mixmaster_active_job', queued.id) } catch { /* Storage may be unavailable */ }
         let job = await fetchJob(queued.id, controller.signal)
         while (job.status === 'queued' || job.status === 'processing') {
           setProgress(job.status === 'queued' ? 'Waiting in mixing queue…' : 'Rendering ' + job.completed_tracks + '/' + job.total_tracks + ' tracks')
@@ -156,23 +229,17 @@ export default function App() {
           job = await fetchJob(queued.id, controller.signal)
         }
         if (job.status !== 'done') throw new Error(job.error || 'Audio rendering failed.')
-        const blob = await downloadJob(queued.id, controller.signal)
-        const result = { metrics: { peak: job.metrics?.peak ?? 0, rms: job.metrics?.rms ?? 0, nearSilence: job.metrics?.near_silence_fraction ?? 0, clippingRisk: job.metrics?.clipping_risk ?? false } }
-        setMetrics(result.metrics)
-        setTransitionChecks(job.metrics?.transitions || [])
-        setProgress(null)
-        if (!blob.size) throw new Error('The server returned an empty audio file.')
-        const nextUrl = URL.createObjectURL(blob)
-        outputUrl.current = nextUrl
-        setUrl(nextUrl)
-        navigate('preview')
-        setMessage(result.metrics.clippingRisk ? 'Mix ready. Signal peak exceeded the safe threshold before limiting; listen carefully.' : 'Mix ready! Preview and download your MP3.')
-        setHistory(previous => { const next = [{ tracks: count, created: new Date().toLocaleString() }, ...previous].slice(0, 12); try { localStorage.setItem('mixmaster_history', JSON.stringify(next)) } catch { /* Storage may be unavailable */ } return next })
+        await completeJob(queued.id, job, controller.signal)
+
       }
     } catch (err) {
       const canceled = err instanceof DOMException && err.name === 'AbortError'
       setError(!canceled)
-      setMessage(canceled ? 'Request canceled.' : err instanceof Error ? err.message : 'Unexpected processing error.')
+      if (!canceled && mode === 'mix') {
+        setActiveJob(null)
+        try { localStorage.removeItem('mixmaster_active_job') } catch { /* Storage may be unavailable */ }
+      }
+      setMessage(canceled ? 'Monitoring stopped. Background rendering may still be running.' : err instanceof Error ? err.message : 'Unexpected processing error.')
     } finally {
       request.current = null
       setProgress(null)
@@ -196,6 +263,7 @@ export default function App() {
     <main className="main">
       <header className="topbar"><span className="breadcrumb">Workspace <span>/</span> {pages.find(p => p.id === page)?.label}</span><div className="top-status"><span className="online-dot"/> Local DJ Studio</div></header>
       <div className="content" key={page}>
+        {activeJob && <div className="background-job" role="status"><div><LoaderCircle className="spin" size={18}/><strong>Background mix in progress</strong><span>{progress || 'The server is preparing your audio.'}</span></div><button type="button" onClick={() => navigate('studio')}>View progress <ArrowRight size={15}/></button></div>}
         <div className="page-heading"><div><div className="eyebrow"><Sparkles size={14}/> MIXMASTER WORKSPACE</div><h1>{pages.find(p => p.id === page)?.label}</h1><p>{pages.find(p => p.id === page)?.subtitle}</p></div><div className="page-heading-actions">{page !== 'studio' && <button className="action primary" onClick={() => navigate('studio')}><Sparkles size={16}/> Create a Mix <ArrowRight size={16}/></button>}</div></div>
         {page === 'overview' && <div className="overview-page">
           <div className="overview-banner"><div className="eyebrow"><Sparkles size={16}/> YOUR AUTONOMOUS DJ STUDIO</div><h2>Make every track <span>flow.</span></h2><p>Analyze your music, shape the energy journey and produce seamless nonstop mixes in one creative workspace.</p><button className="overview-cta" onClick={() => navigate('studio')}>Start mixing <ArrowRight size={17}/></button><div className="banner-orb"><Music2 size={58}/></div></div>
@@ -244,20 +312,38 @@ export default function App() {
             <label className="field-label">MIX STYLE</label>
             <div className="preset-options">{(['smooth','balanced','quick'] as const).map(value => <button key={value} className={preset === value ? 'selected' : ''} disabled={busy !== null} onClick={() => applyPreset(value)}>{value}</button>)}</div>
             <small className="preset-hint">Styles adjust crossfade duration, not the mixing algorithm.</small>
+            <div className="settings-divider"/>
+            <label className="field-label">SMART KICK BEAT</label>
+            <label className="kick-toggle"><input type="checkbox" checked={kickEnabled} disabled={busy !== null} onChange={e => { setKickEnabled(e.target.checked); resetOutput() }}/><span>Add a constant kick pulse throughout the mix</span></label>
+            {kickEnabled && <div className="kick-controls"><div className="preset-options mastering-options">{(['soft','club'] as const).map(value => <button type="button" key={value} className={kickStyle === value ? 'selected' : ''} disabled={busy !== null} onClick={() => { setKickStyle(value); resetOutput() }}>{value === 'soft' ? 'Subtle' : 'Club'}</button>)}</div><label className="field-label" htmlFor="kick-level">KICK STRENGTH <span>{kickLevel}%</span></label><input id="kick-level" type="range" min={5} max={35} step={1} value={kickLevel} disabled={busy !== null} onChange={e => { setKickLevel(Number(e.target.value)); resetOutput() }}/><small className="preset-hint">Uses the opening song's estimated BPM as a constant tempo. Best for songs already close in tempo.</small></div>}
+            <label className="field-label">AUDIO MASTERING</label>
+            <div className="preset-options mastering-options">{(['off', 'balanced', 'club', 'custom'] as const).map(value => <button key={value} type="button" className={mastering === value ? 'selected' : ''} disabled={busy !== null} onClick={() => { setMastering(value); resetOutput() }}>{value === 'off' ? 'Off' : value === 'balanced' ? 'Balanced' : value === 'club' ? 'Club' : 'Custom'}</button>)}</div>
+            <small className="preset-hint">{mastering === 'off' ? 'Peak limiting only.' : mastering === 'balanced' ? 'Streaming-friendly target: −14 LUFS / −1.5 dBTP.' : mastering === 'club' ? 'Louder DJ set target: −12 LUFS / −1.5 dBTP.' : 'Fine-tune EQ, compression, loudness and peak ceiling below.'} Applied when exporting the mix.</small>
+            {mastering === 'custom' && <div className="custom-mastering">
+              <label htmlFor="target-lufs">Target loudness <strong>{targetLufs} LUFS</strong></label><input id="target-lufs" type="range" min={-20} max={-9} step={1} value={targetLufs} disabled={busy !== null} onChange={e => setTargetLufs(Number(e.target.value))}/>
+              <label htmlFor="true-peak">True-peak ceiling <strong>{truePeak.toFixed(1)} dBTP</strong></label><input id="true-peak" type="range" min={-3} max={-0.5} step={0.5} value={truePeak} disabled={busy !== null} onChange={e => setTruePeak(Number(e.target.value))}/>
+              <label htmlFor="bass-db">Bass EQ <strong>{bassDb > 0 ? '+' : ''}{bassDb} dB</strong></label><input id="bass-db" type="range" min={-6} max={6} value={bassDb} disabled={busy !== null} onChange={e => setBassDb(Number(e.target.value))}/>
+              <label htmlFor="treble-db">Treble EQ <strong>{trebleDb > 0 ? '+' : ''}{trebleDb} dB</strong></label><input id="treble-db" type="range" min={-6} max={6} value={trebleDb} disabled={busy !== null} onChange={e => setTrebleDb(Number(e.target.value))}/>
+              <label className="kick-toggle"><input type="checkbox" checked={compression} disabled={busy !== null} onChange={e => setCompression(e.target.checked)}/> Gentle stereo compression</label>
+              <small className="preset-hint">Custom settings apply during export. Adjust conservatively to avoid distortion.</small>
+            </div>}
             <label className="field-label">NUMBER OF SONGS</label>
             <div className="count-options">{([5,10,20] as const).map(n => <button key={n} className={count === n ? 'selected' : ''} disabled={busy !== null} onClick={() => changeCount(n)}>{n}<small>songs</small></button>)}</div>
             <label className="field-label" htmlFor="transition">TRANSITION DURATION <span>{transition}s</span></label>
             <input id="transition" type="range" min={4} max={32} value={transition} disabled={busy !== null} onChange={e => { setTransition(Number(e.target.value)); setPreset('balanced') }}/><div className="range-labels"><span>4s · Quick</span><span>32s · Smooth</span></div>
             <label className="field-label" htmlFor="quality">EXPORT QUALITY</label><select id="quality" disabled value="320"><option value="320">MP3 · 320 kbps</option></select>
             <div className="settings-divider"/>
+            {activeJob && <p className="preset-hint">A background mix is already running. Wait for it to finish before starting another.</p>}
             <button className="action secondary" disabled={!ready} onClick={() => void run('analysis')}>{busy === 'analysis' ? <LoaderCircle className="spin" size={18}/> : <Activity size={18}/>} Analyze Tracks</button>
             <button className="action primary" disabled={!ready} onClick={() => void run('mix')}>{busy === 'mix' ? <LoaderCircle className="spin" size={18}/> : <Sparkles size={18}/>} Create My Mix</button>
-            {busy && <button className="cancel" onClick={cancel}><X size={15}/> Cancel request</button>}
+            {busy && <button className="cancel" onClick={cancel}><X size={15}/> {busy === 'mix' ? 'Stop monitoring (mix continues)' : 'Cancel request'}</button>}
             <div className={error ? 'message error' : 'message'} role="status" aria-live="polite">{progress || message}</div>
           </aside>}
         </div>}
 
         {page === 'preview' && <><section className="panel preview" id="preview"><div className="preview-main"><div className="panel-heading"><div><h2><AudioLines size={20}/> Mix Preview <span className="muted">{url ? '· Ready to play' : '· Awaiting your mix'}</span></h2><p>Listen to your finished mix before downloading.</p></div></div><div className="player"><button className="play" disabled={!playReady} aria-label="Play or pause mix" onClick={() => setPlaySignal(n => n+1)}><Play size={21} fill="currentColor"/></button><div className="wave-area"><Waveform url={url} onTime={(t,d) => {setCurrent(t);setDuration(d)}} onReady={setPlayReady} playSignal={playSignal}/><div className="time"><span>{formatTime(current)}</span><span>{formatTime(duration)}</span></div></div></div></div><div className="preview-summary"><div className="summary-title">MIX SUMMARY</div><strong>{url ? formatTime(duration) : '--:--'}</strong><span>Total Mix Duration</span><div className="summary-divider"/><p>{Math.max(0,count-1)} transitions · {transition}s each</p>{url && <a className="download" href={url} download="MixMaster_AI_Nonstop.mp3"><Download size={17}/> Download MP3</a>}</div></section>
+        {kickResult?.enabled && <section className="panel mastering-report"><div className="panel-heading"><div><h2><Activity size={20}/> Smart Kick Report</h2><p>A synthesized pulse mixed into the exported audio.</p></div></div><div className="signal-metrics"><span>Tempo <strong>{kickResult.bpm} BPM</strong></span><span>Kick type <strong>{kickResult.style}</strong></span><span>Strength <strong>{Math.round((kickResult.level || 0) * 100)}%</strong></span></div></section>}
+        {masteringResult && <section className="panel mastering-report"><div className="panel-heading"><div><h2><SlidersHorizontal size={20}/> Mastering Report</h2><p>Export processing settings, not a measured post-encode loudness report.</p></div></div><div className="signal-metrics"><span>Preset <strong>{masteringResult.preset}</strong></span><span>Target loudness <strong>{masteringResult.target_lufs === null ? 'Not normalized' : masteringResult.target_lufs + ' LUFS'}</strong></span><span>Peak ceiling <strong>{masteringResult.true_peak_limit_dbtp === null ? 'Basic limiter' : masteringResult.true_peak_limit_dbtp + ' dBTP'}</strong></span></div></section>}
         {metrics && <section className="panel signal-panel"><div className="panel-heading"><div><h2><Activity size={20}/> Audio Signal Check</h2><p>Measured on the mix before final limiting; not an assessment of musical transition quality.</p></div></div><div className="signal-metrics"><span>Peak amplitude <strong>{metrics.peak.toFixed(3)}</strong></span><span>RMS level <strong>{metrics.rms.toFixed(3)}</strong></span><span>Near-silence <strong>{(metrics.nearSilence * 100).toFixed(1)}%</strong></span><span>Clipping risk <strong>{metrics.clippingRisk ? 'Review mix' : 'Not detected'}</strong></span></div></section>}
         {transitionChecks.length > 0 && <section className="panel transition-report"><div className="panel-heading"><div><h2><Sparkles size={20}/> Automated Transition Review</h2><p>Measured proxy scores from candidate crossfades; higher does not guarantee better musical sound.</p></div></div><div className="history-list">{transitionChecks.map((t,i) => <div className="history-item" key={i}><strong>{t.from} → {t.to}</strong><span>{t.proxy_score}/100 · {t.attempts} candidates · {t.loudness_gap_db} dB gap</span></div>)}</div></section>}
         </>}

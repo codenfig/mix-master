@@ -45,3 +45,18 @@ def test_optimizer_can_choose_later_beat_aligned_entry():
     assert offset == 8000
     assert attempts > 4
     assert metrics["score"] > 90
+
+def test_optimizer_finds_matching_section_beyond_intro():
+    sr = 1000
+    fade = 1000
+    t = np.arange(fade, dtype=np.float32) / sr
+    wave = 0.28 * np.sin(2 * np.pi * 37 * t)
+    outgoing = np.stack([wave, wave], axis=1)
+    incoming = np.zeros((100000, 2), dtype=np.float32)
+    # A compatible four-bar phrase 40 seconds into the song.
+    incoming[40000:41000] = outgoing
+    offset, metrics, attempts = optimize_transition(
+        outgoing, incoming, fade, sr=sr, bpm=120, beat_offset=0)
+    assert offset == 40000
+    assert attempts > 10
+    assert metrics["score"] > 90
