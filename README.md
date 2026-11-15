@@ -155,3 +155,7 @@ This is **not ready for direct public exposure**. It lacks authentication, rate 
 - Deploy a secured HTTPS backend with monitoring and resource limits
 
 See [PLATFORMS.md](PLATFORMS.md) and the README in each platform folder for additional details.
+
+### Renderer memory behavior
+
+The renderer now decodes each track to a temporary disk-backed float32 file and writes the mixed PCM output in chunks. Transition overlaps remain in memory. Optional pitch-preserving tempo stretching still materializes the full track being stretched, so memory use can be high for long tracks. FFmpeg and adequate temporary disk space are required. Beat-grid and phrase alignment remain future work.
