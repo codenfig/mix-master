@@ -44,26 +44,50 @@ def decode_stereo(path, sr=44100):
                         capture_output=True,check=True)
     return np.frombuffer(proc.stdout,dtype='<f4').reshape(-1,2).copy()
 
-def render(tracks, output, transition=12, progress=None):
+def match_tempo(audio, source_bpm, target_bpm, max_change=0.06):
+    """Pitch-preserving time stretch for close tempos, avoiding extreme artifacts.
+
+    Returns (audio, applied). Unreliable or distant BPM values are skipped.
+    """
+    if source_bpm <= 0 or target_bpm <= 0 or len(audio) == 0:
+        return audio, False
+    candidates = [source_bpm / 2, source_bpm, source_bpm * 2]
+    source = min(candidates, key=lambda bpm: abs(np.log2(bpm / target_bpm)))
+    rate = target_bpm / source
+    if not (1 - max_change <= rate <= 1 + max_change):
+        return audio, False
+    if abs(rate - 1) < 0.003:
+        return audio, False
+    stretched = librosa.effects.time_stretch(audio.T, rate=rate).T
+    return stretched.astype(np.float32, copy=False), True
+
+
+def render(tracks, output, transition=12, progress=None, beatmatch=True):
     sr=44100
     fade=int(sr*transition)
+    previous_bpm = None
     with tempfile.TemporaryDirectory() as tmp:
         raw=Path(tmp)/'mix.raw'
         with open(raw,'wb') as out:
             tail=None
             for i,t in enumerate(tracks):
                 audio=decode_stereo(t['path'],sr)
+                current_bpm = float(t.get('bpm', 0))
+                if beatmatch and previous_bpm is not None:
+                    audio, _ = match_tempo(audio, current_bpm, previous_bpm)
                 if len(audio)<2*fade: raise ValueError(f'Track must exceed {2*transition} seconds: {t["name"]}')
                 if tail is None:
                     out.write(audio[:-fade].astype('<f4').tobytes())
                 else:
-                    # Equal-power crossfade. This first MVP does NOT time-stretch or beatmatch.
+                    # Equal-power crossfade; optional conservative tempo matching.
+                    # Beat-phase and phrase alignment are not implemented.
                     n=min(len(tail),fade)
                     phase=np.linspace(0,np.pi/2,n,dtype=np.float32)[:,None]
                     overlap=tail[-n:]*np.cos(phase)+audio[:n]*np.sin(phase)
                     out.write(overlap.astype('<f4').tobytes())
                     out.write(audio[n:-fade].astype('<f4').tobytes())
                 tail=audio[-fade:]
+                previous_bpm = current_bpm if current_bpm > 0 else previous_bpm
                 if progress: progress(i+1,len(tracks))
             out.write(tail.astype('<f4').tobytes())
         # limiter via peak normalization avoids clipping at overlaps; preserve stereo.
