@@ -5,7 +5,7 @@ export type Track = {
   key: string
   energy: number
 }
-export type MixPlan = { quality_score: number; strategy: string; note: string; transitions: { from: string; to: string; compatibility: number; harmonic_score: number; tempo_distance: number; warning: string | null }[] }
+export type MixPlan = { order_indices: number[]; quality_score: number; strategy: string; note: string; transitions: { from: string; to: string; compatibility: number; harmonic_score: number; tempo_distance: number; warning: string | null }[] }
 export type AnalysisResult = { tracks: Track[]; order: string[]; plan?: MixPlan }
 
 function formData(files: File[], count: number, transition: number): FormData {
@@ -42,6 +42,28 @@ export async function analyze(files: File[], count: number, transition: number, 
   return (await post('/api/analyze', files, count, transition, signal)).json() as Promise<AnalysisResult>
 }
 
-export async function mix(files: File[], count: number, transition: number, signal?: AbortSignal): Promise<Blob> {
-  return (await post('/api/mix', files, count, transition, signal)).blob()
+export type MixMetrics = { peak: number; rms: number; nearSilence: number; clippingRisk: boolean }
+export async function mix(files: File[], count: number, transition: number, signal?: AbortSignal): Promise<{ audio: Blob; metrics: MixMetrics }> {
+  const response = await post('/api/mix', files, count, transition, signal)
+  return { audio: await response.blob(), metrics: {
+    peak: Number(response.headers.get('X-MixMaster-Peak') || 0),
+    rms: Number(response.headers.get('X-MixMaster-RMS') || 0),
+    nearSilence: Number(response.headers.get('X-MixMaster-Near-Silence') || 0),
+    clippingRisk: response.headers.get('X-MixMaster-Clipping-Risk') === 'true',
+  } }
+}
+
+export type MixJob = { id: string; status: 'queued' | 'processing' | 'done' | 'failed'; completed_tracks: number; total_tracks: number; error: string | null; metrics: { peak: number; rms: number; near_silence_fraction: number; clipping_risk: boolean } | null }
+export async function queueMix(files: File[], count: number, transition: number, signal?: AbortSignal): Promise<{ id: string }> {
+  return (await post('/api/jobs', files, count, transition, signal)).json()
+}
+export async function fetchJob(id: string, signal?: AbortSignal): Promise<MixJob> {
+  const response = await fetch('/api/jobs/' + encodeURIComponent(id), { signal })
+  if (!response.ok) throw new Error('Unable to retrieve mixing progress.')
+  return response.json()
+}
+export async function downloadJob(id: string, signal?: AbortSignal): Promise<Blob> {
+  const response = await fetch('/api/jobs/' + encodeURIComponent(id) + '/download', { signal })
+  if (!response.ok) throw new Error('Mix download is unavailable.')
+  return response.blob()
 }
