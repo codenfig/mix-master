@@ -36,20 +36,36 @@ export default function VocalRemover() {
     try {
       const data = new FormData()
       data.append('song', file)
-      const response = await fetch('/api/vocal-remover', { method: 'POST', body: data, signal: abort.signal })
+      const response = await fetch('/api/vocal-remover/jobs', { method: 'POST', body: data, signal: abort.signal })
       if (!response.ok) {
-        let detail = 'Vocal removal failed ('+response.status+').'
-        try { const body = await response.json(); if (typeof body.detail === 'string') detail = body.detail } catch { /* response not JSON */ }
+        let detail = 'Unable to start vocal removal (' + response.status + ').'
+        try { const body = await response.json(); if (typeof body.detail === 'string') detail = body.detail } catch { /* not JSON */ }
         throw new Error(detail)
       }
-      const blob = await response.blob()
-      if (!blob.size) throw new Error('The server returned an empty instrumental.')
-      const url = URL.createObjectURL(blob)
-      if (outputRef.current) URL.revokeObjectURL(outputRef.current)
-      outputRef.current = url
-      setOutput(url)
+      const created: { id: string } = await response.json()
+      if (!/^[a-f0-9]{32}$/.test(created.id)) throw new Error('Invalid processing job ID.')
+      const jobId = created.id
+      sessionStorage.setItem('mixmaster_vocal_job', jobId)
+      while (!abort.signal.aborted) {
+        await new Promise<void>((resolve, reject) => {
+          const timer = window.setTimeout(resolve, 2500)
+          abort.signal.addEventListener('abort', () => { clearTimeout(timer); reject(new Error('Canceled')) }, { once: true })
+        })
+        const statusResponse = await fetch('/api/vocal-remover/jobs/' + jobId, { signal: abort.signal })
+        if (!statusResponse.ok) throw new Error('Unable to check extraction status.')
+        const status: { status: string; error?: string } = await statusResponse.json()
+        if (status.status === 'failed') throw new Error(status.error || 'Vocal removal failed.')
+        if (status.status === 'complete') {
+          const downloadUrl = '/api/vocal-remover/jobs/' + jobId + '/download'
+          if (outputRef.current) URL.revokeObjectURL(outputRef.current)
+          outputRef.current = null
+          setOutput(downloadUrl)
+          sessionStorage.removeItem('mixmaster_vocal_job')
+          break
+        }
+      }
     } catch (err) {
-      if (abort.signal.aborted) setError('Extraction canceled.')
+      if (abort.signal.aborted) setError('Stopped checking progress. The server may continue processing.')
       else setError(err instanceof Error ? err.message : 'Unable to remove vocals.')
     } finally { setBusy(false); controller.current = null }
   }
@@ -64,7 +80,7 @@ export default function VocalRemover() {
       {error&&<p className="vocal-error" role="alert">{error}</p>}
     </section>
     <section className="vocal-panel"><div className="vocal-panel-title"><AudioLines size={22}/><div><h3>Instrumental preview</h3><p>Listen to your track without lead vocals.</p></div></div>
-      {output?<div className="vocal-result"><div className="vocal-result-disc"><AudioLines size={45}/></div><strong>Instrumental ready</strong><p>AI-separated accompaniment · WAV</p><audio controls src={output} aria-label="Instrumental audio preview"/><a className="vocal-action" href={output} download={(file?.name.replace(/\.[^.]+$/,'')||'MixMaster')+'_instrumental.wav'}><Download size={19}/> Download Instrumental</a></div>:<div className="vocal-empty"><MicOff size={49}/><h3>Your instrumental will appear here</h3><p>Upload a song and select Remove Vocals to hear the result.</p></div>}
+      {output?<div className="vocal-result"><div className="vocal-result-disc"><AudioLines size={45}/></div><strong>Instrumental ready</strong><p>AI-separated accompaniment · WAV</p><audio controls src={output} aria-label="Instrumental audio preview"/><a className="vocal-action" href={output} download><Download size={19}/> Download Instrumental</a></div>:<div className="vocal-empty"><MicOff size={49}/><h3>Your instrumental will appear here</h3><p>Upload a song and select Remove Vocals to hear the result.</p></div>}
     </section></div><p className="vocal-note">AI separation is approximate: some vocal residue or instrumental artifacts may remain. Process audio you have permission to use.</p>
   </div>
 }
