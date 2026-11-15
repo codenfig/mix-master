@@ -28,6 +28,10 @@ export default function FullSongPage() {
   const [jobStage,setJobStage] = useState('')
   const [jobElapsed,setJobElapsed] = useState(0)
   useEffect(()=>{
+    if(jobId)window.sessionStorage.setItem('mixmaster-full-song-job',jobId)
+    else window.sessionStorage.removeItem('mixmaster-full-song-job')
+  },[jobId])
+  useEffect(()=>{
     if(!jobId)return
     let stopped=false
     const poll=async()=>{
@@ -39,8 +43,9 @@ export default function FullSongPage() {
         setJobStage(job.stage);setJobElapsed(job.elapsed_seconds)
         if(job.status==='completed'&&job.file&&job.download_url){setAudio({file:job.file,download_url:job.download_url});setGenerating(false);setJobId('')}
         else if(job.status==='failed'||job.status==='cancelled'){setError(job.error|| (job.status==='cancelled'?'Generation cancelled.':'Generation failed.'));setGenerating(false);setJobId('')}
-      }catch(e){if(!stopped){setError(e instanceof Error?e.message:'Unable to check generation status.');setGenerating(false);setJobId('')}}
+      }catch(e){if(!stopped){setError(e instanceof Error?e.message:'Unable to check generation status.');setGenerating(false);if(e instanceof Error && e.message.includes('404'))setJobId('')}}
     }
+    setGenerating(true)
     void poll()
     const interval=window.setInterval(()=>void poll(),2000)
     return ()=>{stopped=true;window.clearInterval(interval)}
