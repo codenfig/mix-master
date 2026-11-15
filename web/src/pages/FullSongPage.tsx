@@ -15,9 +15,24 @@ export default function FullSongPage() {
   const [output, setOutput] = useState<Output>('full_song')
   const [bpm, setBpm] = useState(110)
   const [minutes, setMinutes] = useState(3)
+  const [saving, setSaving] = useState(false)
+  const [status, setStatus] = useState('')
+  const [error, setError] = useState('')
+  async function saveDraft() {
+    setSaving(true);setStatus('');setError('')
+    const controller = new AbortController()
+    const timer = window.setTimeout(()=>controller.abort(),10000)
+    try {
+      const response = await fetch('/api/full-song/projects', {method:'POST',headers:{'Content-Type':'application/json'},signal:controller.signal,body:JSON.stringify({title,description,lyrics,voice,genre,output,bpm,minutes})})
+      if(!response.ok){const body=await response.json().catch(()=>({}));throw new Error(typeof body.detail==='string'?body.detail:'Could not save draft ('+response.status+').')}
+      const saved=await response.json() as {id:string}
+      setStatus('Draft saved locally on the backend. Project ID: '+saved.id)
+    }catch(e){setError(controller.signal.aborted?'Backend did not respond within 10 seconds.':e instanceof Error?e.message:'Could not save project.')}
+    finally{window.clearTimeout(timer);setSaving(false)}
+  }
   return <section className="fullsong">
     <header className="fullsong-heading"><Sparkles size={24}/><div><h2>Full Song Studio</h2><p>Design complete songs with lyrics, vocal direction and arrangements. Local AI generation is not connected yet.</p></div></header>
-    <div className="fullsong-banner" role="status"><strong>Stage 1 · Song design</strong><span>Save your creative direction here while the offline audio and singing engines are being integrated. Generate is intentionally unavailable until an engine is ready.</span></div>
+    <div className="fullsong-banner" role="status"><strong>Stage 2 · Local project pipeline</strong><span>Save a project draft to your local Python backend, or export it as JSON.  Generate is intentionally unavailable until an engine is ready.</span></div>
     <label>Song title<input value={title} maxLength={120} onChange={e=>setTitle(e.target.value)}/></label>
     <label>Music description<textarea rows={4} value={description} maxLength={2000} onChange={e=>setDescription(e.target.value)}/></label>
     <label>Lyrics and song sections<textarea rows={12} value={lyrics} maxLength={12000} onChange={e=>setLyrics(e.target.value)}/></label>
@@ -28,7 +43,9 @@ export default function FullSongPage() {
       <label>Target length<select value={minutes} onChange={e=>setMinutes(Number(e.target.value))}><option value={2}>2 minutes</option><option value={3}>3 minutes</option><option value={4}>4 minutes</option></select></label>
       <label>Output<select value={output} onChange={e=>setOutput(e.target.value as Output)}><option value="full_song">Full song + vocals</option><option value="instrumental">Instrumental</option><option value="vocals">Vocals only</option></select></label>
     </div>
-    <div className="fullsong-actions"><button type="button" onClick={()=>{const data={title,description,lyrics,voice,genre,output,bpm,minutes};const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});const url=URL.createObjectURL(blob);const link=document.createElement('a');link.href=url;link.download='mixmaster-song-project.json';link.click();window.setTimeout(()=>URL.revokeObjectURL(url),1000)}}><Music2 size={17}/> Export song project</button><button type="button" disabled title="Offline full-song model not yet installed"><Mic2 size={17}/> Generate full song · Coming soon</button></div>
+    <div className="fullsong-actions"><button type="button" disabled={saving} onClick={()=>void saveDraft()}>{saving?"Saving…":"Save draft to backend"}</button><button type="button" onClick={()=>{const data={title,description,lyrics,voice,genre,output,bpm,minutes};const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});const url=URL.createObjectURL(blob);const link=document.createElement('a');link.href=url;link.download='mixmaster-song-project.json';link.click();window.setTimeout(()=>URL.revokeObjectURL(url),1000)}}><Music2 size={17}/> Export song project</button><button type="button" disabled title="Offline full-song model not yet installed"><Mic2 size={17}/> Generate full song · Coming soon</button></div>
+    {status&&<p role="status" className="fullsong-banner">{status}</p>}
+    {error&&<p role="alert" className="textsong-error">{error}</p>}
     <p className="fullsong-footnote">Export stores your song settings and lyrics as JSON, not audio. The existing Text to Song page can still produce basic offline instrumentals.</p>
   </section>
 }
