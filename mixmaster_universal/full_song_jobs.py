@@ -11,12 +11,14 @@ import signal
 from time import monotonic
 from uuid import uuid4
 import json
+import logging
 import subprocess
 import wave
 
 from fastapi import APIRouter, HTTPException
 from generated_storage import save_generated
 
+logger = logging.getLogger(__name__)
 router = APIRouter()
 _pool = ThreadPoolExecutor(max_workers=1, thread_name_prefix="mixmaster-song")
 _lock = Lock()
@@ -112,8 +114,9 @@ def _execute(job_id, project, executable, arrangement):
         with _lock:
             job.update(status="cancelled", stage="cancelled")
     except Exception as exc:
+        logger.exception("Full song job %s failed at stage %s", job_id, job["stage"])
         with _lock:
-            job.update(status="failed", stage="failed", error=str(exc) if isinstance(exc, (RuntimeError, TimeoutError)) else "Song generation failed.")
+            job.update(status="failed", stage="failed", error=str(exc) if isinstance(exc, (RuntimeError, TimeoutError)) else "Song generation failed. See backend logs for details.")
     finally:
         with _lock:
             if job["started"] is not None:
