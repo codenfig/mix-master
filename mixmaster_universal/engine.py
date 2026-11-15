@@ -173,10 +173,9 @@ def render(tracks, output, transition=12, progress=None, beatmatch=True, optimiz
                             previous_duration, transition, previous_beat_offset,
                             incoming_offset, effective_bpm)
                         trim_frames = round(trim_seconds * sr)
-                    if i > 0 and incoming_offset is not None:
-                        phrase_seconds = phrase_trim(len(audio) / sr, effective_bpm, incoming_offset)
-                        if phrase_seconds and len(audio) - round(phrase_seconds * sr) >= 2 * fade:
-                            trim_frames = max(trim_frames, round(phrase_seconds * sr))
+                    # The optimizer chooses the incoming song's entry point
+                    # against the outgoing tail. Do not pre-trim to a fixed
+                    # phrase location: that would discard viable candidates.
                     if trim_frames:
                         audio = audio[trim_frames:]
                         if incoming_offset is not None:
@@ -188,10 +187,18 @@ def render(tracks, output, transition=12, progress=None, beatmatch=True, optimiz
                     else:
                         n = min(len(tail), fade)
                         if optimize:
-                            extra, assessment, attempts = optimize_transition(tail, audio, n, sr=sr)
+                            extra, assessment, attempts = optimize_transition(
+                                tail, audio, n, sr=sr, bpm=effective_bpm,
+                                beat_offset=incoming_offset)
                             if extra and len(audio) - extra >= 2 * fade:
                                 audio = audio[extra:]
-                            transition_reports.append({'from': tracks[i - 1]['name'], 'to': track['name'], 'proxy_score': assessment['score'], 'loudness_gap_db': assessment['loudness_gap_db'], 'attempts': attempts, 'selected_offset_seconds': round(extra / sr, 3)})
+                            transition_reports.append({
+                                'from': tracks[i - 1]['name'], 'to': track['name'],
+                                'proxy_score': assessment['score'],
+                                'loudness_gap_db': assessment['loudness_gap_db'],
+                                'attempts': attempts,
+                                'selected_offset_seconds': round((trim_frames + extra) / sr, 3),
+                            })
                         # Compute only the transition in memory.
                         phase = np.linspace(0, np.pi / 2, n, dtype=np.float32)[:, None]
                         overlap = tail[-n:] * np.cos(phase) + audio[:n] * np.sin(phase)
