@@ -1,3 +1,4 @@
+import './styles/vocal-remover.css'
 import { useEffect, useRef, useState } from 'react'
 import { AudioLines, Download, FileAudio, LoaderCircle, MicOff, UploadCloud, X } from 'lucide-react'
 

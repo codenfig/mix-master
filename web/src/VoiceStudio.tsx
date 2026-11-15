@@ -1,3 +1,4 @@
+import './styles/voice-studio.css'
 import { useEffect, useState } from 'react'
 import { AudioLines, Download, Mic2, UploadCloud } from 'lucide-react'
 
