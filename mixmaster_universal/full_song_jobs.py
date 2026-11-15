@@ -24,6 +24,7 @@ _pool = ThreadPoolExecutor(max_workers=1, thread_name_prefix="mixmaster-song")
 _lock = Lock()
 _jobs = {}
 MAX_JOBS = 100
+ENGINE_TIMEOUT = min(max(int(os.environ.get("FULL_SONG_JOB_TIMEOUT_SECONDS", "1200")), 60), 7200)
 
 
 def _snapshot(job):
@@ -84,9 +85,9 @@ def _execute(job_id, project, executable, arrangement):
                     if job["cancel"].wait(0.25):
                         _stop_process(proc)
                         raise InterruptedError("Generation cancelled.")
-                    if monotonic() - job["started"] > 300:
+                    if monotonic() - job["started"] > (int(os.environ.get("FULL_SONG_VOCAL_TIMEOUT_SECONDS", "1200")) if project.get("output") != "instrumental" else 300):
                         _stop_process(proc)
-                        raise TimeoutError("Local music engine exceeded five minutes.")
+                        raise TimeoutError("Music engine exceeded the configured generation time limit.")
                 if job["cancel"].is_set():
                     raise InterruptedError("Generation cancelled.")
                 if proc.returncode:
