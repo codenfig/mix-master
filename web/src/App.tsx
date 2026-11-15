@@ -7,8 +7,9 @@ import StemSplitter from './StemSplitter'
 import AudioMastering from './AudioMastering'
 import VoiceStudio from './VoiceStudio'
 
-type Page = 'overview' | 'studio' | 'library' | 'preview' | 'history' | 'settings' | 'vocal-remover' | 'stem-splitter' | 'audio-mastering' | 'voice-studio'
+type Page = 'onboarding' | 'overview' | 'studio' | 'library' | 'preview' | 'history' | 'settings' | 'vocal-remover' | 'stem-splitter' | 'audio-mastering' | 'voice-studio'
 const pages: { id: Page; label: string; subtitle: string }[] = [
+  { id: 'onboarding', label: 'Welcome', subtitle: 'Discover MixMaster AI' },
   { id: 'overview', label: 'Overview', subtitle: 'Your creative command center' },
   { id: 'studio', label: 'Create Mix', subtitle: 'Build your next continuous set' },
   { id: 'library', label: 'Track Library', subtitle: 'Explore and arrange your music' },
@@ -22,7 +23,7 @@ const pages: { id: Page; label: string; subtitle: string }[] = [
 ]
 const readPage = (): Page => {
   const hash = window.location.hash.replace(/^#\/?/, '')
-  return pages.some(p => p.id === hash) ? hash as Page : 'overview'
+  return pages.some(p => p.id === hash) ? hash as Page : 'onboarding'
 }
 const extensions = new Set(['mp3', 'wav', 'flac', 'm4a', 'ogg', 'aac'])
 const MAX_BYTES = 200 * 1024 * 1024
@@ -271,17 +272,35 @@ export default function App() {
     }
   }
 
+  if (page === 'onboarding') return <div className="onboard-page">
+    <header className="onboard-top"><div className="brand"><div className="brand-icon"><AudioLines size={27}/></div><div><strong>MixMaster <span>AI</span></strong><small>INTELLIGENT DJ STUDIO</small></div></div><button className="onboard-text-link" onClick={()=>navigate('overview')}>Open operations <ArrowRight size={17}/></button></header>
+    <main className="onboard-main">
+      <div className="onboard-eyebrow"><Sparkles size={16}/> WELCOME TO YOUR MUSIC WORKSPACE</div>
+      <h1>Make your music <em>extraordinary.</em></h1>
+      <p className="onboard-lead">Create DJ mixes, separate vocals, master audio and explore AI voice tools — all from one workspace.</p>
+      <div className="onboard-actions"><button className="onboard-primary" onClick={()=>navigate('studio')}>Launch Mixing Studio <ArrowRight size={20}/></button><button className="onboard-secondary" onClick={()=>navigate('overview')}>Explore operations</button></div>
+      <div className="onboard-features">
+        <button onClick={()=>navigate('studio')}><SlidersHorizontal size={26}/><strong>DJ Mix Creator</strong><span>Arrange tracks and generate continuous mixes</span><ArrowRight size={17}/></button>
+        <button onClick={()=>navigate('vocal-remover')}><FileAudio size={26}/><strong>Vocal Remover</strong><span>Separate vocals from instrumentals</span><ArrowRight size={17}/></button>
+        <button onClick={()=>navigate('stem-splitter')}><AudioLines size={26}/><strong>Stem Splitter</strong><span>Extract drums, bass, vocals and other stems</span><ArrowRight size={17}/></button>
+        <button onClick={()=>navigate('audio-mastering')}><Sparkles size={26}/><strong>Audio Mastering</strong><span>Polish loudness, dynamics and tone</span><ArrowRight size={17}/></button>
+        <button onClick={()=>navigate('voice-studio')}><Music2 size={26}/><strong>AI Voice Studio</strong><span>Manage voice profiles and conversion workflows</span><ArrowRight size={17}/></button>
+        <button onClick={()=>navigate('preview')}><Headphones size={26}/><strong>Mix Preview</strong><span>Listen to and export finished mixes</span><ArrowRight size={17}/></button>
+      </div>
+      <p className="onboard-footnote">AI voice training and conversion require an external engine. Only upload audio you have permission to use.</p>
+    </main>
+  </div>
   return <div className="app">
     <aside className="sidebar">
       <div className="brand"><div className="brand-icon"><AudioLines size={27} /></div><div><strong>MixMaster <span>AI</span></strong><small>INTELLIGENT DJ STUDIO</small></div></div>
       <div className="nav-label">YOUR STUDIO</div>
       <nav aria-label="Main navigation">
-        {pages.map(item => {
+        {pages.filter(item => item.id !== 'onboarding').map(item => {
           const Icon = item.id === 'overview' ? LayoutDashboard : item.id === 'studio' ? SlidersHorizontal : item.id === 'library' ? ListMusic : item.id === 'preview' ? Headphones : item.id === 'history' ? RotateCcw : item.id === 'vocal-remover' ? FileAudio : item.id === 'stem-splitter' ? AudioLines : item.id === 'audio-mastering' ? SlidersHorizontal : item.id === 'voice-studio' ? Music2 : Settings2
           return <a key={item.id} href={'#/' + item.id} aria-current={page === item.id ? 'page' : undefined} className={'nav' + (page === item.id ? ' active' : '')} onClick={() => setPage(item.id)}><Icon size={18}/>{item.label}{page === item.id && <span className="nav-indicator"/>}</a>
         })}
       </nav>
-      <div className="sidebar-bottom"><div className="help-box"><CircleHelp size={20}/><div><strong>Need a hand?</strong><p>Select {count} audio files, analyze them, then render your mix.</p></div></div><small>MixMaster AI · Development MVP</small></div>
+      <div className="sidebar-bottom"><button className="onboard-back" onClick={()=>navigate('onboarding')}>← Welcome / Onboarding</button><div className="help-box"><CircleHelp size={20}/><div><strong>Need a hand?</strong><p>Select {count} audio files, analyze them, then render your mix.</p></div></div><small>MixMaster AI · Development MVP</small></div>
     </aside>
 
     <main className="main">
