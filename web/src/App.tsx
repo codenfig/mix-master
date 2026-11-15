@@ -283,7 +283,7 @@ export default function App() {
   }
 
   if (page === 'onboarding') return <div className="onboard-page">
-    <header className="onboard-top"><div className="brand"><div className="brand-icon"><AudioLines size={27}/></div><div><strong>MixMaster <span>AI</span></strong><small>INTELLIGENT DJ STUDIO</small></div></div><button className="onboard-text-link" onClick={()=>navigate('overview')}>Open operations <ArrowRight size={17}/></button></header>
+    <header className="onboard-top"><div className="brand"><div className="brand-icon"><img src="/mixmaster-mark.svg" alt="" width={38} height={38}/></div><div><strong>MixMaster <span>AI</span></strong><small>INTELLIGENT DJ STUDIO</small></div></div><button className="onboard-text-link" onClick={()=>navigate('overview')}>Open operations <ArrowRight size={17}/></button></header>
     <main className="onboard-main">
       <div className="onboard-eyebrow"><Sparkles size={16}/> WELCOME TO YOUR MUSIC WORKSPACE</div>
       <h1>Make your music <em>extraordinary.</em></h1>
@@ -302,7 +302,7 @@ export default function App() {
   </div>
   return <div className="app">
     <aside className="sidebar">
-      <div className="brand"><div className="brand-icon"><AudioLines size={27} /></div><div><strong>MixMaster <span>AI</span></strong><small>INTELLIGENT DJ STUDIO</small></div></div>
+      <div className="brand"><div className="brand-icon"><img src="/mixmaster-mark.svg" alt="" width={38} height={38}/></div><div><strong>MixMaster <span>AI</span></strong><small>INTELLIGENT DJ STUDIO</small></div></div>
       <div className="nav-label">YOUR STUDIO</div>
       <nav aria-label="Main navigation">
         {pages.filter(item => item.id !== 'onboarding').map(item => {
