@@ -15,11 +15,13 @@ from planner import plan
 from jobs import allocate_directory, create_job, get_job, get_download
 from vocal_remover import router as vocal_remover_router
 from stem_splitter import router as stem_splitter_router
+from audio_mastering import router as mastering_router
 
 ROOT = Path(__file__).resolve().parent
 app = FastAPI(title="MixMaster AI Universal", version="0.2.0")
 app.include_router(vocal_remover_router)
 app.include_router(stem_splitter_router)
+app.include_router(mastering_router)
 app.mount("/static", StaticFiles(directory=ROOT / "static"), name="static")
 SUPPORTED = {".mp3", ".wav", ".flac", ".m4a", ".ogg", ".aac"}
 MAX_FILE_BYTES = 200 * 1024 * 1024
