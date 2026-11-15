@@ -7,12 +7,14 @@ type Output = 'full_song' | 'instrumental' | 'vocals'
 const genres = ['Afro-pop', 'Rumba', 'Dancehall', 'Bongo Flava', 'Pop', 'Afrobeat', 'Country Pop']
 
 export default function FullSongPage() {
+  const [customMode,setCustomMode] = useState(false)
+  const [privateMode,setPrivateMode] = useState(false)
   const [title, setTitle] = useState('I See You')
   const [description, setDescription] = useState('Uplifting Afro-pop with joyful rumba guitar, dancehall bounce, melodic bass, skanking keys, whistles and a wide uplifting chorus.')
   const [lyrics, setLyrics] = useState('[Verse 1]\n\n[Pre-Chorus]\n\n[Chorus]\nI see you\n\n[Verse 2]\n\n[Bridge]\n\n[Final Chorus]')
   const [voice, setVoice] = useState<Voice>('female')
   const [genre, setGenre] = useState('Afro-pop')
-  const [output, setOutput] = useState<Output>('full_song')
+  const [output, setOutput] = useState<Output>('instrumental')
   const [bpm, setBpm] = useState(110)
   const [minutes, setMinutes] = useState(3)
   const [saving, setSaving] = useState(false)
@@ -85,19 +87,21 @@ export default function FullSongPage() {
     finally{window.clearTimeout(timer);setSaving(false)}
   }
   return <section className="fullsong">
-    <header className="fullsong-heading"><Sparkles size={24}/><div><h2>Full Song Studio</h2><p>Design complete songs with lyrics, vocal direction and arrangements. Generate using a locally installed music engine when available.</p></div></header>
-    <div className="fullsong-banner" role="status"><strong>Stage 3 · Offline engine integration</strong><span>Save a project draft to your local Python backend, or export it as JSON.  Generation requires a configured offline executable. No paid API is required.</span></div>
-    <label>Song title<input value={title} maxLength={120} onChange={e=>setTitle(e.target.value)}/></label>
-    <label>Music description<textarea rows={4} value={description} maxLength={2000} onChange={e=>setDescription(e.target.value)}/></label>
-    <label>Lyrics and song sections<textarea rows={12} value={lyrics} maxLength={12000} onChange={e=>setLyrics(e.target.value)}/></label>
+    <header className="fullsong-heading"><Sparkles size={24}/><div><h2>AI Music Generator</h2><p>Describe your sound, or use Custom Mode for lyrics and vocal direction.</p></div></header>
+    <div className="fullsong-mode-bar"><button type="button" aria-pressed={!customMode} className={!customMode?'active':''} onClick={()=>setCustomMode(false)}>Simple Mode</button><button type="button" aria-pressed={customMode} className={customMode?'active':''} onClick={()=>setCustomMode(true)}>Custom Mode</button></div>
+    <label>Song Description <span className="fullsong-count">{description.length}/{customMode?2000:400}</span><textarea rows={5} value={description} maxLength={customMode?2000:400} onChange={e=>setDescription(e.target.value)} placeholder="Genre, mood, instruments and groove…"/></label>
+    <div className="fullsong-toggles"><label className="fullsong-switch"><input type="checkbox" checked={output==='instrumental'} onChange={e=>setOutput(e.target.checked?'instrumental':'full_song')}/><span>Instrumental</span><small>No singing vocals</small></label><label className="fullsong-switch"><input type="checkbox" checked={privateMode} onChange={e=>setPrivateMode(e.target.checked)}/><span>Private</span><small>Not available yet</small></label></div>
+    {privateMode&&<p className="fullsong-privacy-warning" role="status">Private generation is not supported. Generated files do not yet have per-user access controls; generation is disabled while this is selected.</p>}
+    {customMode&&<div className="fullsong-custom"><label>Song title<input value={title} maxLength={120} onChange={e=>setTitle(e.target.value)}/></label><label>Lyrics and sections<textarea rows={12} value={lyrics} maxLength={12000} onChange={e=>setLyrics(e.target.value)}/></label></div>}
+    {!customMode&&<p className="fullsong-footnote">Simple Mode generates from the description. Select Custom Mode to supply your own lyrics and song sections.</p>}
     <div className="fullsong-grid">
-      <label>Lead vocal<select value={voice} onChange={e=>setVoice(e.target.value as Voice)}><option value="female">Female</option><option value="male">Male</option><option value="duet">Duet</option></select></label>
+      {customMode&&<label>Lead vocal<select value={voice} onChange={e=>setVoice(e.target.value as Voice)}><option value="female">Female</option><option value="male">Male</option><option value="duet">Duet</option></select></label>}
       <label>Style<select value={genre} onChange={e=>setGenre(e.target.value)}>{genres.map(g=><option key={g}>{g}</option>)}</select></label>
       <label>Tempo (BPM)<input type="number" min={60} max={180} value={bpm} onChange={e=>setBpm(Number(e.target.value))}/></label>
       <label>Target length<select value={minutes} onChange={e=>setMinutes(Number(e.target.value))}><option value={2}>2 minutes</option><option value={3}>3 minutes</option><option value={4}>4 minutes</option></select></label>
-      <label>Output<select value={output} onChange={e=>setOutput(e.target.value as Output)}><option value="full_song">Full song + vocals</option><option value="instrumental">Instrumental</option><option value="vocals">Vocals only</option></select></label>
+      {customMode&&<label>Output<select value={output} onChange={e=>setOutput(e.target.value as Output)}><option value="full_song">Full song + vocals</option><option value="instrumental">Instrumental</option><option value="vocals">Vocals only</option></select></label>}
     </div>
-    <div className="fullsong-actions"><button type="button" disabled={planning} onClick={()=>void previewArrangement()}>{planning?"Planning…":"Preview arrangement"}</button><button type="button" disabled={saving} onClick={()=>void saveDraft()}>{saving?"Saving…":"Save draft to backend"}</button><button type="button" onClick={()=>{const data={title,description,lyrics,voice,genre,output,bpm,minutes};const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});const url=URL.createObjectURL(blob);const link=document.createElement('a');link.href=url;link.download='mixmaster-song-project.json';link.click();window.setTimeout(()=>URL.revokeObjectURL(url),1000)}}><Music2 size={17}/> Export song project</button><button type="button" disabled={!capabilities[output]||generating} onClick={()=>void generate()} title={!capabilities[output]?"No compatible local engine configured for this output.":engineMessage}><Mic2 size={17}/>{generating?"Generating…":capabilities[output]?(output==="instrumental"?"Generate instrumental preview":"Generate with vocal engine"):"Compatible engine not installed"}</button>{generating&&<button type="button" onClick={()=>void cancelGeneration()}>Cancel generation</button>}</div>
+    <div className="fullsong-actions"><button type="button" disabled={planning} onClick={()=>void previewArrangement()}>{planning?"Planning…":"Preview arrangement"}</button><button type="button" disabled={saving} onClick={()=>void saveDraft()}>{saving?"Saving…":"Save draft to backend"}</button><button type="button" onClick={()=>{const data={title,description,lyrics,voice,genre,output,bpm,minutes};const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});const url=URL.createObjectURL(blob);const link=document.createElement('a');link.href=url;link.download='mixmaster-song-project.json';link.click();window.setTimeout(()=>URL.revokeObjectURL(url),1000)}}><Music2 size={17}/> Export song project</button><button type="button" disabled={!capabilities[output]||generating||privateMode||!description.trim()||(!customMode&&description.length>400)} onClick={()=>void generate()} title={!capabilities[output]?"No compatible local engine configured for this output.":engineMessage}><Mic2 size={17}/>{generating?"Generating…":capabilities[output]?"Generate Music":"Compatible engine not installed"}</button>{generating&&<button type="button" onClick={()=>void cancelGeneration()}>Cancel generation</button>}</div>
     {generating&&<p role="status" className="fullsong-footnote">Generation: {jobStage} · {Math.round(jobElapsed)} seconds elapsed</p>}
     {plan&&<div className="fullsong-banner"><strong>Arrangement · {plan.total_bars} bars · ~{Math.round(plan.estimated_seconds)} seconds</strong><div className="fullsong-timeline">{plan.sections.map((section,index)=><div key={index} className="fullsong-section" style={{flexGrow:section.bars,opacity:0.65+section.energy*0.35}} title={section.name+" · "+section.bars+" bars"}><span>{section.name}</span><small>{section.bars} bars</small></div>)}</div><p className="fullsong-footnote">Planning only: your installed audio engine must implement the arrangement for it to be audible.</p></div>}
     <p className="fullsong-footnote" role="status">Engine status: {engineMessage}. Instrumental: {capabilities.instrumental?"ready":"not installed"}. Singing: {capabilities.vocals?"engine configured":"not installed"}. A configured vocal adapter must independently support your selected voice and lyrics; model quality is not verified.</p>
