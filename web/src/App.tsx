@@ -1,3 +1,4 @@
+import DjDeckStudio from './DjDeckStudio'
 import PricingPage from './pages/PricingPage'
 import FullSongPage from './pages/FullSongPage'
 import TextToSongPage from './pages/TextToSongPage'
@@ -5,7 +6,7 @@ import GeneratedFilesPage from './pages/GeneratedFilesPage'
 import OverviewPage from './pages/OverviewPage'
 import './styles/onboarding.css'
 import { useEffect, useRef, useState } from 'react'
-import { Activity, AudioLines, Check, CircleHelp, Download, FileAudio, FolderOpen, Headphones, ListMusic, LoaderCircle, Music2, Play, Pause, RotateCcw, Settings2, SlidersHorizontal, Sparkles, UploadCloud, X, LayoutDashboard, ArrowRight } from 'lucide-react'
+import { Activity, AudioLines, Check, CircleHelp, Download, FileAudio, FolderOpen, Headphones, ListMusic, LoaderCircle, Music2, Play, Pause, RotateCcw, Settings2, SlidersHorizontal, Sparkles, UploadCloud, X, LayoutDashboard, ArrowRight, Crown, ChevronDown } from 'lucide-react'
 import { analyze, queueMix, fetchJob, downloadJob, type AnalysisResult, type MixMetrics, type MixJob } from './api'
 import Waveform from './Waveform'
 import VocalRemover from './VocalRemover'
@@ -17,13 +18,13 @@ type Page = 'onboarding' | 'overview' | 'studio' | 'library' | 'preview' | 'hist
 const pages: { id: Page; label: string; subtitle: string }[] = [
   { id: 'onboarding', label: 'Welcome', subtitle: 'Discover MixMaster AI' },
   { id: 'overview', label: 'Overview', subtitle: 'Your creative command center' },
-  { id: 'studio', label: 'Create Mix', subtitle: 'Build your next continuous set' },
+  { id: 'studio', label: 'DJ Studio', subtitle: 'Build your next continuous set' },
   { id: 'library', label: 'Track Library', subtitle: 'Explore and arrange your music' },
   { id: 'preview', label: 'Mix Preview', subtitle: 'Listen, review and export' },
   { id: 'history', label: 'Mix History', subtitle: 'Your previous sessions' },
   { id: 'generated-files', label: 'Generated Files', subtitle: 'Browse and download your saved audio outputs' },
   { id: 'text-to-song', label: 'Text to Song', subtitle: 'Compose offline instrumental music from text' },
-  { id: 'full-song', label: 'Full Song Studio', subtitle: 'Plan songs, vocals and arrangements' },
+  { id: 'full-song', label: 'Music Generator', subtitle: 'Plan songs, vocals and arrangements' },
   { id: 'pricing', label: 'Plans & Pricing', subtitle: 'Preview creator subscription plans' },
   { id: 'vocal-remover', label: 'Vocal Remover', subtitle: 'Extract clean instrumental audio from songs' },
   { id: 'stem-splitter', label: 'Stem Splitter', subtitle: 'Separate vocals, drums, bass and instruments' },
@@ -33,8 +34,9 @@ const pages: { id: Page; label: string; subtitle: string }[] = [
 ]
 const readPage = (): Page => {
   const hash = window.location.hash.replace(/^#\/?/, '')
-  return pages.some(p => p.id === hash) ? hash as Page : 'onboarding'
+  return pages.some(p => p.id === hash) ? hash as Page : 'full-song'
 }
+const primaryPages: Page[] = ['full-song','studio','vocal-remover','stem-splitter','library','generated-files']
 const extensions = new Set(['mp3', 'wav', 'flac', 'm4a', 'ogg', 'aac'])
 const MAX_BYTES = 200 * 1024 * 1024
 const formatTime = (seconds: number) => Number.isFinite(seconds) ? [Math.floor(seconds / 60), Math.floor(seconds % 60)].map(n => String(n).padStart(2, '0')).join(':') : '--:--'
@@ -301,20 +303,35 @@ export default function App() {
     </main>
   </div>
   return <div className="app">
-    <aside className="sidebar">
-      <div className="brand"><div className="brand-icon"><img src="/mixmaster-mark.svg" alt="" width={38} height={38}/></div><div><strong>MixMaster <span>AI</span></strong><small>INTELLIGENT DJ STUDIO</small></div></div>
+    <aside className="sidebar mm-sidebar">
+      <a href="#/full-song" className="brand mm-brand" aria-label="MixMaster AI Music Generator">
+        <div className="brand-icon"><img src="/mixmaster-mark.svg" alt="" width={42} height={42}/></div>
+        <div><strong>MixMaster <span>AI</span></strong><small>CREATE · MIX · MASTER</small></div>
+      </a>
       <div className="nav-label">YOUR STUDIO</div>
-      <nav aria-label="Main navigation">
-        {pages.filter(item => item.id !== 'onboarding').map(item => {
-          const Icon = item.id === 'overview' ? LayoutDashboard : item.id === 'studio' ? SlidersHorizontal : item.id === 'library' ? ListMusic : item.id === 'preview' ? Headphones : item.id === 'history' ? RotateCcw : item.id === 'generated-files' ? FolderOpen : item.id === 'pricing' ? Sparkles : item.id === 'text-to-song' || item.id === 'full-song' ? Music2 : item.id === 'vocal-remover' ? FileAudio : item.id === 'stem-splitter' ? AudioLines : item.id === 'audio-mastering' ? SlidersHorizontal : item.id === 'voice-studio' ? Music2 : Settings2
-          return <a key={item.id} href={'#/' + item.id} aria-current={page === item.id ? 'page' : undefined} className={'nav' + (page === item.id ? ' active' : '')} onClick={() => setPage(item.id)}><Icon size={18}/>{item.label}{page === item.id && <span className="nav-indicator"/>}</a>
+      <nav aria-label="Main tools">
+        {pages.filter(item=>primaryPages.includes(item.id)).map(item=>{
+          const Icon=item.id==='full-song'?Music2:item.id==='studio'?SlidersHorizontal:item.id==='vocal-remover'?AudioLines:item.id==='stem-splitter'?FileAudio:item.id==='library'?ListMusic:FolderOpen
+          return <a key={item.id} href={'#/'+item.id} aria-current={page===item.id?'page':undefined} className={'nav'+(page===item.id?' active':'')} onClick={()=>setPage(item.id)}><Icon size={18}/><span>{item.label}</span></a>
         })}
       </nav>
-      <div className="sidebar-bottom"><button className="onboard-back" onClick={()=>navigate('onboarding')}>← Welcome / Onboarding</button><div className="help-box"><CircleHelp size={20}/><div><strong>Need a hand?</strong><p>Select {count} audio files, analyze them, then render your mix.</p></div></div><small>MixMaster AI · Development MVP</small></div>
+      <details className="mm-more-tools" open={!primaryPages.includes(page)&&page!=='pricing'}>
+        <summary>More tools <ChevronDown size={15}/></summary>
+        <nav aria-label="Additional tools">{pages.filter(item=>item.id!=='onboarding'&&item.id!=='pricing'&&!primaryPages.includes(item.id)).map(item=><a key={item.id} href={'#/'+item.id} aria-current={page===item.id?'page':undefined} className={'nav'+(page===item.id?' active':'')} onClick={()=>setPage(item.id)}><AudioLines size={17}/><span>{item.label}</span></a>)}</nav>
+      </details>
+      <div className="sidebar-bottom">
+        <div className="mm-upgrade-card"><div><Crown size={19}/><strong>Pro Music</strong></div><small>Plans preview · 90 proposed credits / month</small><a href="#/pricing" onClick={()=>setPage('pricing')}>Explore plans <ArrowRight size={15}/></a></div>
+        <a className="mm-sidebar-settings" href="#/settings" onClick={()=>setPage('settings')}><Settings2 size={17}/> Settings</a>
+        <button className="onboard-back" onClick={()=>navigate('onboarding')}>Welcome &amp; guide</button>
+      </div>
     </aside>
-
     <main className="main">
-      <header className="topbar"><span className="breadcrumb">Workspace <span>/</span> {pages.find(p => p.id === page)?.label}</span><div className="top-status"><span className="online-dot"/> Local DJ Studio</div></header>
+      <header className="topbar mm-topbar">
+        <nav className="mm-top-nav" aria-label="Studio shortcuts">
+          {([{id:'full-song',label:'AI Music',icon:Music2},{id:'studio',label:'DJ Studio',icon:SlidersHorizontal},{id:'stem-splitter',label:'Stems',icon:AudioLines},{id:'generated-files',label:'Library',icon:FolderOpen}] as const).map(link=><a key={link.id} href={'#/'+link.id} aria-current={page===link.id?'page':undefined} className={page===link.id?'active':''} onClick={()=>setPage(link.id)}><link.icon size={17}/>{link.label}</a>)}
+        </nav>
+        <div className="mm-top-actions"><span className="mm-top-status"><span className="online-dot"/> Local Studio</span><a href="#/pricing" onClick={()=>setPage('pricing')} className="mm-top-upgrade"><Crown size={16}/> Upgrade</a></div>
+      </header>
       <div className={"content content-" + page + (page === "overview" ? " overview-content" : "")} key={page}>
         {activeJob && <div className="background-job" role="status"><div><LoaderCircle className="spin" size={18}/><strong>Background mix in progress</strong><span>{progress || 'The server is preparing your audio.'}</span></div><button type="button" onClick={() => navigate('studio')}>View progress <ArrowRight size={15}/></button></div>}
         <div className="page-heading"><div><div className="eyebrow"><Sparkles size={14}/> MIXMASTER WORKSPACE</div><h1>{pages.find(p => p.id === page)?.label}</h1><p>{pages.find(p => p.id === page)?.subtitle}</p></div><div className="page-heading-actions">{page !== 'studio' && <button className="action primary" onClick={() => navigate('studio')}><Sparkles size={16}/> Create a Mix <ArrowRight size={16}/></button>}</div></div>
@@ -327,7 +344,7 @@ export default function App() {
         {page === 'audio-mastering' && <AudioMastering/>}
         {page === 'voice-studio' && <VoiceStudio/>}
         {page === 'overview' && <OverviewPage filesCount={files.length} count={count} history={history} analysis={analysis} url={url} busy={busy} navigate={navigate}/>}
-        {page === 'studio' && <div className="studio-intro">
+        {page === 'studio' && <div className="mm-deck-stage"><DjDeckStudio files={files} bpm={analysis?.tracks[0]?.bpm} onUpload={()=>input.current?.click()}/><details className="mm-dj-workflow"><summary>Mix workflow &amp; analysis</summary><div className="studio-intro">
           <section className="studio-hero">
             <div className="studio-hero-copy"><div className="studio-eyebrow"><Sparkles size={15}/> THE AI MIXING STUDIO <span> / SESSION 001</span></div><h2>Make the night <em>flow.</em></h2><p>Drop your tracks. Shape the energy. Let MixMaster AI build a continuous set with seamless transitions and your signature sound.</p><div className="studio-hero-tags"><span><AudioLines size={14}/> BEAT MATCHING</span><span><Activity size={14}/> ENERGY FLOW</span><span><Sparkles size={14}/> AI ARRANGEMENT</span></div></div>
             <div className="studio-hero-art" aria-hidden="true"><div className="studio-hero-halo"/><div className="studio-hero-record"><div className="studio-record-label"><Music2 size={33}/><small>MIXMASTER</small></div></div><div className="studio-hero-eq">{Array.from({length:25},(_,i)=><i key={i} style={{height:(16+Math.abs(Math.sin(i*.82)*Math.cos(i*.21))*74)+'%'}}/>)}</div></div>
@@ -345,7 +362,7 @@ export default function App() {
               {plannedTracks.length>1?<svg viewBox="0 0 600 115" preserveAspectRatio="none" role="img" aria-label="Planned energy progression" className="studio-energy-chart"><defs><linearGradient id="studioEnergy" x1="0" y1="0" x2="1" y2="0"><stop stopColor="#d850ef"/><stop offset=".55" stopColor="#8056fb"/><stop offset="1" stopColor="#36baf2"/></linearGradient></defs><polyline fill="none" stroke="url(#studioEnergy)" strokeWidth="4" strokeLinejoin="round" strokeLinecap="round" points={plannedTracks.map((t,i)=>(i*600/(plannedTracks.length-1))+','+(104-t.energy/energyMax*88)).join(' ')}/>{plannedTracks.map((t,i)=><circle key={i} cx={i*600/(plannedTracks.length-1)} cy={104-t.energy/energyMax*88} r="5" fill="#d9adff"/>)}</svg>:<div className="studio-energy-placeholder"><div className="studio-eq-bars" aria-hidden="true">{Array.from({length:43},(_,i)=><i key={i} style={{height:8+Math.abs(Math.sin(i*.67)*Math.cos(i*.16))*48}}/>)}</div><span>Your energy curve appears after track analysis</span></div>}
             </section>
           </div>
-        </div>}
+        </div></details></div>}
         {(page === 'studio' || page === 'library' || page === 'settings') && <div className={"workspace" + (page !== 'studio' ? " workspace-single" : "")}>
           <section className="left-column">
             {page === 'studio' && <div className="panel upload-panel studio-upload-card">
