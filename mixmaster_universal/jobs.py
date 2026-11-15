@@ -13,6 +13,7 @@ import shutil
 import tempfile
 
 from engine import render
+from cover_art import embed_cover
 from planner import plan
 
 MAX_JOBS = 8
@@ -48,7 +49,7 @@ def _prune():
             shutil.rmtree(job.directory, ignore_errors=True)
             del _jobs[key]
 
-def create_job(analysis: list[dict], transition: int, directory: Path, mastering: str = "balanced", kick_enabled: bool = False, kick_style: str = "soft", kick_level: float = 0.16, mastering_options: dict | None = None, kick_source_index: int | None = None, source_tracks: list[dict] | None = None) -> str:
+def create_job(analysis: list[dict], transition: int, directory: Path, mastering: str = "balanced", kick_enabled: bool = False, kick_style: str = "soft", kick_level: float = 0.16, mastering_options: dict | None = None, kick_source_index: int | None = None, source_tracks: list[dict] | None = None, cover: Path | None = None, title: str = 'My DJ Mix', artist: str = 'MixMaster AI', album: str = 'MixMaster AI', year: str = '') -> str:
     with _lock:
         _prune()
         if len(_jobs) >= MAX_JOBS:
@@ -56,10 +57,10 @@ def create_job(analysis: list[dict], transition: int, directory: Path, mastering
         job_id = uuid4().hex
         job = Job(id=job_id, directory=directory, total_tracks=len(analysis))
         _jobs[job_id] = job
-    _executor.submit(_run, job_id, analysis, transition, mastering, kick_enabled, kick_style, kick_level, mastering_options, kick_source_index, source_tracks)
+    _executor.submit(_run, job_id, analysis, transition, mastering, kick_enabled, kick_style, kick_level, mastering_options, kick_source_index, source_tracks, cover, title, artist, album, year)
     return job_id
 
-def _run(job_id: str, analysis: list[dict], transition: int, mastering: str = "balanced", kick_enabled: bool = False, kick_style: str = "soft", kick_level: float = 0.16, mastering_options: dict | None = None, kick_source_index: int | None = None, source_tracks: list[dict] | None = None):
+def _run(job_id: str, analysis: list[dict], transition: int, mastering: str = "balanced", kick_enabled: bool = False, kick_style: str = "soft", kick_level: float = 0.16, mastering_options: dict | None = None, kick_source_index: int | None = None, source_tracks: list[dict] | None = None, cover: Path | None = None, title: str = 'My DJ Mix', artist: str = 'MixMaster AI', album: str = 'MixMaster AI', year: str = ''):
     with _lock:
         job = _jobs[job_id]
         job.status = "processing"
@@ -72,6 +73,8 @@ def _run(job_id: str, analysis: list[dict], transition: int, mastering: str = "b
     try:
         ordered = [analysis[i] for i in plan(analysis, transition)["order_indices"]]
         metrics = render(ordered, job.directory / "mix.mp3", transition=transition, progress=progress, mastering=mastering, kick_enabled=kick_enabled, kick_style=kick_style, kick_level=kick_level, mastering_options=mastering_options, kick_source_index=kick_source_index, source_tracks=source_tracks)
+        if cover is not None:
+            embed_cover(job.directory / "mix.mp3", cover, title, artist, album, year)
         with _lock:
             job.metrics = metrics
             job.status = "done"
