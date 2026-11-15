@@ -11,6 +11,7 @@ export default function App() {
   const [count, setCount] = useState<5 | 10 | 20>(10)
   const [transition, setTransition] = useState(12)
   const [preset, setPreset] = useState<'smooth' | 'balanced' | 'quick'>('balanced')
+  const [history, setHistory] = useState<{ tracks: number; created: string }[]>(() => { try { return JSON.parse(localStorage.getItem('mixmaster_history') || '[]') } catch { return [] } })
   const [files, setFiles] = useState<File[]>([])
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(null)
   const [tab, setTab] = useState<'tracks' | 'order'>('tracks')
@@ -98,6 +99,7 @@ export default function App() {
         outputUrl.current = nextUrl
         setUrl(nextUrl)
         setMessage('Mix ready! Preview and download your MP3.')
+        setHistory(previous => { const next = [{ tracks: count, created: new Date().toLocaleString() }, ...previous].slice(0, 12); try { localStorage.setItem('mixmaster_history', JSON.stringify(next)) } catch { /* Storage may be unavailable */ } return next })
       }
     } catch (err) {
       const canceled = err instanceof DOMException && err.name === 'AbortError'
@@ -117,6 +119,7 @@ export default function App() {
         <button className="nav active" onClick={() => document.getElementById('studio')?.scrollIntoView({ behavior: 'smooth' })}><SlidersHorizontal size={18}/> Create Mix</button>
         <button className="nav" onClick={() => document.getElementById('library')?.scrollIntoView({ behavior: 'smooth' })}><ListMusic size={18}/> Track Library</button>
         <button className="nav" onClick={() => document.getElementById('preview')?.scrollIntoView({ behavior: 'smooth' })}><Headphones size={18}/> Mix Preview</button>
+        <button className="nav" onClick={() => document.getElementById('history')?.scrollIntoView({ behavior: 'smooth' })}><RotateCcw size={18}/> Mix History</button>
         <button className="nav" onClick={() => document.getElementById('settings')?.scrollIntoView({ behavior: 'smooth' })}><Settings2 size={18}/> Settings</button>
       </nav>
       <div className="sidebar-bottom"><div className="help-box"><CircleHelp size={20}/><div><strong>Need a hand?</strong><p>Select {count} audio files, analyze them, then render your mix.</p></div></div><small>MixMaster AI · Development MVP</small></div>
@@ -173,6 +176,7 @@ export default function App() {
         </div>
 
         <section className="panel preview" id="preview"><div className="preview-main"><div className="panel-heading"><div><h2><AudioLines size={20}/> Mix Preview <span className="muted">{url ? '· Ready to play' : '· Awaiting your mix'}</span></h2><p>Listen to your finished mix before downloading.</p></div></div><div className="player"><button className="play" disabled={!playReady} aria-label="Play or pause mix" onClick={() => setPlaySignal(n => n+1)}><Play size={21} fill="currentColor"/></button><div className="wave-area"><Waveform url={url} onTime={(t,d) => {setCurrent(t);setDuration(d)}} onReady={setPlayReady} playSignal={playSignal}/><div className="time"><span>{formatTime(current)}</span><span>{formatTime(duration)}</span></div></div></div></div><div className="preview-summary"><div className="summary-title">MIX SUMMARY</div><strong>{url ? formatTime(duration) : '--:--'}</strong><span>Total Mix Duration</span><div className="summary-divider"/><p>{Math.max(0,count-1)} transitions · {transition}s each</p>{url && <a className="download" href={url} download="MixMaster_AI_Nonstop.mp3"><Download size={17}/> Download MP3</a>}</div></section>
+        <section className="panel history-panel" id="history"><div className="panel-heading"><div><h2><RotateCcw size={20}/> Mix History</h2><p>Completed mix metadata saved in this browser only. Audio is not retained.</p></div><button className="subtle" disabled={!history.length} onClick={() => { setHistory([]); try { localStorage.removeItem('mixmaster_history') } catch { /* Storage may be unavailable */ } }}>Clear</button></div>{history.length ? <div className="history-list">{history.map((item,i) => <div className="history-item" key={i}><strong>MixMaster AI Nonstop</strong><span>{item.tracks} tracks · {item.created}</span></div>)}</div> : <p className="history-empty">Your completed mixes will appear here.</p>}</section>
         <footer><span>MixMaster AI · Development MVP · Experimental beat-phase alignment · Phrase matching pending</span><span>Only upload audio you have permission to use.</span></footer>
       </div>
     </main>
