@@ -132,16 +132,20 @@ def mix(songs: list[UploadFile] = File(...), count: int = Form(10), transition: 
 
 
 @app.post("/api/jobs", status_code=202)
-def queue_mix(songs: list[UploadFile] = File(...), count: int = Form(10), transition: int = Form(12), mastering: str = Form("balanced"), kick_enabled: bool = Form(False), kick_style: str = Form("soft"), kick_level: float = Form(0.16), target_lufs: float = Form(-14), true_peak: float = Form(-1.5), bass_db: float = Form(0), treble_db: float = Form(0), compression: bool = Form(False)):
+def queue_mix(songs: list[UploadFile] = File(...), count: int = Form(10), transition: int = Form(12), mastering: str = Form("balanced"), kick_enabled: bool = Form(False), kick_style: str = Form("soft"), kick_level: float = Form(0.16), kick_source_index: int = Form(-1), target_lufs: float = Form(-14), true_peak: float = Form(-1.5), bass_db: float = Form(0), treble_db: float = Form(0), compression: bool = Form(False)):
     """Accept uploads, analyze, then render asynchronously in one bounded worker."""
     validate_settings(count, transition)
     validate_mastering_options(mastering, target_lufs, true_peak, bass_db, treble_db)
     validate_kick(kick_style, kick_level)
+    if kick_enabled and kick_source_index >= count:
+        raise HTTPException(400, "Kick source is not one of the uploaded songs.")
+    if kick_source_index < -1:
+        raise HTTPException(400, "Invalid kick source.")
     directory = allocate_directory()
     try:
         tracks, names = save_uploads(songs, directory, count)
         analysis = inspect_tracks(tracks, names)
-        job_id = create_job(analysis, transition, directory, mastering=mastering, kick_enabled=kick_enabled, kick_style=kick_style, kick_level=kick_level, mastering_options={"target_lufs": target_lufs, "true_peak": true_peak, "bass_db": bass_db, "treble_db": treble_db, "compression": compression})
+        job_id = create_job(analysis, transition, directory, mastering=mastering, kick_enabled=kick_enabled, kick_style=kick_style, kick_level=kick_level, mastering_options={"target_lufs": target_lufs, "true_peak": true_peak, "bass_db": bass_db, "treble_db": treble_db, "compression": compression}, kick_source_index=kick_source_index if kick_enabled and kick_source_index >= 0 else None, source_tracks=analysis)
         return {"id": job_id, "status": "queued", "status_url": f"/api/jobs/{job_id}"}
     except RuntimeError as exc:
         shutil.rmtree(directory, ignore_errors=True)
