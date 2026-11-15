@@ -1,3 +1,4 @@
+import './styles/stem-splitter.css'
 import { useEffect, useRef, useState } from 'react'
 import JSZip from 'jszip'
 import { AudioLines, Download, FileAudio, LoaderCircle, Music2, UploadCloud, X } from 'lucide-react'
