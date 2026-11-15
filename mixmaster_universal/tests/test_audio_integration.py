@@ -68,3 +68,24 @@ def test_disk_backed_decode_and_chunked_export(tmp_path: Path):
         _write_audio(sink, audio, chunk_frames=257)
     restored = np.fromfile(output, dtype="<f4").reshape(-1, 2)
     np.testing.assert_allclose(restored, audio, atol=1e-6)
+
+
+def test_audio_signal_evaluation(tmp_path: Path):
+    from engine import evaluate_raw_mix
+    audio = np.full((44100, 2), 0.25, dtype="<f4")
+    path = tmp_path / "signal.raw"
+    audio.tofile(path)
+    report = evaluate_raw_mix(path, chunk_frames=257)
+    assert abs(report["peak"] - 0.25) < 1e-6
+    assert abs(report["rms"] - 0.25) < 1e-6
+    assert report["near_silence_fraction"] == 0
+    assert report["clipping_risk"] is False
+    assert report["duration_seconds"] == 1.0
+
+
+def test_audio_signal_evaluation_rejects_empty_mix(tmp_path: Path):
+    from engine import evaluate_raw_mix
+    path = tmp_path / "empty.raw"
+    path.write_bytes(b"")
+    with pytest.raises(ValueError, match="Empty mix"):
+        evaluate_raw_mix(path)
