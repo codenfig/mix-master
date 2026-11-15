@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Activity, AudioLines, Check, CircleHelp, Download, FileAudio, FolderOpen, Headphones, ListMusic, LoaderCircle, Music2, Play, RotateCcw, Settings2, SlidersHorizontal, Sparkles, UploadCloud, X } from 'lucide-react'
-import { analyze, mix, type AnalysisResult, type MixMetrics } from './api'
+import { analyze, queueMix, fetchJob, downloadJob, type AnalysisResult, type MixMetrics } from './api'
 import Waveform from './Waveform'
 
 const extensions = new Set(['mp3', 'wav', 'flac', 'm4a', 'ogg', 'aac'])
@@ -20,6 +20,7 @@ export default function App() {
   const [error, setError] = useState(false)
   const [url, setUrl] = useState<string | null>(null)
   const [metrics, setMetrics] = useState<MixMetrics | null>(null)
+  const [progress, setProgress] = useState<string | null>(null)
   const [playSignal, setPlaySignal] = useState(0)
   const [playReady, setPlayReady] = useState(false)
   const [current, setCurrent] = useState(0)
@@ -36,6 +37,7 @@ export default function App() {
     outputUrl.current = null
     setUrl(null)
     setMetrics(null)
+    setProgress(null)
     setPlayReady(false)
     setCurrent(0)
     setDuration(0)
@@ -95,9 +97,22 @@ export default function App() {
         setMessage('Analysis complete. Your mix is ready to render.')
       } else {
         resetOutput()
-        const result = await mix(files, count, transition, controller.signal)
-        const blob = result.audio
+        const queued = await queueMix(files, count, transition, controller.signal)
+        let job = await fetchJob(queued.id, controller.signal)
+        while (job.status === 'queued' || job.status === 'processing') {
+          setProgress(job.status === 'queued' ? 'Waiting in mixing queue…' : 'Rendering ' + job.completed_tracks + '/' + job.total_tracks + ' tracks')
+          await new Promise<void>((resolve, reject) => {
+            const timer = window.setTimeout(() => { controller.signal.removeEventListener('abort', onAbort); resolve() }, 1200)
+            const onAbort = () => { window.clearTimeout(timer); reject(new DOMException('Canceled', 'AbortError')) }
+            controller.signal.addEventListener('abort', onAbort, { once: true })
+          })
+          job = await fetchJob(queued.id, controller.signal)
+        }
+        if (job.status !== 'done') throw new Error(job.error || 'Audio rendering failed.')
+        const blob = await downloadJob(queued.id, controller.signal)
+        const result = { metrics: { peak: job.metrics?.peak ?? 0, rms: job.metrics?.rms ?? 0, nearSilence: job.metrics?.nearSilence ?? 0, clippingRisk: job.metrics?.clippingRisk ?? false } }
         setMetrics(result.metrics)
+        setProgress(null)
         if (!blob.size) throw new Error('The server returned an empty audio file.')
         const nextUrl = URL.createObjectURL(blob)
         outputUrl.current = nextUrl
@@ -111,6 +126,7 @@ export default function App() {
       setMessage(canceled ? 'Request canceled.' : err instanceof Error ? err.message : 'Unexpected processing error.')
     } finally {
       request.current = null
+      setProgress(null)
       setBusy(null)
     }
   }
@@ -175,7 +191,7 @@ export default function App() {
             <button className="action secondary" disabled={!ready} onClick={() => void run('analysis')}>{busy === 'analysis' ? <LoaderCircle className="spin" size={18}/> : <Activity size={18}/>} Analyze Tracks</button>
             <button className="action primary" disabled={!ready} onClick={() => void run('mix')}>{busy === 'mix' ? <LoaderCircle className="spin" size={18}/> : <Sparkles size={18}/>} Create My Mix</button>
             {busy && <button className="cancel" onClick={cancel}><X size={15}/> Cancel request</button>}
-            <div className={error ? 'message error' : 'message'} role="status" aria-live="polite">{message}</div>
+            <div className={error ? 'message error' : 'message'} role="status" aria-live="polite">{progress || message}</div>
           </aside>
         </div>
 
