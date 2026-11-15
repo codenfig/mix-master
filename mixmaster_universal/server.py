@@ -93,7 +93,7 @@ def mix(songs: list[UploadFile] = File(...), count: int = Form(10), transition: 
         ordered = [analysis[i] for i in mix_plan['order_indices']]
         out = tmp / "MixMaster_AI_Nonstop.mp3"
         try:
-            render(ordered, out, transition=transition)
+            quality = render(ordered, out, transition=transition)
         except Exception as exc:
             raise HTTPException(422, "Audio rendering failed. Check track lengths and FFmpeg installation.") from exc
         saved = Path(tempfile.gettempdir()) / f"mixmaster_{uuid.uuid4().hex}.mp3"
@@ -103,5 +103,9 @@ def mix(songs: list[UploadFile] = File(...), count: int = Form(10), transition: 
             media_type="audio/mpeg",
             filename="MixMaster_AI_Nonstop.mp3",
             background=BackgroundTask(lambda: saved.unlink(missing_ok=True)),
-            headers={"X-MixMaster-Track-Count": str(count)},
+            headers={"X-MixMaster-Track-Count": str(count),
+                     "X-MixMaster-Peak": str(quality["peak"]),
+                     "X-MixMaster-RMS": str(quality["rms"]),
+                     "X-MixMaster-Near-Silence": str(quality["near_silence_fraction"]),
+                     "X-MixMaster-Clipping-Risk": str(quality["clipping_risk"]).lower()},
         )
