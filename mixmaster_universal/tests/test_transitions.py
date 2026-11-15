@@ -30,3 +30,18 @@ def test_optimizer_handles_short_audio():
     offset, metrics, attempts = optimize_transition(audio, audio, 100, sr=1000)
     assert offset == 0
     assert attempts == 1
+
+def test_optimizer_can_choose_later_beat_aligned_entry():
+    sr = 1000
+    fade = 1000
+    t = np.arange(fade, dtype=np.float32) / sr
+    outgoing_mono = 0.3 * np.sin(2 * np.pi * 30 * t)
+    outgoing = np.stack([outgoing_mono, outgoing_mono], axis=1)
+    incoming = np.zeros((24000, 2), dtype=np.float32)
+    # At 120 BPM, a four-bar boundary occurs at 8 seconds.
+    incoming[8000:9000] = outgoing
+    offset, metrics, attempts = optimize_transition(
+        outgoing, incoming, fade, sr=sr, bpm=120, beat_offset=0)
+    assert offset == 8000
+    assert attempts > 4
+    assert metrics["score"] > 90

@@ -57,3 +57,19 @@
 .content>.signal-panel{margin-top:22px}
 @media(max-width:1100px){.banner-orb{right:4%;opacity:.35}.overview-banner h2,.overview-banner p{position:relative;z-index:1}}
 @media(max-width:760px){.overview-stats,.overview-grid{grid-template-columns:1fr}.overview-banner{padding:28px}.banner-orb{display:none}.page-heading{align-items:flex-start;flex-direction:column}.page-heading-actions .action{width:auto}.sidebar{display:flex;position:relative;width:100%;height:auto;padding:15px;border-right:0;border-bottom:1px solid #29253f}.app{display:block}.brand{padding:4px 6px 15px}.sidebar nav{display:flex;overflow-x:auto;gap:6px}.sidebar .nav{flex-shrink:0;padding:11px 13px}.sidebar-bottom,.nav-label{display:none}.topbar{height:55px}.content{padding:17px}}
+
+/* File selection confirmation and track management */
+.upload-feedback{margin-top:18px;border:1px solid #403456;background:#1a182c;border-radius:12px;padding:17px}
+.upload-feedback-heading{display:flex;justify-content:space-between;align-items:center;gap:12px;font-size:12px}
+.upload-feedback-heading strong{color:#f0e4ff}
+.upload-feedback-heading span{color:#b39aca}
+.upload-progress{height:6px;border-radius:10px;background:#342a47;overflow:hidden;margin:13px 0}
+.upload-progress span{display:block;height:100%;border-radius:10px;background:linear-gradient(90deg,#7b60ee,#d08dff);transition:width .2s}
+.selected-tracks{display:grid;gap:7px;max-height:270px;overflow:auto;margin-top:12px}
+.selected-track{display:flex;align-items:center;gap:10px;padding:10px 12px;background:#232039;border:1px solid #37304d;border-radius:9px;color:#b995ec;min-width:0}
+.selected-track>span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;color:#e9e2f7}
+.selected-track small{color:#9690aa;white-space:nowrap}
+.selected-track button{background:transparent;border:0;color:#b5a6c8;padding:3px;display:grid;place-items:center}
+.selected-track button:hover{color:#ffb6ce}
+.library-upload-actions{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;padding:13px 0;color:#a7a0be;font-size:12px}
+.library-upload-actions button{display:inline-flex;align-items:center;gap:7px;border:1px solid #594278;background:#322448;color:#e1c9ff;border-radius:8px;padding:9px 12px;font-size:12px}
