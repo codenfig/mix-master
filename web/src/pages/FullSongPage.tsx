@@ -35,7 +35,6 @@ export default function FullSongPage() {
   const [capabilities,setCapabilities] = useState({instrumental:false,vocals:false,full_song:false})
   const [engineMessage,setEngineMessage] = useState('Checking local engine…')
   const [generating,setGenerating] = useState(false)
-  const [audio,setAudio] = useState<{file:{id:string;name:string};download_url:string}|null>(null)
   useEffect(()=>{const controller=new AbortController();const timer=window.setTimeout(()=>controller.abort(),8000);void fetch('/api/full-song/engine',{signal:controller.signal}).then(async response=>{if(!response.ok)throw new Error('Backend unavailable');return response.json() as Promise<{generation_available:boolean;reason:string|null;capabilities?:{instrumental:boolean;vocals:boolean;full_song:boolean}}>}).then(data=>{setCapabilities(data.capabilities||{instrumental:false,vocals:false,full_song:false});setEngineMessage(data.generation_available?'Local engine configured':data.reason||'Engine unavailable')}).catch(()=>setEngineMessage('Backend unavailable. Restart Python server.')).finally(()=>window.clearTimeout(timer));return ()=>{controller.abort();window.clearTimeout(timer)}},[])
   const [jobId,setJobId] = useState<string>(()=>{try{return window.sessionStorage.getItem('mixmaster-full-song-job')||''}catch{return ''}})
   const [jobStage,setJobStage] = useState('')
@@ -54,7 +53,7 @@ export default function FullSongPage() {
         const job=await response.json() as {status:string;stage:string;elapsed_seconds:number;error:string|null;file:{id:string;name:string}|null;download_url:string|null}
         if(stopped)return
         setJobStage(job.stage);setJobElapsed(job.elapsed_seconds)
-        if(job.status==='completed'&&job.file&&job.download_url){setAudio({file:job.file,download_url:job.download_url});setSelectedId(job.file.id);setRefreshKey(k=>k+1);setGenerating(false);setJobId('')}
+        if(job.status==='completed'&&job.file&&job.download_url){setSelectedId(job.file.id);setRefreshKey(k=>k+1);setGenerating(false);setJobId('')}
         else if(job.status==='failed'||job.status==='cancelled'){setError(job.error|| (job.status==='cancelled'?'Generation cancelled.':'Generation failed.'));setGenerating(false);setJobId('')}
       }catch(e){if(!stopped){setError(e instanceof Error?e.message:'Unable to check generation status.');setGenerating(false);if(e instanceof Error && e.message.includes('404'))setJobId('')}}
     }
@@ -65,7 +64,7 @@ export default function FullSongPage() {
   },[jobId])
   async function generate(){
     if(generating||jobId)return
-    setGenerating(true);setError('');setAudio(null);setJobElapsed(0);setJobStage('queued')
+    setGenerating(true);setError('');setJobElapsed(0);setJobStage('queued')
     const controller=new AbortController()
     const timer=window.setTimeout(()=>controller.abort(),10000)
     try{
@@ -130,7 +129,7 @@ export default function FullSongPage() {
         <label className="mm-generator-search"><Search size={16}/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search Music" aria-label="Search generated music"/></label>
         {libraryError&&<p className="mm-generator-library-error" role="alert">{libraryError}</p>}
         <div className="mm-generator-song-list">
-          {filteredSongs.map((song,index)=><button type="button" key={song.id} className={'mm-generator-song-row'+(selectedId===song.id?' selected':'')} onClick={()=>{setSelectedId(song.id);setShowDetails(true)}}><span className={'mm-song-art mm-song-art-'+index%4}><Music2 size={21}/></span><span className="mm-song-meta"><strong>{song.name.replace(/\.(wav|mp3|flac)$/i,'')}</strong><small>{new Date(song.created_at).toLocaleString()}</small><span className="mm-song-chip">{song.category==='full_song'?'Full Song':'Text to Song'}</span></span><span className="mm-song-row-actions"><a href={'/api/generated-files/'+song.id+'/download'} onClick={e=>e.stopPropagation()} title={'Download '+song.name}><Download size={17}/></a><ArrowRight size={15}/></span></button>)}
+          {filteredSongs.map((song,index)=><button type="button" key={song.id} className={'mm-generator-song-row'+(selectedId===song.id?' selected':'')} onClick={()=>{setSelectedId(song.id);setShowDetails(true)}}><span className={'mm-song-art mm-song-art-'+index%4}><Music2 size={21}/></span><span className="mm-song-meta"><strong>{song.name.replace(/\.(wav|mp3|flac)$/i,'')}</strong><small>{new Date(song.created_at).toLocaleString()}</small><span className="mm-song-chip">{song.category==='full_song'?'Full Song':'Text to Song'}</span></span><span className="mm-song-row-actions"><ArrowRight size={15}/></span></button>)}
           {!libraryLoading&&!filteredSongs.length&&<div className="mm-generator-empty"><div><Music2 size={34}/></div><strong>{search?'No matching tracks':'Your music will appear here'}</strong><p>{search?'Try a different search.':'Create a track to start your music library.'}</p></div>}
           {libraryLoading&&<p className="mm-generator-loading">Loading music…</p>}
         </div>
