@@ -21,6 +21,11 @@ SUPPORTED = {".mp3", ".wav", ".flac", ".m4a", ".ogg", ".aac"}
 MAX_FILE_BYTES = 200 * 1024 * 1024
 VALID_COUNTS = {5, 10, 20}
 MASTERING_PRESETS = {"off", "balanced", "club"}
+KICK_STYLES = {"soft", "club"}
+
+def validate_kick(style: str, level: float):
+    if style not in KICK_STYLES or not 0 <= level <= 0.35:
+        raise HTTPException(400, "Invalid kick style or level.")
 
 
 @app.get("/")
@@ -85,10 +90,11 @@ def analyze_songs(songs: list[UploadFile] = File(...), count: int = Form(10)):
 
 
 @app.post("/api/mix")
-def mix(songs: list[UploadFile] = File(...), count: int = Form(10), transition: int = Form(12), mastering: str = Form("balanced")):
+def mix(songs: list[UploadFile] = File(...), count: int = Form(10), transition: int = Form(12), mastering: str = Form("balanced"), kick_enabled: bool = Form(False), kick_style: str = Form("soft"), kick_level: float = Form(0.16)):
     validate_settings(count, transition)
     if mastering not in MASTERING_PRESETS:
         raise HTTPException(400, "Unknown mastering preset.")
+    validate_kick(kick_style, kick_level)
     with TemporaryDirectory(prefix="mixmaster_") as temp:
         tmp = Path(temp)
         tracks, names = save_uploads(songs, tmp, count)
@@ -97,7 +103,7 @@ def mix(songs: list[UploadFile] = File(...), count: int = Form(10), transition: 
         ordered = [analysis[i] for i in mix_plan['order_indices']]
         out = tmp / "MixMaster_AI_Nonstop.mp3"
         try:
-            quality = render(ordered, out, transition=transition, mastering=mastering)
+            quality = render(ordered, out, transition=transition, mastering=mastering, kick_enabled=kick_enabled, kick_style=kick_style, kick_level=kick_level)
         except Exception as exc:
             raise HTTPException(422, "Audio rendering failed. Check track lengths and FFmpeg installation.") from exc
         saved = Path(tempfile.gettempdir()) / f"mixmaster_{uuid.uuid4().hex}.mp3"
@@ -125,7 +131,7 @@ def queue_mix(songs: list[UploadFile] = File(...), count: int = Form(10), transi
     try:
         tracks, names = save_uploads(songs, directory, count)
         analysis = inspect_tracks(tracks, names)
-        job_id = create_job(analysis, transition, directory, mastering=mastering)
+        job_id = create_job(analysis, transition, directory, mastering=mastering, kick_enabled=kick_enabled, kick_style=kick_style, kick_level=kick_level)
         return {"id": job_id, "status": "queued", "status_url": f"/api/jobs/{job_id}"}
     except RuntimeError as exc:
         shutil.rmtree(directory, ignore_errors=True)
