@@ -6,6 +6,8 @@ from threading import Lock
 from time import time
 from uuid import uuid4
 import math
+import json
+import re
 import subprocess
 
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
@@ -32,6 +34,28 @@ def _prune():
         job["temp"].cleanup()
 
 
+def _measure(path: Path) -> dict:
+    """Measure full-track EBU R128 loudness and true peak, not preset targets."""
+    command = ["ffmpeg", "-hide_banner", "-nostdin", "-i", str(path),
+               "-vn", "-af", "loudnorm=I=-14:TP=-1.5:LRA=11:print_format=json",
+               "-f", "null", "-"]
+    process = subprocess.run(command, capture_output=True, text=True, timeout=900)
+    if process.returncode:
+        raise RuntimeError("Unable to analyze audio loudness.")
+    blocks = re.findall(r"\\{[^{}]*\"input_i\"[^{}]*\\}", process.stderr, re.S)
+    if not blocks:
+        raise RuntimeError("FFmpeg did not report audio loudness measurements.")
+    values = json.loads(blocks[-1])
+    def number(key):
+        try:
+            value = float(values[key])
+            return round(value, 2) if math.isfinite(value) else None
+        except (KeyError, ValueError, TypeError):
+            return None
+    return {"integrated_lufs": number("input_i"), "true_peak_dbtp": number("input_tp"),
+            "loudness_range_lu": number("input_lra")}
+
+
 def _run(job_id):
     with _lock:
         job = _jobs[job_id]
@@ -56,7 +80,10 @@ def _run(job_id):
         process = subprocess.run(command, capture_output=True, text=True, timeout=1800)
         if process.returncode or not output.is_file() or not output.stat().st_size:
             raise RuntimeError("FFmpeg mastering failed. Check audio format, disk space and server logs.")
+        before = _measure(source)
+        after = _measure(output)
         with _lock:
+            job["measurements"] = {"before": before, "after": after}
             job["output"] = output
             job["status"] = "complete"
             job["updated"] = time()
@@ -102,7 +129,7 @@ def create_mastering_job(song: UploadFile = File(...), preset: str = Form("balan
         job_id = uuid4().hex
         with _lock:
             _jobs[job_id] = {"status": "queued", "updated": time(), "temp": temp,
-                             "source": source, "options": options, "output": None,
+                             "source": source, "options": options, "output": None, "measurements": None,
                              "filename": Path(filename).stem, "error": None}
         _executor.submit(_run, job_id)
         return {"id": job_id, "status": "queued"}
@@ -118,7 +145,8 @@ def mastering_status(job_id: str):
         job = _jobs.get(job_id)
         if job is None:
             raise HTTPException(404, "Job not found or expired.")
-        return {"id": job_id, "status": job["status"], "error": job["error"]}
+        return {"id": job_id, "status": job["status"], "error": job["error"],
+                "measurements": job["measurements"]}
 
 
 @router.get("/api/mastering/jobs/{job_id}/download")
