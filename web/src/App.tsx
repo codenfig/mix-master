@@ -110,7 +110,7 @@ export default function App() {
         }
         if (job.status !== 'done') throw new Error(job.error || 'Audio rendering failed.')
         const blob = await downloadJob(queued.id, controller.signal)
-        const result = { metrics: { peak: job.metrics?.peak ?? 0, rms: job.metrics?.rms ?? 0, nearSilence: job.metrics?.nearSilence ?? 0, clippingRisk: job.metrics?.clippingRisk ?? false } }
+        const result = { metrics: { peak: job.metrics?.peak ?? 0, rms: job.metrics?.rms ?? 0, nearSilence: job.metrics?.near_silence_fraction ?? 0, clippingRisk: job.metrics?.clipping_risk ?? false } }
         setMetrics(result.metrics)
         setProgress(null)
         if (!blob.size) throw new Error('The server returned an empty audio file.')
