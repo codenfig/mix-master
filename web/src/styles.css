@@ -241,3 +241,39 @@
 
 /* Play/pause button caption follows the actual waveform playback state. */
 .dj-play-btn{display:inline-flex;align-items:center;justify-content:center;gap:9px}.dj-play-caption{font-size:12px;font-weight:700;letter-spacing:.02em}
+
+
+/* Compact, viewport-aware overview dashboard; other operations retain normal scrolling. */
+@media(min-width:1100px) and (min-height:650px){
+  .main:has(.overview-content){height:100vh;overflow:hidden;display:flex;flex-direction:column}
+  .main:has(.overview-content) .topbar{flex:0 0 58px;height:58px}
+  .overview-content{flex:1;min-height:0;display:flex;flex-direction:column;gap:clamp(10px,1.25vh,18px);padding:clamp(12px,1.5vh,20px) 30px 12px;max-width:1600px;width:100%}
+  .overview-content .page-heading{flex:0 0 auto;margin:0}
+  .overview-content .page-heading h1{font-size:clamp(20px,2vw,28px);margin:4px 0}
+  .overview-content .page-heading p{margin:0}
+  .overview-content .overview-page{flex:1;min-height:0;display:grid;grid-template-rows:minmax(0,1.15fr) minmax(92px,.43fr) minmax(0,1fr);gap:clamp(10px,1.25vh,18px)}
+  .overview-content .overview-banner{min-height:0;height:100%;padding:clamp(19px,3vh,32px) clamp(24px,3vw,42px)}
+  .overview-content .overview-banner h2{font-size:clamp(29px,3.25vw,51px);margin:8px 0}
+  .overview-content .overview-banner p{font-size:clamp(11px,.95vw,13px);line-height:1.5}
+  .overview-content .overview-cta{padding:10px 17px;margin-top:11px}
+  .overview-content .banner-orb{width:clamp(115px,12vw,170px);height:clamp(115px,12vw,170px);top:50%;transform:translateY(-50%)}
+  .overview-content .overview-stats{margin:0;gap:14px;min-height:0}
+  .overview-content .stat-card{padding:clamp(12px,1.6vh,19px);gap:4px;justify-content:center}
+  .overview-content .stat-card strong{font-size:clamp(23px,2.5vw,32px)}
+  .overview-content .overview-grid{min-height:0;gap:14px}
+  .overview-content .overview-grid>.panel{min-height:0;overflow:hidden;padding:clamp(12px,1.6vh,20px)}
+  .overview-content .overview-grid .panel-heading{margin-bottom:6px}
+  .overview-content .overview-grid .panel-heading h2{font-size:15px}
+  .overview-content .overview-grid .panel-heading p{font-size:11px;margin-top:3px}
+  .overview-content .status-rows>div{padding:clamp(7px,1vh,12px) 0}
+  .overview-content .recent-row{padding:clamp(5px,.65vh,9px) 0}
+  .overview-content .recent-icon{padding:7px}
+  .overview-content .inline-link{padding:6px 0;font-size:12px}
+  .overview-content footer{display:none}
+}
+.overview-banner-glow{position:absolute;width:320px;height:320px;right:4%;top:-55%;border-radius:50%;background:#b15cff35;filter:blur(80px);pointer-events:none}
+.overview-banner{isolation:isolate}
+.overview-banner>.eyebrow,.overview-banner>h2,.overview-banner>p,.overview-banner>.overview-cta{position:relative;z-index:1}
+.overview-content .stat-card{background:linear-gradient(145deg,#231a3b,#141527 75%);border-color:#51416a;box-shadow:inset 0 1px #ffffff0b}
+.overview-content .overview-grid>.panel{background:linear-gradient(155deg,#1b1831,#111321)}
+@media(max-height:740px) and (min-width:1100px){.overview-content .overview-grid .panel-heading p{display:none}.overview-content .overview-grid .recent-row:nth-of-type(4){display:none}}
