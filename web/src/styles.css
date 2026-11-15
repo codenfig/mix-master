@@ -73,3 +73,7 @@
 .selected-track button:hover{color:#ffb6ce}
 .library-upload-actions{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;padding:13px 0;color:#a7a0be;font-size:12px}
 .library-upload-actions button{display:inline-flex;align-items:center;gap:7px;border:1px solid #594278;background:#322448;color:#e1c9ff;border-radius:8px;padding:9px 12px;font-size:12px}
+
+.mastering-options{margin-bottom:10px}
+.mastering-report{margin-top:22px}
+.mastering-options button{text-transform:none}
