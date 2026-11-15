@@ -5,7 +5,7 @@ export type Track = {
   key: string
   energy: number
 }
-export type MixPlan = { quality_score: number; strategy: string; note: string; transitions: { from: string; to: string; compatibility: number; harmonic_score: number; tempo_distance: number; warning: string | null }[] }
+export type MixPlan = { order_indices: number[]; quality_score: number; strategy: string; note: string; transitions: { from: string; to: string; compatibility: number; harmonic_score: number; tempo_distance: number; warning: string | null }[] }
 export type AnalysisResult = { tracks: Track[]; order: string[]; plan?: MixPlan }
 
 function formData(files: File[], count: number, transition: number): FormData {
