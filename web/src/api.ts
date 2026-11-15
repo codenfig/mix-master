@@ -8,18 +8,19 @@ export type Track = {
 export type MixPlan = { order_indices: number[]; quality_score: number; strategy: string; note: string; transitions: { from: string; to: string; compatibility: number; harmonic_score: number; tempo_distance: number; warning: string | null }[] }
 export type AnalysisResult = { tracks: Track[]; order: string[]; plan?: MixPlan }
 
-function formData(files: File[], count: number, transition: number): FormData {
+function formData(files: File[], count: number, transition: number, mastering = "balanced"): FormData {
   const data = new FormData()
   files.forEach(file => data.append('songs', file))
   data.append('count', String(count))
   data.append('transition', String(transition))
+  data.append('mastering', mastering)
   return data
 }
 
-async function post(endpoint: string, files: File[], count: number, transition: number, signal?: AbortSignal) {
+async function post(endpoint: string, files: File[], count: number, transition: number, signal?: AbortSignal, mastering = "balanced") {
   let response: Response
   try {
-    response = await fetch(endpoint, { method: 'POST', body: formData(files, count, transition), signal })
+    response = await fetch(endpoint, { method: 'POST', body: formData(files, count, transition, mastering), signal })
   } catch (error) {
     if (error instanceof DOMException && error.name === 'AbortError') throw error
     throw new Error('Cannot reach the audio server. Start FastAPI on port 8000.')
@@ -53,9 +54,9 @@ export async function mix(files: File[], count: number, transition: number, sign
   } }
 }
 
-export type MixJob = { id: string; status: 'queued' | 'processing' | 'done' | 'failed'; completed_tracks: number; total_tracks: number; error: string | null; metrics: { peak: number; rms: number; near_silence_fraction: number; clipping_risk: boolean; transition_proxy_average?: number | null; transitions?: { from: string; to: string; proxy_score: number; loudness_gap_db: number; attempts: number }[] } | null }
-export async function queueMix(files: File[], count: number, transition: number, signal?: AbortSignal): Promise<{ id: string }> {
-  return (await post('/api/jobs', files, count, transition, signal)).json()
+export type MixJob = { id: string; status: 'queued' | 'processing' | 'done' | 'failed'; completed_tracks: number; total_tracks: number; error: string | null; metrics: { peak: number; rms: number; near_silence_fraction: number; clipping_risk: boolean; transition_proxy_average?: number | null; mastering?: { preset: string; target_lufs: number | null; true_peak_limit_dbtp: number | null }; transitions?: { from: string; to: string; proxy_score: number; loudness_gap_db: number; attempts: number }[] } | null }
+export async function queueMix(files: File[], count: number, transition: number, signal?: AbortSignal, mastering = "balanced"): Promise<{ id: string }> {
+  return (await post('/api/jobs', files, count, transition, signal, mastering)).json()
 }
 export async function fetchJob(id: string, signal?: AbortSignal): Promise<MixJob> {
   const response = await fetch('/api/jobs/' + encodeURIComponent(id), { signal })
