@@ -12,6 +12,7 @@ from starlette.background import BackgroundTask
 
 from engine import analyze, render
 from planner import plan
+from jobs import allocate_directory, create_job, get_job, get_download
 
 ROOT = Path(__file__).resolve().parent
 app = FastAPI(title="MixMaster AI Universal", version="0.2.0")
@@ -109,3 +110,37 @@ def mix(songs: list[UploadFile] = File(...), count: int = Form(10), transition: 
                      "X-MixMaster-Near-Silence": str(quality["near_silence_fraction"]),
                      "X-MixMaster-Clipping-Risk": str(quality["clipping_risk"]).lower()},
         )
+
+
+@app.post("/api/jobs", status_code=202)
+def queue_mix(songs: list[UploadFile] = File(...), count: int = Form(10), transition: int = Form(12)):
+    """Accept uploads, analyze, then render asynchronously in one bounded worker."""
+    validate_settings(count, transition)
+    directory = allocate_directory()
+    try:
+        tracks, names = save_uploads(songs, directory, count)
+        analysis = inspect_tracks(tracks, names)
+        job_id = create_job(analysis, transition, directory)
+        return {"id": job_id, "status": "queued", "status_url": f"/api/jobs/{job_id}"}
+    except RuntimeError as exc:
+        shutil.rmtree(directory, ignore_errors=True)
+        raise HTTPException(503, str(exc)) from exc
+    except Exception:
+        shutil.rmtree(directory, ignore_errors=True)
+        raise
+
+
+@app.get("/api/jobs/{job_id}")
+def job_status(job_id: str):
+    job = get_job(job_id)
+    if job is None:
+        raise HTTPException(404, "Job not found or expired.")
+    return job
+
+
+@app.get("/api/jobs/{job_id}/download")
+def job_download(job_id: str):
+    path = get_download(job_id)
+    if path is None:
+        raise HTTPException(404, "Mix not ready or job expired.")
+    return FileResponse(path, media_type="audio/mpeg", filename="MixMaster_AI_Nonstop.mp3")
