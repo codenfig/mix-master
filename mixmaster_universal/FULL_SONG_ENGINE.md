@@ -131,3 +131,25 @@ Run `npm run build` from `web/` to check TypeScript and Vite.
 server restarts or work across multiple workers. No per-user access controls,
 durable queue, or persistent progress database are provided. Do not deploy
 this local job API as a public multi-user service without addressing these.
+
+## Preflight before generating
+
+From the backend virtual environment run:
+
+```bash
+python check_full_song.py
+```
+
+This reports installed Python packages, local MusicGen model-file presence,
+and whether instrumental/vocal engine launchers are configured and executable.
+It makes **no network requests** and does not load the model. File presence
+does not prove that a model can run successfully.
+
+If the backend was previously stuck on port 8000, verify it responds before
+generating:
+
+```bash
+curl --max-time 10 http://127.0.0.1:8000/api/full-song/engine
+```
+
+A timeout here is a backend availability problem, not slow song composition.
