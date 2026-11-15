@@ -50,6 +50,19 @@ export default function App() {
   const [kickResult, setKickResult] = useState<{ enabled: boolean; style: string | null; bpm: number | null; level: number | null; source?: string | null; source_offset_seconds?: number | null } | null>(null)
   const [preset, setPreset] = useState<'smooth' | 'balanced' | 'quick'>('balanced')
   const [history, setHistory] = useState<{ tracks: number; created: string }[]>(() => { try { return JSON.parse(localStorage.getItem('mixmaster_history') || '[]') } catch { return [] } })
+  const [coverImage, setCoverImage] = useState<File | null>(null)
+  const [coverPreview, setCoverPreview] = useState<string | null>(null)
+  const [mixTitle, setMixTitle] = useState('My DJ Mix')
+  const [mixArtist, setMixArtist] = useState('MixMaster AI')
+  const [mixAlbum, setMixAlbum] = useState('MixMaster AI')
+  const [mixYear, setMixYear] = useState('')
+  const [coverError, setCoverError] = useState('')
+  useEffect(() => {
+    if (!coverImage) { setCoverPreview(null); return }
+    const next = URL.createObjectURL(coverImage)
+    setCoverPreview(next)
+    return () => URL.revokeObjectURL(next)
+  }, [coverImage])
   const [files, setFiles] = useState<File[]>([])
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(null)
   const [tab, setTab] = useState<'tracks' | 'order'>('tracks')
@@ -224,7 +237,7 @@ export default function App() {
         setMessage('Analysis complete. Your mix is ready to render.')
       } else {
         resetOutput()
-        const queued = await queueMix(files, count, transition, controller.signal, mastering, { enabled: kickEnabled, style: kickStyle, level: kickLevel / 100, sourceIndex: kickSourceIndex }, { target_lufs: targetLufs, true_peak: truePeak, bass_db: bassDb, treble_db: trebleDb, compression })
+        const queued = await queueMix(files, count, transition, controller.signal, mastering, { enabled: kickEnabled, style: kickStyle, level: kickLevel / 100, sourceIndex: kickSourceIndex }, { target_lufs: targetLufs, true_peak: truePeak, bass_db: bassDb, treble_db: trebleDb, compression }, { image: coverImage, title: mixTitle, artist: mixArtist, album: mixAlbum, year: mixYear })
         setActiveJob(queued.id)
         try { localStorage.setItem('mixmaster_active_job', queued.id) } catch { /* Storage may be unavailable */ }
         let job = await fetchJob(queued.id, controller.signal)
@@ -317,6 +330,24 @@ export default function App() {
               </div>
             </div>}
 
+            {page === 'studio' && <section className="panel cover-panel">
+              <div className="panel-heading"><div><h2><FileAudio size={20}/> Cover Art &amp; Metadata</h2><p>Personalize your exported MP3 artwork and music-player details.</p></div></div>
+              <div className="cover-editor">
+                <label className="cover-upload">
+                  {coverPreview ? <img src={coverPreview} alt="Selected mix cover" /> : <span><UploadCloud size={27}/> Upload JPG / PNG cover<small>Square recommended · 10 MiB max</small></span>}
+                  <input type="file" accept=".jpg,.jpeg,.png,image/jpeg,image/png" disabled={busy !== null} onChange={e=>{const f=e.target.files?.[0];e.target.value='';if(!f)return;if(!['image/jpeg','image/png'].includes(f.type)||f.size>10*1024*1024||f.size===0){setCoverError('Choose a JPG or PNG under 10 MiB.');return}setCoverError('');setCoverImage(f)}}/>
+                </label>
+                <div className="cover-fields">
+                  <label>Mix title<input maxLength={120} value={mixTitle} onChange={e=>setMixTitle(e.target.value)} disabled={busy!==null}/></label>
+                  <label>DJ / Artist<input maxLength={120} value={mixArtist} onChange={e=>setMixArtist(e.target.value)} disabled={busy!==null}/></label>
+                  <label>Album<input maxLength={120} value={mixAlbum} onChange={e=>setMixAlbum(e.target.value)} disabled={busy!==null}/></label>
+                  <label>Year (optional)<input maxLength={4} inputMode="numeric" placeholder="2026" value={mixYear} onChange={e=>setMixYear(e.target.value.replace(/[^0-9]/g,''))} disabled={busy!==null}/></label>
+                  {coverImage&&<button type="button" className="inline-link" disabled={busy!==null} onClick={()=>setCoverImage(null)}>Remove cover image</button>}
+                </div>
+              </div>
+              {coverError&&<p className="cover-error" role="alert">{coverError}</p>}
+              <small className="cover-hint">Artwork and metadata are embedded in the MP3 when you generate the mix.</small>
+            </section>}
             {(page === 'studio' || page === 'library') && <div className="panel library" id="library">
               <div className="panel-heading"><div><h2><ListMusic size={20}/> Track Analysis</h2><p>Insights into your selected music.</p></div><button className="subtle" disabled={busy !== null || files.length === 0} onClick={() => chooseFiles([])}><RotateCcw size={15}/> Clear</button></div>
               {page === 'library' && <div className="library-upload-actions"><span>{files.length} tracks in this session</span><button type="button" onClick={() => navigate('studio')}><UploadCloud size={16}/> Add tracks in Create Mix</button></div>}
@@ -362,8 +393,8 @@ export default function App() {
         {page === 'preview' && <div className="dj-preview">
           <div className="dj-banner"><div className="dj-banner-copy"><span className="dj-kicker">MIXMASTER WORKSPACE</span><h2>Mix Preview</h2><p>Listen, analyze and export your AI-powered DJ mix</p></div><div className="dj-banner-eq" aria-hidden="true">{Array.from({length:42},(_,i)=><i key={i} style={{height: (15+Math.abs(Math.sin(i*.67)*Math.cos(i*.17))*76)+'%'}}/>)}</div><div className="dj-headphones" aria-hidden="true"/></div>
           <section className="dj-main-deck">
-            <div className={"dj-cover-stack" + (isPlaying ? " is-spinning" : "")} aria-hidden="true"><div className="dj-vinyl"><div className="dj-vinyl-center"/></div><div className="dj-cover" role="img" aria-label="Neon DJ silhouette and AI DJ MIX album cover"/></div>
-            <div className="dj-deck-center"><div className="dj-track-heading"><div><div className="dj-track-title"><h3>My DJ Mix</h3><span>AI MIX</span></div><p>Continuous set <b>•</b> AI arranged <b>•</b> Studio master</p></div></div><div className="dj-main-wave"><Waveform url={url} onTime={(t,d)=>{setCurrent(t);setDuration(d)}} onReady={setPlayReady} playSignal={playSignal} onPlayingChange={setIsPlaying}/></div><div className="dj-timeline"><span>{formatTime(current)}</span><div className="dj-progress-track"><div style={{width:duration?Math.min(100,current/duration*100)+'%':'0%'}}/></div><span>{formatTime(duration)}</span></div><div className="dj-player-actions"><span className="dj-player-label"><Headphones size={15}/> STUDIO LISTENING</span><button type="button" className="dj-play-btn" disabled={!playReady} onClick={()=>setPlaySignal(v=>v+1)} aria-label="Play or pause mix"><Play size={25} fill="currentColor"/></button><span className="dj-player-label">MP3 · EXPORT READY</span></div></div>
+            <div className={"dj-cover-stack" + (isPlaying ? " is-spinning" : "")} aria-hidden="true"><div className="dj-vinyl"><div className="dj-vinyl-center"/></div><div className="dj-cover" role="img" aria-label={coverPreview ? "Custom mix cover" : "Neon DJ silhouette and AI DJ MIX album cover"} style={coverPreview ? {backgroundImage: "url(" + coverPreview + ")", backgroundSize: "cover", backgroundPosition: "center"} : undefined}/></div>
+            <div className="dj-deck-center"><div className="dj-track-heading"><div><div className="dj-track-title"><h3>{mixTitle || "My DJ Mix"}</h3><span>AI MIX</span></div><p>Continuous set <b>•</b> AI arranged <b>•</b> Studio master</p></div></div><div className="dj-main-wave"><Waveform url={url} onTime={(t,d)=>{setCurrent(t);setDuration(d)}} onReady={setPlayReady} playSignal={playSignal} onPlayingChange={setIsPlaying}/></div><div className="dj-timeline"><span>{formatTime(current)}</span><div className="dj-progress-track"><div style={{width:duration?Math.min(100,current/duration*100)+'%':'0%'}}/></div><span>{formatTime(duration)}</span></div><div className="dj-player-actions"><span className="dj-player-label"><Headphones size={15}/> STUDIO LISTENING</span><button type="button" className="dj-play-btn" disabled={!playReady} onClick={()=>setPlaySignal(v=>v+1)} aria-label="Play or pause mix"><Play size={25} fill="currentColor"/></button><span className="dj-player-label">MP3 · EXPORT READY</span></div></div>
             <aside className="dj-summary"><span className="dj-card-label">MIX SUMMARY</span><div className="dj-summary-row"><Music2 size={20}/><div><strong>{url?formatTime(duration):'--:--'}</strong><small>Total Mix Duration</small></div></div><div className="dj-summary-row"><ListMusic size={20}/><div><strong>{url?count:'—'}</strong><small>Tracks Mixed</small></div></div><div className="dj-summary-row"><Activity size={20}/><div><strong>{url?Math.max(0,count-1):'—'}</strong><small>Transitions · {transition}s each</small></div></div>{url?<a className="dj-download" href={url} download="MixMaster_AI_Nonstop.mp3"><Download size={18}/> Download MP3</a>:<button className="dj-download" disabled><Download size={18}/> {activeJob?'Rendering mix':'No mix yet'}</button>}</aside>
           </section>
           <div className="dj-console-grid">
