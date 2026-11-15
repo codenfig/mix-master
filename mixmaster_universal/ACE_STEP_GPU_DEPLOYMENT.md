@@ -20,6 +20,7 @@ export ACESTEP_API_KEY="replace-with-a-strong-secret"
 export FULL_SONG_VOCAL_EXECUTABLE="$(pwd)/run_acestep_gpu.py"
 export ACESTEP_JOB_TIMEOUT_SECONDS=900
 export FULL_SONG_VOCAL_TIMEOUT_SECONDS=1200
+export FULL_SONG_JOB_TIMEOUT_SECONDS=1200
 python -m uvicorn server:app --host 127.0.0.1 --port 8000
 ```
 
@@ -34,3 +35,7 @@ Verify `GET /api/full-song/engine` then submit a Full Song Studio job with outpu
 - Full-song jobs are in-process and lost on restart. Migrate to durable jobs and workers for production.
 - Protect FastAPI endpoints with authentication, quotas and per-user file authorization. The existing generated-files API is not multi-tenant secure.
 - Generation can take longer than 5 minutes; vocal timeouts are configurable. GPU memory, model license, output quality and inference performance require verification.
+
+## Optional shell bridge
+
+`run_ace_step_remote.sh` is an alternative wrapper around `ace_step_adapter.py`; run `chmod +x mixmaster_universal/run_ace_step_remote.sh` before using it. The documented Python executable `run_acestep_gpu.py` remains the preferred entry point.
