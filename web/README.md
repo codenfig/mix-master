@@ -70,3 +70,9 @@ Planned, not implemented: persistent cloud library, downloadable mix history, ph
 ## Audio signal health checks
 
 After rendering, the backend scans the pre-limiter PCM in chunks and returns peak amplitude, RMS, near-silence fraction and a peak-based clipping-risk flag. The web dashboard displays these measurements. They do not indicate perceptual DJ quality or guarantee absence of distortion after encoding. The system does not yet listen to, score, or iteratively regenerate transitions.
+
+## Asynchronous mixing jobs (development)
+
+The React app now posts audio to `POST /api/jobs`, polls `GET /api/jobs/{id}` for queued/processing/done/failed status, and retrieves the MP3 from `GET /api/jobs/{id}/download`. Progress is reported by completed track count. The original `POST /api/mix` remains available for compatibility.
+
+The queue is single-process, uses one worker, caps stored jobs at eight, and expires completed jobs after one hour when the queue is next accessed. Restarting the server loses job state and temporary audio. Browser cancellation only stops waiting; it does not terminate the server-side job. Production deployments need persistent storage, authentication, job cancellation, quota enforcement, and a durable worker queue.
