@@ -58,7 +58,9 @@ def match_tempo(audio, source_bpm, target_bpm, max_change=0.06):
         return audio, False
     if abs(rate - 1) < 0.003:
         return audio, False
-    stretched = librosa.effects.time_stretch(audio.T, rate=rate).T
+    # Materialize only when stretching is needed; memmaps cannot be passed
+    # directly through all librosa processing stages.
+    stretched = librosa.effects.time_stretch(np.asarray(audio.T, dtype=np.float32), rate=rate).T
     return stretched.astype(np.float32, copy=False), True
 
 
