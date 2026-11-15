@@ -5,6 +5,11 @@ from uuid import uuid4
 import json
 import os
 import re
+import subprocess
+from tempfile import TemporaryDirectory
+import wave
+
+from generated_storage import save_generated
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
@@ -36,10 +41,23 @@ def validate_project(project: SongProject):
         raise HTTPException(422, "Unsupported output type.")
 
 
+def _engine_command():
+    """Only an explicitly configured local executable is permitted."""
+    configured = os.environ.get("FULL_SONG_ENGINE_EXECUTABLE", "").strip()
+    if not configured:
+        return None
+    executable = Path(configured).expanduser().resolve()
+    if not executable.is_file() or not os.access(executable, os.X_OK):
+        return None
+    return executable
+
+
 @router.get("/api/full-song/engine")
 def engine_status():
-    return {"backend": "ready", "generation_available": False,
-            "engine": None, "reason": "No local full-song and singing model is configured yet."}
+    executable = _engine_command()
+    return {"backend": "ready", "generation_available": executable is not None,
+            "engine": "local-executable" if executable else None,
+            "reason": None if executable else "Configure FULL_SONG_ENGINE_EXECUTABLE to an installed, executable offline music engine."}
 
 
 @router.post("/api/full-song/projects", status_code=201)
@@ -66,7 +84,38 @@ def read_project(project_id: str):
     return json.loads(path.read_text(encoding="utf-8"))
 
 
-@router.post("/api/full-song/generate", status_code=503)
+@router.post("/api/full-song/generate")
 def generate_song(project: SongProject):
+    """Run a locally installed engine with a hard process timeout.
+
+    Engine contract: executable receives a project JSON path and output WAV path
+    as positional arguments. It must exit 0 and write a valid nonempty WAV.
+    No network service or shell is invoked by MixMaster.
+    """
     validate_project(project)
-    raise HTTPException(503, "Offline full-song generation is not installed. Your project can be saved as a draft.")
+    executable = _engine_command()
+    if executable is None:
+        raise HTTPException(503, "No local music model is installed. Set FULL_SONG_ENGINE_EXECUTABLE.")
+    with TemporaryDirectory(prefix="mixmaster_full_song_") as directory:
+        work = Path(directory)
+        request_path, output_path = work / "project.json", work / "song.wav"
+        request_path.write_text(json.dumps(project.model_dump() if hasattr(project, "model_dump") else project.dict()), encoding="utf-8")
+        try:
+            result = subprocess.run([str(executable), str(request_path), str(output_path)],
+                                    cwd=str(work), capture_output=True, text=True, timeout=300, check=False)
+        except subprocess.TimeoutExpired as exc:
+            raise HTTPException(504, "Local music engine exceeded the five-minute limit.") from exc
+        except OSError as exc:
+            raise HTTPException(503, "Could not start the configured local music engine.") from exc
+        if result.returncode != 0:
+            raise HTTPException(502, "Local music engine failed. Check its terminal logs.")
+        if not output_path.is_file() or output_path.stat().st_size < 100:
+            raise HTTPException(502, "Local music engine did not produce a usable WAV file.")
+        try:
+            with wave.open(str(output_path), "rb") as wav:
+                if wav.getnframes() == 0 or wav.getframerate() < 8000 or wav.getnchannels() not in (1, 2):
+                    raise ValueError("Invalid WAV format")
+        except (wave.Error, ValueError, EOFError) as exc:
+            raise HTTPException(502, "Local engine output must be a valid PCM WAV.") from exc
+        saved = save_generated(output_path, "full_song", "MixMaster_Full_Song.wav", "audio/wav")
+        return {"file": saved, "download_url": f"/api/generated-files/{saved['id']}/download"}
