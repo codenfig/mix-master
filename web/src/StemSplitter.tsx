@@ -13,6 +13,7 @@ const extensions = new Set(['mp3', 'wav', 'flac', 'm4a', 'ogg', 'aac'])
 
 export default function StemSplitter() {
   const [file, setFile] = useState<File | null>(null)
+  const [selectedStems,setSelectedStems] = useState<Record<string,boolean>>({vocals:true,drums:true,bass:true,other:true})
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [elapsed, setElapsed] = useState(0)
@@ -67,12 +68,13 @@ export default function StemSplitter() {
       <input ref={picker} type="file" className="hidden" accept=".mp3,.wav,.flac,.m4a,.ogg,.aac,audio/*" onChange={e => { select(e.target.files?.[0]); e.target.value = '' }}/>
       <div className="stem-drop" role="button" tabIndex={0} onClick={()=>!busy&&picker.current?.click()} onKeyDown={e=>{if(!busy&&(e.key==='Enter'||e.key===' ')){e.preventDefault();picker.current?.click()}}} onDragOver={e=>e.preventDefault()} onDrop={e=>{e.preventDefault();select(e.dataTransfer.files[0])}}><FileAudio size={34}/><strong>Drop your song here</strong><span>or click to browse · MP3, WAV, FLAC, M4A, OGG, AAC · Max 200 MiB</span></div>
       {file&&<div className="stem-selected"><FileAudio size={20}/><div><strong>{file.name}</strong><small>{(file.size/1048576).toFixed(1)} MiB</small></div><button disabled={busy} aria-label="Remove file" onClick={()=>{setFile(null);clearResults()}}><X size={17}/></button></div>}
-      <button type="button" className="stem-primary" disabled={!file||busy} onClick={split}>{busy?<><LoaderCircle className="spin" size={18}/> Separating audio…</>:<><AudioLines size={18}/> Split Into 4 Stems</>}</button>
+      <fieldset className="stem-output-selection"><legend>Output stems</legend><div>{stems.map(stem=><label key={stem.key}><input type="checkbox" checked={Boolean(selectedStems[stem.key])} onChange={e=>setSelectedStems(previous=>({...previous,[stem.key]:e.target.checked}))}/><span>{stem.label}</span></label>)}</div><small>All four stems are separated; select which results you want to view and download.</small></fieldset>
+      <button type="button" className="stem-primary" disabled={!file||busy||!stems.some(stem=>selectedStems[stem.key])} onClick={split}>{busy?<><LoaderCircle className="spin" size={18}/> Separating audio…</>:<><AudioLines size={18}/> Split Into 4 Stems</>}</button>
       {busy&&<div className="stem-status" role="status">Processing for {Math.floor(elapsed/60)}:{String(elapsed%60).padStart(2,'0')} · This can take several minutes. <button onClick={()=>abort.current?.abort()}>Cancel</button></div>}
       {error&&<p className="stem-error" role="alert">{error}</p>}
     </section>
     <div className="stem-results-heading"><div><h3>Your separated stems</h3><p>Play each part or download individual WAV tracks.</p></div>{zipUrl&&<a className="stem-download-all" href={zipUrl} download={baseName+'_stems.zip'}><Download size={17}/> Download All (ZIP)</a>}</div>
-    <div className="stem-results">{stems.map(stem=><section className="stem-card" key={stem.key}><div className="stem-card-top"><span className="stem-card-emoji">{stem.icon}</span><div><h4>{stem.label}</h4><p>{stem.description}</p></div></div>{urls[stem.key]?<><audio controls preload="none" src={urls[stem.key]} aria-label={stem.label+' preview'}/><a href={urls[stem.key]} download={baseName+'_'+stem.key+'.wav'} className="stem-stem-download"><Download size={16}/> Download {stem.label}</a></>:<div className="stem-awaiting"><AudioLines size={19}/> Awaiting extraction</div>}</section>)}</div>
+    <div className="stem-results">{stems.filter(stem=>selectedStems[stem.key]).map(stem=><section className="stem-card" key={stem.key}><div className="stem-card-top"><span className="stem-card-emoji">{stem.icon}</span><div><h4>{stem.label}</h4><p>{stem.description}</p></div></div>{urls[stem.key]?<><audio controls preload="none" src={urls[stem.key]} aria-label={stem.label+' preview'}/><a href={urls[stem.key]} download={baseName+'_'+stem.key+'.wav'} className="stem-stem-download"><Download size={16}/> Download {stem.label}</a></>:<div className="stem-awaiting"><AudioLines size={19}/> Awaiting extraction</div>}</section>)}</div>
     <p className="stem-footnote">AI stem separation is approximate. Some sounds may bleed between stems. Use only music you have permission to process.</p>
   </div>
 }
