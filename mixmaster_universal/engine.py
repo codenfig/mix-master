@@ -181,7 +181,7 @@ def add_kick_to_raw(source, destination, bpm, level=0.16, style="soft", sr=44100
             frame = end
 
 
-def render(tracks, output, transition=12, progress=None, beatmatch=True, optimize=True, mastering="balanced", kick_enabled=False, kick_style="soft", kick_level=0.16):
+def render(tracks, output, transition=12, progress=None, beatmatch=True, optimize=True, mastering="balanced", kick_enabled=False, kick_style="soft", kick_level=0.16, mastering_options=None):
     """Disk-backed crossfade renderer with optional conservative tempo matching.
 
     Unstretched tracks remain on disk. Stretching a track still uses RAM, so
@@ -275,17 +275,44 @@ def render(tracks, output, transition=12, progress=None, beatmatch=True, optimiz
         # true-peak limiting. Single-pass mode is intentionally conservative:
         # it does not pretend to restore fidelity lost in source recordings.
         profiles = {
-            'off': 'alimiter=limit=0.95',
-            'balanced': 'loudnorm=I=-14:TP=-1.5:LRA=11',
-            'club': 'loudnorm=I=-12:TP=-1.5:LRA=9',
+            'off': None,
+            'balanced': (-14.0, -1.5, 11.0),
+            'club': (-12.0, -1.5, 9.0),
+            'custom': None,
         }
         if mastering not in profiles:
             raise ValueError('Unknown mastering preset')
+        opts = mastering_options or {}
+        if mastering == 'custom':
+            target = float(opts.get('target_lufs', -14))
+            peak_limit = float(opts.get('true_peak', -1.5))
+            bass = float(opts.get('bass_db', 0))
+            treble = float(opts.get('treble_db', 0))
+            compression = bool(opts.get('compression', False))
+            if not (-20 <= target <= -9 and -3 <= peak_limit <= -0.5
+                    and -6 <= bass <= 6 and -6 <= treble <= 6):
+                raise ValueError('Invalid custom mastering settings')
+            lra = 9.0 if compression else 11.0
+        else:
+            target, peak_limit, lra = profiles[mastering] if mastering != 'off' else (None, None, None)
+            bass = treble = 0.0
+            compression = False
+        filters = ['highpass=f=25']
+        if bass:
+            filters.append(f'equalizer=f=110:t=o:w=1:g={bass:.2f}')
+        if treble:
+            filters.append(f'equalizer=f=8500:t=o:w=1:g={treble:.2f}')
+        if compression:
+            filters.append('acompressor=threshold=0.125:ratio=2:attack=20:release=250:makeup=1')
+        if target is not None:
+            filters.append(f'loudnorm=I={target}:TP={peak_limit}:LRA={lra}')
+        else:
+            filters.append('alimiter=limit=0.95')
         subprocess.run(
             ['ffmpeg', '-y', '-v', 'error', '-nostdin', '-f', 'f32le',
              '-ar', str(sr), '-ac', '2', '-i', str(raw),
-             '-af', profiles[mastering], '-ar', str(sr),
+             '-af', ','.join(filters), '-ar', str(sr),
              '-codec:a', 'libmp3lame', '-b:a', '320k', str(output)], check=True,
         )
-        report['mastering'] = {'preset': mastering, 'target_lufs': {'off': None, 'balanced': -14, 'club': -12}[mastering], 'true_peak_limit_dbtp': -1.5 if mastering != 'off' else None}
+        report['mastering'] = {'preset': mastering, 'target_lufs': target, 'true_peak_limit_dbtp': peak_limit, 'bass_db': bass, 'treble_db': treble, 'compression': compression}
         return report
