@@ -773,7 +773,7 @@
                 id="transition"
                 type="range"
                 min="4"
-                max="30"
+                max="32"
                 value="12"
                 step="1"
               />
@@ -989,26 +989,20 @@
               x.classList.toggle("selected", x === b),
             );
             update();
-            if (required !== 10)
-              say(
-                `The current audio engine supports exactly 10 tracks. Select 10 to create a mix.`,
-              );
-            mixBtn.disabled = !valid() || required !== 10;
-            analyzeBtn.disabled = !valid() || required !== 10;
+            
           }),
       );
       $("#transition").oninput = (e) => {
         transition = Number(e.target.value);
         $("#transitionLabel").textContent = transition + " seconds";
         update();
-        if (transition !== 12)
-          say(
-            "This MVP currently renders fixed 12-second transitions. Return to 12 seconds to match the export.",
-          );
+
       };
       async function send(endpoint) {
         const data = new FormData();
         selected.forEach((f) => data.append("songs", f));
+        data.append("count", String(required));
+        data.append("transition", String(transition));
         return fetch(endpoint, { method: "POST", body: data });
       }
       function errorMessage(resp) {
@@ -1018,7 +1012,7 @@
           .catch(() => `Server error ${resp.status}`);
       }
       analyzeBtn.onclick = async () => {
-        if (!valid() || required !== 10) return;
+        if (!valid()) return;
         analyzeBtn.disabled = true;
         say("Analyzing BPM, key, and energy. This can take several minutes…");
         try {
@@ -1046,7 +1040,7 @@
         }
       };
       mixBtn.onclick = async () => {
-        if (!valid() || required !== 10) return;
+        if (!valid()) return;
         mixBtn.disabled = true;
         analyzeBtn.disabled = true;
         $("#download").classList.add("hidden");
@@ -1107,7 +1101,7 @@
             }
             if (b.dataset.nav === "help") {
               say(
-                "Upload 10 audio files, optionally analyze them, then click Create My Mix.",
+                `Upload ${required} audio files, optionally analyze them, then click Create My Mix.`,
               );
               return;
             }
