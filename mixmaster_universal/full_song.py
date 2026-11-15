@@ -41,7 +41,14 @@ def validate_project(project: SongProject):
         raise HTTPException(422, "Unsupported output type.")
 
 
-def _engine_command():
+def _engine_command(output='instrumental'):
+    if output != 'instrumental':
+        configured = os.environ.get('FULL_SONG_VOCAL_EXECUTABLE', '').strip()
+        if not configured:
+            return None
+        executable = Path(configured).expanduser().resolve()
+        return executable if executable.is_file() and os.access(executable, os.X_OK) else None
+
     """Only an explicitly configured local executable is permitted."""
     configured = os.environ.get("FULL_SONG_ENGINE_EXECUTABLE", "").strip()
     if not configured:
@@ -54,10 +61,13 @@ def _engine_command():
 
 @router.get("/api/full-song/engine")
 def engine_status():
-    executable = _engine_command()
-    return {"backend": "ready", "generation_available": executable is not None,
-            "engine": "local-executable" if executable else None,
-            "reason": None if executable else "Configure FULL_SONG_ENGINE_EXECUTABLE to an installed, executable offline music engine."}
+    instrumental = _engine_command('instrumental') is not None
+    vocal = _engine_command('vocals') is not None
+    return {"backend": "ready", "generation_available": instrumental or vocal,
+            "capabilities": {"instrumental": instrumental, "vocals": vocal, "full_song": vocal,
+                             "voices": ["female", "male", "duet"] if vocal else []},
+            "engine": "local-executable" if instrumental or vocal else None,
+            "reason": None if instrumental or vocal else "Configure FULL_SONG_ENGINE_EXECUTABLE for instrumentals or FULL_SONG_VOCAL_EXECUTABLE for singing."}
 
 
 @router.post("/api/full-song/projects", status_code=201)
@@ -93,9 +103,10 @@ def generate_song(project: SongProject):
     No network service or shell is invoked by MixMaster.
     """
     validate_project(project)
-    executable = _engine_command()
+    executable = _engine_command(project.output)
     if executable is None:
-        raise HTTPException(503, "No local music model is installed. Set FULL_SONG_ENGINE_EXECUTABLE.")
+        setting = 'FULL_SONG_ENGINE_EXECUTABLE' if project.output == 'instrumental' else 'FULL_SONG_VOCAL_EXECUTABLE'
+        raise HTTPException(503, f'No compatible offline engine is installed for {project.output}. Configure {setting}.')
     with TemporaryDirectory(prefix="mixmaster_full_song_") as directory:
         work = Path(directory)
         request_path, output_path = work / "project.json", work / "song.wav"
