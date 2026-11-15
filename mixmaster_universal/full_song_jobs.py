@@ -24,6 +24,7 @@ _pool = ThreadPoolExecutor(max_workers=1, thread_name_prefix="mixmaster-song")
 _lock = Lock()
 _jobs = {}
 MAX_JOBS = 100
+ENGINE_TIMEOUT = min(max(int(os.environ.get("FULL_SONG_JOB_TIMEOUT_SECONDS", "1200")), 60), 7200)
 
 
 def _snapshot(job):
