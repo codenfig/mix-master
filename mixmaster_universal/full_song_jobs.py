@@ -6,6 +6,8 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from threading import Event, Lock
+import os
+import signal
 from time import monotonic
 from uuid import uuid4
 import json
@@ -23,7 +25,7 @@ MAX_JOBS = 100
 
 
 def _snapshot(job):
-    return {k: v for k, v in job.items() if k not in {"cancel", "process"}}
+    return {k: v for k, v in job.items() if k not in {"cancel", "process", "started"}}
 
 
 def submit(project, executable, arrangement):
@@ -41,7 +43,12 @@ def submit(project, executable, arrangement):
                "error": None, "file": None, "download_url": None,
                "cancel": Event(), "process": None, "started": None}
         _jobs[job_id] = job
-    _pool.submit(_execute, job_id, project, executable, arrangement)
+    try:
+        _pool.submit(_execute, job_id, project, executable, arrangement)
+    except RuntimeError as exc:
+        with _lock:
+            _jobs.pop(job_id, None)
+        raise HTTPException(503, "Song worker is shutting down.") from exc
     return _snapshot(job)
 
 
@@ -59,28 +66,26 @@ def _execute(job_id, project, executable, arrangement):
             payload = dict(project)
             payload["arrangement"] = arrangement
             input_file.write_text(json.dumps(payload), encoding="utf-8")
-            proc = subprocess.Popen([str(executable), str(input_file), str(output_file)],
-                                    cwd=str(root), stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            log_file = root / "engine.log"
+            with log_file.open("wb") as log:
+                proc = subprocess.Popen([str(executable), str(input_file), str(output_file)],
+                                        cwd=str(root), stdout=log, stderr=subprocess.STDOUT,
+                                        start_new_session=True)
             with _lock:
                 job["process"] = proc
             try:
                 while proc.poll() is None:
                     if job["cancel"].wait(0.25):
-                        proc.terminate()
-                        try:
-                            proc.wait(timeout=3)
-                        except subprocess.TimeoutExpired:
-                            proc.kill()
-                            proc.wait()
+                        _stop_process(proc)
                         raise InterruptedError("Generation cancelled.")
                     if monotonic() - job["started"] > 300:
-                        proc.kill()
-                        proc.wait()
+                        _stop_process(proc)
                         raise TimeoutError("Local music engine exceeded five minutes.")
                 if job["cancel"].is_set():
                     raise InterruptedError("Generation cancelled.")
                 if proc.returncode:
-                    raise RuntimeError("Local engine failed. Check your model installation.")
+                    details = log_file.read_text(encoding="utf-8", errors="replace")[-1200:].strip()
+                    raise RuntimeError("Local engine failed: " + (details or "Check your model installation."))
                 with _lock:
                     job["stage"] = "validating"
                 if not output_file.is_file() or output_file.stat().st_size < 100:
@@ -109,6 +114,24 @@ def _execute(job_id, project, executable, arrangement):
         with _lock:
             if job["started"] is not None:
                 job["elapsed_seconds"] = round(monotonic() - job["started"], 1)
+
+
+def _stop_process(proc):
+    """Stop the entire model process group, including child workers."""
+    if proc.poll() is not None:
+        return
+    try:
+        os.killpg(proc.pid, signal.SIGTERM)
+    except ProcessLookupError:
+        return
+    try:
+        proc.wait(timeout=3)
+    except subprocess.TimeoutExpired:
+        try:
+            os.killpg(proc.pid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+        proc.wait()
 
 
 def status(job_id):
