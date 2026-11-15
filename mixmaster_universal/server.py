@@ -17,12 +17,14 @@ from cover_art import embed_cover
 from vocal_remover import router as vocal_remover_router
 from stem_splitter import router as stem_splitter_router
 from audio_mastering import router as mastering_router
+from voice_studio import router as voice_studio_router
 
 ROOT = Path(__file__).resolve().parent
 app = FastAPI(title="MixMaster AI Universal", version="0.2.0")
 app.include_router(vocal_remover_router)
 app.include_router(stem_splitter_router)
 app.include_router(mastering_router)
+app.include_router(voice_studio_router)
 app.mount("/static", StaticFiles(directory=ROOT / "static"), name="static")
 SUPPORTED = {".mp3", ".wav", ".flac", ".m4a", ".ogg", ".aac"}
 MAX_FILE_BYTES = 200 * 1024 * 1024
@@ -115,13 +117,20 @@ def save_uploads(songs: list[UploadFile], directory: Path, count: int):
 
 
 def inspect_tracks(tracks, names):
-    try:
-        results = [analyze(path) for path in tracks]
-        for result, name in zip(results, names):
-            result["name"] = name
-        return results
-    except Exception as exc:
-        raise HTTPException(422, "Unable to decode or analyze one or more tracks.") from exc
+    results = []
+    for index, (path, name) in enumerate(zip(tracks, names), start=1):
+        try:
+            result = analyze(path)
+        except Exception as exc:
+            # Identify the failed upload without leaking server filesystem paths.
+            raise HTTPException(
+                422,
+                f"Track {index} ({name}) could not be decoded or analyzed. "
+                "Check the audio file with FFmpeg or replace it with a valid MP3/WAV."
+            ) from exc
+        result["name"] = name
+        results.append(result)
+    return results
 
 
 @app.post("/api/analyze")

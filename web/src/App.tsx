@@ -5,8 +5,9 @@ import Waveform from './Waveform'
 import VocalRemover from './VocalRemover'
 import StemSplitter from './StemSplitter'
 import AudioMastering from './AudioMastering'
+import VoiceStudio from './VoiceStudio'
 
-type Page = 'overview' | 'studio' | 'library' | 'preview' | 'history' | 'settings' | 'vocal-remover' | 'stem-splitter' | 'audio-mastering'
+type Page = 'overview' | 'studio' | 'library' | 'preview' | 'history' | 'settings' | 'vocal-remover' | 'stem-splitter' | 'audio-mastering' | 'voice-studio'
 const pages: { id: Page; label: string; subtitle: string }[] = [
   { id: 'overview', label: 'Overview', subtitle: 'Your creative command center' },
   { id: 'studio', label: 'Create Mix', subtitle: 'Build your next continuous set' },
@@ -16,6 +17,7 @@ const pages: { id: Page; label: string; subtitle: string }[] = [
   { id: 'vocal-remover', label: 'Vocal Remover', subtitle: 'Extract clean instrumental audio from songs' },
   { id: 'stem-splitter', label: 'Stem Splitter', subtitle: 'Separate vocals, drums, bass and instruments' },
   { id: 'audio-mastering', label: 'Audio Mastering', subtitle: 'Make your music polished, balanced and louder' },
+  { id: 'voice-studio', label: 'AI Voice Studio', subtitle: 'Train your own voice and convert singing vocals' },
   { id: 'settings', label: 'Settings', subtitle: 'Shape your mixing workflow' },
 ]
 const readPage = (): Page => {
@@ -275,7 +277,7 @@ export default function App() {
       <div className="nav-label">YOUR STUDIO</div>
       <nav aria-label="Main navigation">
         {pages.map(item => {
-          const Icon = item.id === 'overview' ? LayoutDashboard : item.id === 'studio' ? SlidersHorizontal : item.id === 'library' ? ListMusic : item.id === 'preview' ? Headphones : item.id === 'history' ? RotateCcw : item.id === 'vocal-remover' ? FileAudio : item.id === 'stem-splitter' ? AudioLines : item.id === 'audio-mastering' ? SlidersHorizontal : Settings2
+          const Icon = item.id === 'overview' ? LayoutDashboard : item.id === 'studio' ? SlidersHorizontal : item.id === 'library' ? ListMusic : item.id === 'preview' ? Headphones : item.id === 'history' ? RotateCcw : item.id === 'vocal-remover' ? FileAudio : item.id === 'stem-splitter' ? AudioLines : item.id === 'audio-mastering' ? SlidersHorizontal : item.id === 'voice-studio' ? Music2 : Settings2
           return <a key={item.id} href={'#/' + item.id} aria-current={page === item.id ? 'page' : undefined} className={'nav' + (page === item.id ? ' active' : '')} onClick={() => setPage(item.id)}><Icon size={18}/>{item.label}{page === item.id && <span className="nav-indicator"/>}</a>
         })}
       </nav>
@@ -290,6 +292,7 @@ export default function App() {
         {page === 'vocal-remover' && <VocalRemover/>}
         {page === 'stem-splitter' && <StemSplitter/>}
         {page === 'audio-mastering' && <AudioMastering/>}
+        {page === 'voice-studio' && <VoiceStudio/>}
         {page === 'overview' && <div className="overview-page">
           <div className="overview-banner"><div className="eyebrow"><Sparkles size={16}/> YOUR AUTONOMOUS DJ STUDIO</div><h2>Make every track <span>flow.</span></h2><p>Analyze your music, shape the energy journey and produce seamless nonstop mixes in one creative workspace.</p><button className="overview-cta" onClick={() => navigate('studio')}>Start mixing <ArrowRight size={17}/></button><div className="banner-orb"><Music2 size={58}/></div></div>
           <div className="overview-stats"><div className="stat-card"><span>TRACKS LOADED</span><strong>{files.length}</strong><small>Ready in your session</small></div><div className="stat-card"><span>COMPLETED MIXES</span><strong>{history.length}</strong><small>Browser history entries</small></div><div className="stat-card"><span>PLAN COMPATIBILITY</span><strong>{analysis?.plan ? analysis.plan.quality_score + '/100' : '—'}</strong><small>Metadata-based estimate</small></div></div>
