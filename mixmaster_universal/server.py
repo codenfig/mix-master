@@ -122,11 +122,12 @@ def mix(songs: list[UploadFile] = File(...), count: int = Form(10), transition: 
 
 
 @app.post("/api/jobs", status_code=202)
-def queue_mix(songs: list[UploadFile] = File(...), count: int = Form(10), transition: int = Form(12), mastering: str = Form("balanced")):
+def queue_mix(songs: list[UploadFile] = File(...), count: int = Form(10), transition: int = Form(12), mastering: str = Form("balanced"), kick_enabled: bool = Form(False), kick_style: str = Form("soft"), kick_level: float = Form(0.16)):
     """Accept uploads, analyze, then render asynchronously in one bounded worker."""
     validate_settings(count, transition)
     if mastering not in MASTERING_PRESETS:
         raise HTTPException(400, "Unknown mastering preset.")
+    validate_kick(kick_style, kick_level)
     directory = allocate_directory()
     try:
         tracks, names = save_uploads(songs, directory, count)
