@@ -25,3 +25,17 @@ def test_matching_respects_double_time():
     t = np.arange(sr, dtype=np.float32) / sr
     audio = np.stack([np.sin(2 * np.pi * 220 * t)] * 2, axis=1).astype(np.float32)
     assert match_tempo(audio, 60, 123)[1] is True
+
+def test_beat_phase_trim_aligns_next_beat():
+    from engine import beat_aligned_trim
+    bpm = 120
+    # Crossfade begins at t=8, outgoing beats at 0.1, 0.6, ...
+    # The next outgoing beat is 0.1 seconds into the crossfade.
+    trim = beat_aligned_trim(12, 4, 0.1, 0.3, bpm)
+    assert abs(trim - 0.2) < 1e-6
+
+def test_beat_phase_trim_skips_unreliable_inputs():
+    from engine import beat_aligned_trim
+    assert beat_aligned_trim(12, 4, None, 0.2, 120) == 0
+    assert beat_aligned_trim(12, 4, 0.1, None, 120) == 0
+    assert beat_aligned_trim(12, 4, 0.1, 0.2, 0) == 0
