@@ -305,7 +305,7 @@ export default function App() {
 
     <main className="main">
       <header className="topbar"><span className="breadcrumb">Workspace <span>/</span> {pages.find(p => p.id === page)?.label}</span><div className="top-status"><span className="online-dot"/> Local DJ Studio</div></header>
-      <div className={"content" + (page === "overview" ? " overview-content" : "")} key={page}>
+      <div className={"content content-" + page + (page === "overview" ? " overview-content" : "")} key={page}>
         {activeJob && <div className="background-job" role="status"><div><LoaderCircle className="spin" size={18}/><strong>Background mix in progress</strong><span>{progress || 'The server is preparing your audio.'}</span></div><button type="button" onClick={() => navigate('studio')}>View progress <ArrowRight size={15}/></button></div>}
         <div className="page-heading"><div><div className="eyebrow"><Sparkles size={14}/> MIXMASTER WORKSPACE</div><h1>{pages.find(p => p.id === page)?.label}</h1><p>{pages.find(p => p.id === page)?.subtitle}</p></div><div className="page-heading-actions">{page !== 'studio' && <button className="action primary" onClick={() => navigate('studio')}><Sparkles size={16}/> Create a Mix <ArrowRight size={16}/></button>}</div></div>
         {page === 'vocal-remover' && <VocalRemover/>}
