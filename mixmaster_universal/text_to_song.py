@@ -2,13 +2,10 @@
 from hashlib import sha256
 from pathlib import Path
 from tempfile import TemporaryDirectory
-import math
 import numpy as np
 import soundfile as sf
 from fastapi import APIRouter, HTTPException
-from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
-from starlette.background import BackgroundTask
 from generated_storage import save_generated
 
 router = APIRouter()
@@ -64,7 +61,7 @@ def percussion(buffer, start, kind, rng):
 def compose(request: SongRequest, destination: Path):
     if request.genre not in GENRES or request.key not in SCALES or request.output != "instrumental":
         raise ValueError("Choose a supported genre, key and instrumental output.")
-    seed = int.from_bytes(sha256((request.text + request.genre).encode()).digest()[:8], "big")
+    seed = int.from_bytes(sha256(f'{request.text}|{request.genre}|{request.bpm}|{request.key}'.encode()).digest()[:8], 'big')
     rng = np.random.default_rng(seed)
     beat = 60 / request.bpm
     bar = 4 * beat
@@ -72,7 +69,7 @@ def compose(request: SongRequest, destination: Path):
     if duration > 130:
         raise ValueError("Song duration is too long.")
     audio = np.zeros(int(duration * RATE), dtype=np.float32)
-    root = 45 + SCALES[request.key]  # A2-ish register with selected pitch class
+    root = 36 + SCALES[request.key]  # C2=36, A2=45: correct MIDI pitch classes
     # Minor pentatonic melody; four-chord loop, genre-specific rhythmic accents.
     progression = [0, 5, 3, 4]
     scale = [0, 3, 5, 7, 10, 12, 15]
@@ -114,6 +111,8 @@ def compose(request: SongRequest, destination: Path):
 
 @router.post("/api/text-to-song")
 def text_to_song(request: SongRequest):
+    if not request.text.strip():
+        raise HTTPException(400, "Enter lyrics or a description.")
     if request.genre not in GENRES or request.key not in SCALES or request.output != "instrumental":
         raise HTTPException(400, "Unsupported genre, key, or output type.")
     temp = TemporaryDirectory(prefix="mixmaster_composer_")
