@@ -73,3 +73,29 @@ body{font-family:'DM Sans',sans-serif!important}
 @media(max-width:1350px){.mm-generator-layout{grid-template-columns:minmax(275px,320px) minmax(0,1fr)}.mm-generator-detail{grid-column:1/-1;max-height:none}.mm-detail-art{max-width:240px;min-height:150px}}
 @media(max-width:1080px){.mm-sidebar.sidebar{width:188px}.mm-sidebar .brand strong{font-size:15px}.mm-sidebar .brand-icon img{width:32px;height:32px}.mm-top-nav a{padding:9px 10px}.mm-top-status{display:none}.content{padding:12px}}
 @media(max-width:760px){.app{display:block}.mm-sidebar.sidebar{position:static;width:100%;height:auto;padding:11px;overflow:visible}.mm-sidebar .mm-brand{padding-bottom:8px}.mm-sidebar .nav-label,.mm-sidebar .sidebar-bottom,.mm-more-tools{display:none}.mm-sidebar nav{display:flex;overflow-x:auto;gap:7px}.mm-sidebar .nav{white-space:nowrap;padding:7px 9px;min-height:33px}.mm-topbar.topbar{height:50px;padding:0 8px}.mm-top-nav a{font-size:11px;padding:8px}.mm-top-upgrade{padding:8px}.content{padding:10px}.mm-generator-layout{grid-template-columns:1fr}.mm-generator-compose,.mm-generator-library,.mm-generator-detail{max-height:none}.mm-generator-detail{grid-column:auto}.mm-generator-top{align-items:start;flex-direction:column}.vocal-grid{grid-template-columns:1fr}}
+
+/* Additional screen details from the reference */
+.mm-lyric-tools{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:-5px}.mm-lyric-tools button{font-size:11px;font-weight:800;color:#00dce5;border:1px solid #00c6d0;background:#072429;padding:7px 10px;border-radius:8px;cursor:pointer}.mm-lyric-tools span{font-size:10px;color:#9cabb1}
+.mm-generator .mm-generator-compose>label{font-size:12px;font-weight:750;gap:8px}.mm-generator .mm-generator-compose>label textarea{font-size:12px}
+.mm-detail-art{position:relative;display:flex;align-items:center;justify-content:center;gap:10px;min-height:208px!important;background:#0c1517!important}
+.mm-detail-vinyl{width:165px;max-width:70%;aspect-ratio:1;border-radius:50%;display:grid;place-items:center;border:9px solid #23272a;background:#080a0c;box-shadow:0 0 0 2px #3c4245,inset 0 0 0 2px #343a3c;position:relative}
+.mm-detail-vinyl:before,.mm-detail-vinyl:after{content:'';position:absolute;inset:14px;border-radius:50%;border:1px solid #333a3e;pointer-events:none}.mm-detail-vinyl:after{inset:27px;border-color:#282e30}
+.mm-detail-vinyl-core{width:58%;aspect-ratio:1;background:#ffd600;border:4px solid #5b5010;border-radius:50%;display:grid;place-items:center;color:#111410}
+.mm-detail-bars{height:100px;display:flex;align-items:center;gap:3px}.mm-detail-bars i{width:4px;border-radius:4px;background:#00dde5}
+.mm-price-screen .mm-price-title{display:flex;justify-content:center;align-items:center;gap:16px;text-align:center;margin:5px auto 0;max-width:760px}.mm-price-icon{display:grid;place-items:center;width:50px;height:50px;flex:none;border-radius:12px;color:#ffd600;background:#26230c;border:1px solid #8a7800}
+.mm-price-title h2{font-size:clamp(26px,3vw,36px);margin:6px 0;letter-spacing:-.03em}.mm-price-title p{color:#aebbc1;font-size:12px;line-height:1.7;margin:6px 0}
+.mm-billing-picker{display:flex;align-items:center;gap:5px;justify-self:center;background:#14191b;border:1px solid #343c40;border-radius:24px;padding:4px}
+.mm-billing-picker button{padding:10px 18px;border:1px solid transparent;background:transparent;color:#e2e9eb;border-radius:22px;font-weight:800;font-size:12px}.mm-billing-picker button.active{color:#002326;border-color:#00dde5;background:#00dde5}
+.mm-billing-picker button span{font-size:10px;color:#ffd600;margin-left:4px}
+.mm-billing-picker button.active span{color:#5b4a00}
+.mm-price-screen .mm-pricing-grid{grid-template-columns:repeat(3,minmax(0,1fr));max-width:980px;width:100%;justify-self:center;gap:14px}
+.mm-price-screen .mm-pricing-card{gap:12px;min-height:365px}.mm-price-screen .mm-pricing-card h3{margin-top:7px}.mm-pricing-billed{color:#92a4ad!important;font-size:10px!important}
+.mm-price-screen .mm-pricing-featured{border:2px solid #ffd600!important}.mm-price-screen .mm-pricing-featured button{border-color:#ffd600;background:#2a250a;color:#ffd600}
+.mm-price-screen .mm-pricing-card:nth-child(2) button{background:#074147;color:#00e1ea;border-color:#00cfd8}
+.mm-price-screen .mm-pricing-notes{max-width:980px;width:100%;justify-self:center}
+.mm-pricing-notes a{display:inline-flex;align-items:center;gap:6px;color:#00dde5;text-decoration:none;margin-top:10px;font-size:12px;font-weight:800}
+@media(max-width:850px){.mm-price-screen .mm-pricing-grid{grid-template-columns:1fr}.mm-price-screen .mm-pricing-notes{grid-template-columns:1fr}}
+/* Keep decorative record details and cover artwork; the underlying UI panels stay flat. */
+#root .mm-deck-vinyl{background-image:repeating-radial-gradient(circle,#080b0d 0 5px,#262c30 6px 7px,#0d1012 8px 11px)!important}
+#root .dj-vinyl{background-image:repeating-radial-gradient(circle,#0a0e10 0 5px,#242a2e 6px 7px,#0c1012 8px 11px)!important}
+#root .dj-cover[style*="background-image"]{background-image:var(--user-cover,none)}
