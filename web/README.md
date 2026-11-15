@@ -66,3 +66,7 @@ This is a development MVP, not a production deployment. Rendering uses conservat
 - Transition compatibility scores are estimates based on metadata, not audible-quality assessments.
 
 Planned, not implemented: persistent cloud library, downloadable mix history, phrase-aware transition placement, audio-quality evaluation, background jobs, and true iterative optimization. No chatbot is included.
+
+## Audio signal health checks
+
+After rendering, the backend scans the pre-limiter PCM in chunks and returns peak amplitude, RMS, near-silence fraction and a peak-based clipping-risk flag. The web dashboard displays these measurements. They do not indicate perceptual DJ quality or guarantee absence of distortion after encoding. The system does not yet listen to, score, or iteratively regenerate transitions.
