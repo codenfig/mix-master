@@ -1,3 +1,4 @@
+import PricingPage from './pages/PricingPage'
 import FullSongPage from './pages/FullSongPage'
 import TextToSongPage from './pages/TextToSongPage'
 import GeneratedFilesPage from './pages/GeneratedFilesPage'
@@ -12,7 +13,7 @@ import StemSplitter from './StemSplitter'
 import AudioMastering from './AudioMastering'
 import VoiceStudio from './VoiceStudio'
 
-type Page = 'onboarding' | 'overview' | 'studio' | 'library' | 'preview' | 'history' | 'generated-files' | 'text-to-song' | 'full-song' | 'settings' | 'vocal-remover' | 'stem-splitter' | 'audio-mastering' | 'voice-studio'
+type Page = 'onboarding' | 'overview' | 'studio' | 'library' | 'preview' | 'history' | 'generated-files' | 'text-to-song' | 'full-song' | 'pricing' | 'settings' | 'vocal-remover' | 'stem-splitter' | 'audio-mastering' | 'voice-studio'
 const pages: { id: Page; label: string; subtitle: string }[] = [
   { id: 'onboarding', label: 'Welcome', subtitle: 'Discover MixMaster AI' },
   { id: 'overview', label: 'Overview', subtitle: 'Your creative command center' },
@@ -23,6 +24,7 @@ const pages: { id: Page; label: string; subtitle: string }[] = [
   { id: 'generated-files', label: 'Generated Files', subtitle: 'Browse and download your saved audio outputs' },
   { id: 'text-to-song', label: 'Text to Song', subtitle: 'Compose offline instrumental music from text' },
   { id: 'full-song', label: 'Full Song Studio', subtitle: 'Plan songs, vocals and arrangements' },
+  { id: 'pricing', label: 'Plans & Pricing', subtitle: 'Preview creator subscription plans' },
   { id: 'vocal-remover', label: 'Vocal Remover', subtitle: 'Extract clean instrumental audio from songs' },
   { id: 'stem-splitter', label: 'Stem Splitter', subtitle: 'Separate vocals, drums, bass and instruments' },
   { id: 'audio-mastering', label: 'Audio Mastering', subtitle: 'Make your music polished, balanced and louder' },
@@ -304,7 +306,7 @@ export default function App() {
       <div className="nav-label">YOUR STUDIO</div>
       <nav aria-label="Main navigation">
         {pages.filter(item => item.id !== 'onboarding').map(item => {
-          const Icon = item.id === 'overview' ? LayoutDashboard : item.id === 'studio' ? SlidersHorizontal : item.id === 'library' ? ListMusic : item.id === 'preview' ? Headphones : item.id === 'history' ? RotateCcw : item.id === 'generated-files' ? FolderOpen : item.id === 'text-to-song' || item.id === 'full-song' ? Music2 : item.id === 'vocal-remover' ? FileAudio : item.id === 'stem-splitter' ? AudioLines : item.id === 'audio-mastering' ? SlidersHorizontal : item.id === 'voice-studio' ? Music2 : Settings2
+          const Icon = item.id === 'overview' ? LayoutDashboard : item.id === 'studio' ? SlidersHorizontal : item.id === 'library' ? ListMusic : item.id === 'preview' ? Headphones : item.id === 'history' ? RotateCcw : item.id === 'generated-files' ? FolderOpen : item.id === 'pricing' ? Sparkles : item.id === 'text-to-song' || item.id === 'full-song' ? Music2 : item.id === 'vocal-remover' ? FileAudio : item.id === 'stem-splitter' ? AudioLines : item.id === 'audio-mastering' ? SlidersHorizontal : item.id === 'voice-studio' ? Music2 : Settings2
           return <a key={item.id} href={'#/' + item.id} aria-current={page === item.id ? 'page' : undefined} className={'nav' + (page === item.id ? ' active' : '')} onClick={() => setPage(item.id)}><Icon size={18}/>{item.label}{page === item.id && <span className="nav-indicator"/>}</a>
         })}
       </nav>
@@ -319,6 +321,7 @@ export default function App() {
         {page === 'generated-files' && <GeneratedFilesPage/>}
         {page === 'text-to-song' && <TextToSongPage/>}
         {page === 'full-song' && <FullSongPage/>}
+        {page === 'pricing' && <PricingPage/>}
         {page === 'vocal-remover' && <VocalRemover/>}
         {page === 'stem-splitter' && <StemSplitter/>}
         {page === 'audio-mastering' && <AudioMastering/>}
