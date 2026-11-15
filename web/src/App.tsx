@@ -10,6 +10,7 @@ const formatTime = (seconds: number) => Number.isFinite(seconds) ? [Math.floor(s
 export default function App() {
   const [count, setCount] = useState<5 | 10 | 20>(10)
   const [transition, setTransition] = useState(12)
+  const [preset, setPreset] = useState<'smooth' | 'balanced' | 'quick'>('balanced')
   const [files, setFiles] = useState<File[]>([])
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(null)
   const [tab, setTab] = useState<'tracks' | 'order'>('tracks')
@@ -25,6 +26,7 @@ export default function App() {
   const request = useRef<AbortController | null>(null)
   const outputUrl = useRef<string | null>(null)
   const ready = files.length === count && !busy
+  const plannedTracks = analysis?.plan?.order_indices?.map(i => analysis.tracks[i]) ?? []
   const energyMax = Math.max(0.000001, ...(analysis?.tracks.map(t => t.energy) || []))
 
   function resetOutput() {
@@ -59,6 +61,14 @@ export default function App() {
     resetOutput()
     setError(false)
     setMessage('Select exactly ' + value + ' songs.')
+  }
+
+  function applyPreset(value: 'smooth' | 'balanced' | 'quick') {
+    if (busy) return
+    setPreset(value)
+    setTransition(value === 'smooth' ? 20 : value === 'quick' ? 6 : 12)
+    setAnalysis(null)
+    resetOutput()
   }
 
   function cancel() {
@@ -121,6 +131,12 @@ export default function App() {
           {[['01','Upload Tracks'],['02','Analyze Music'],['03','Arrange Flow'],['04','Create Mix']].map(([number,label],index) => <div className="step" key={number}><span className={index === 0 || (index === 1 && analysis) || (index === 3 && url) ? 'step-number done' : 'step-number'}>{index === 0 && files.length === count ? <Check size={17}/> : number}</span><span>{label}</span>{index < 3 && <span className="step-line"/>}</div>)}
         </div>
 
+        <div className="agent-overview">
+          <div className="agent-card"><div className="agent-label"><Sparkles size={17}/> AUTONOMOUS DJ PLAN</div><strong>{analysis?.plan ? analysis.plan.quality_score + '/100' : 'Awaiting analysis'}</strong><small>Estimated transition compatibility, not an audible-quality rating</small></div>
+          <div className="agent-card agent-curve"><div className="agent-label"><Activity size={17}/> ENERGY JOURNEY</div>
+            {plannedTracks.length > 1 ? <svg viewBox="0 0 600 120" preserveAspectRatio="none" role="img" aria-label="Planned energy progression" className="energy-chart"><polyline fill="none" stroke="#b77aff" strokeWidth="3" strokeLinejoin="round" points={plannedTracks.map((t,i) => (i * 600 / (plannedTracks.length - 1)) + ',' + (110 - t.energy / energyMax * 95)).join(' ')}/></svg> : <div className="curve-empty">Analyze tracks to reveal the planned energy flow.</div>}
+          </div>
+        </div>
         <div className="workspace">
           <section className="left-column">
             <div className="panel upload-panel">
@@ -140,10 +156,13 @@ export default function App() {
 
           <aside className="panel settings" id="settings">
             <div className="panel-heading"><div><h2><Settings2 size={20}/> Mix Settings</h2><p>Make the mix your own.</p></div></div>
+            <label className="field-label">MIX STYLE</label>
+            <div className="preset-options">{(['smooth','balanced','quick'] as const).map(value => <button key={value} className={preset === value ? 'selected' : ''} disabled={busy !== null} onClick={() => applyPreset(value)}>{value}</button>)}</div>
+            <small className="preset-hint">Styles adjust crossfade duration, not the mixing algorithm.</small>
             <label className="field-label">NUMBER OF SONGS</label>
             <div className="count-options">{([5,10,20] as const).map(n => <button key={n} className={count === n ? 'selected' : ''} disabled={busy !== null} onClick={() => changeCount(n)}>{n}<small>songs</small></button>)}</div>
             <label className="field-label" htmlFor="transition">TRANSITION DURATION <span>{transition}s</span></label>
-            <input id="transition" type="range" min={4} max={32} value={transition} disabled={busy !== null} onChange={e => setTransition(Number(e.target.value))}/><div className="range-labels"><span>4s · Quick</span><span>32s · Smooth</span></div>
+            <input id="transition" type="range" min={4} max={32} value={transition} disabled={busy !== null} onChange={e => { setTransition(Number(e.target.value)); setPreset('balanced') }}/><div className="range-labels"><span>4s · Quick</span><span>32s · Smooth</span></div>
             <label className="field-label" htmlFor="quality">EXPORT QUALITY</label><select id="quality" disabled value="320"><option value="320">MP3 · 320 kbps</option></select>
             <div className="settings-divider"/>
             <button className="action secondary" disabled={!ready} onClick={() => void run('analysis')}>{busy === 'analysis' ? <LoaderCircle className="spin" size={18}/> : <Activity size={18}/>} Analyze Tracks</button>
@@ -154,7 +173,7 @@ export default function App() {
         </div>
 
         <section className="panel preview" id="preview"><div className="preview-main"><div className="panel-heading"><div><h2><AudioLines size={20}/> Mix Preview <span className="muted">{url ? '· Ready to play' : '· Awaiting your mix'}</span></h2><p>Listen to your finished mix before downloading.</p></div></div><div className="player"><button className="play" disabled={!playReady} aria-label="Play or pause mix" onClick={() => setPlaySignal(n => n+1)}><Play size={21} fill="currentColor"/></button><div className="wave-area"><Waveform url={url} onTime={(t,d) => {setCurrent(t);setDuration(d)}} onReady={setPlayReady} playSignal={playSignal}/><div className="time"><span>{formatTime(current)}</span><span>{formatTime(duration)}</span></div></div></div></div><div className="preview-summary"><div className="summary-title">MIX SUMMARY</div><strong>{url ? formatTime(duration) : '--:--'}</strong><span>Total Mix Duration</span><div className="summary-divider"/><p>{Math.max(0,count-1)} transitions · {transition}s each</p>{url && <a className="download" href={url} download="MixMaster_AI_Nonstop.mp3"><Download size={17}/> Download MP3</a>}</div></section>
-        <footer><span>MixMaster AI · Development MVP · Equal-power crossfades (not beatmatching)</span><span>Only upload audio you have permission to use.</span></footer>
+        <footer><span>MixMaster AI · Development MVP · Experimental beat-phase alignment · Phrase matching pending</span><span>Only upload audio you have permission to use.</span></footer>
       </div>
     </main>
   </div>
