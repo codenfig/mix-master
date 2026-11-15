@@ -73,7 +73,11 @@ def _execute(job_id, project, executable, arrangement):
                                         start_new_session=True)
             with _lock:
                 job["process"] = proc
+                cancelled_before_launch = job["cancel"].is_set()
             try:
+                if cancelled_before_launch:
+                    _stop_process(proc)
+                    raise InterruptedError("Generation cancelled.")
                 while proc.poll() is None:
                     if job["cancel"].wait(0.25):
                         _stop_process(proc)
@@ -152,6 +156,8 @@ def cancel(job_id):
             raise HTTPException(404, "Job not found or server restarted.")
         if job["status"] in {"queued", "running", "cancelling"}:
             job["cancel"].set()
-            job["status"] = "cancelling"
-            job["stage"] = "cancelling"
+            if job["status"] == "queued":
+                job.update(status="cancelled", stage="cancelled")
+            else:
+                job.update(status="cancelling", stage="cancelling")
         return _snapshot(job)
