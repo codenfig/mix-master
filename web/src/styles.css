@@ -77,3 +77,8 @@
 .mastering-options{margin-bottom:10px}
 .mastering-report{margin-top:22px}
 .mastering-options button{text-transform:none}
+
+.kick-toggle{display:flex;align-items:center;gap:11px;color:#e7dbf8;font-size:12px;line-height:1.5;margin:10px 0 14px;cursor:pointer}
+.kick-toggle input{width:17px;height:17px;accent-color:#a477f2;flex-shrink:0}
+.kick-controls{padding:13px;border:1px solid #3c3052;border-radius:10px;background:#201c34;margin-bottom:16px}
+.kick-controls input[type=range]{width:100%}
