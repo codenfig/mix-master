@@ -151,3 +151,22 @@
 .studio-upload-card{background:linear-gradient(145deg,#1c1933,#141527);border-color:#4c3a68}.studio-drop-zone{position:relative;min-height:250px;background:radial-gradient(ellipse at 50% 0%,#50307833,transparent 65%),#17152c;border-color:#745397;transition:border-color .2s,background .2s,transform .2s}.studio-drop-zone:hover,.studio-drop-zone:focus-visible{border-color:#e09cff;background:#241a3d}.studio-drop-zone .upload-icon{border:1px solid #8254b3;background:linear-gradient(145deg,#5d337f,#33234e);box-shadow:0 0 25px #b34ce833;color:#e6adff}.studio-drop-zone strong{font:700 18px 'Space Grotesk',sans-serif;text-align:center;padding:0 12px}.studio-drop-zone .browse-button{display:flex;align-items:center;gap:9px;border:1px solid #d393ff;background:linear-gradient(100deg,#bf4de6,#7953eb);box-shadow:0 6px 25px #ad4de744;padding:12px 19px}.studio-upload-card .upload-feedback{margin-top:16px}.studio-upload-card .upload-progress span{background:linear-gradient(90deg,#de53e9,#7658ee,#35c5f0)}
 @media(max-width:1120px){.studio-progress-steps{grid-template-columns:repeat(2,minmax(0,1fr))}.studio-hero{grid-template-columns:1fr 240px}.studio-hero-record{width:185px}}@media(max-width:700px){.studio-hero{grid-template-columns:1fr}.studio-hero-copy{padding:27px 24px 0}.studio-hero h2{font-size:42px}.studio-hero-art{min-height:210px}.studio-hero-record{width:165px}.studio-hero-eq{bottom:0}.studio-intelligence{grid-template-columns:1fr}.studio-progress-steps{gap:8px}.studio-progress-step{padding:12px 10px}.studio-progress-step small,.studio-step-arrow{display:none}.studio-step-num{width:29px;height:29px}.studio-progress-step strong{font-size:11px}.studio-energy-placeholder{flex-direction:column;align-items:stretch;gap:4px}}
 @media(prefers-reduced-motion:reduce){.studio-drop-zone{transition:none}}
+
+
+/* Screenshot-derived DJ artwork: place supplied crops in web/public/images/ */
+.dj-preview{position:relative}
+.dj-banner{background:linear-gradient(90deg,#0c0b1a 0%,#0c0b1a 28%,#100d26a8 58%,#080a1b 100%);min-height:160px;overflow:hidden}
+.dj-banner:after{content:"";position:absolute;right:9%;top:0;width:36%;height:165px;background:url('/images/preview-headphones.webp') center 45%/cover no-repeat;opacity:.94;mask-image:linear-gradient(90deg,transparent,#000 24%,#000 86%,transparent);pointer-events:none}
+.dj-banner-copy{position:relative;z-index:2}
+.dj-headphones{opacity:0}
+.dj-cover{background:linear-gradient(0deg,#130e29 0%,transparent 46%),url('/images/preview-cover.webp') center/cover no-repeat,#301e57}
+.dj-cover>svg,.dj-cover-light{opacity:0}
+.dj-cover strong,.dj-cover small{position:relative;text-shadow:0 2px 10px #000}
+.sidebar .help-box{position:relative;overflow:hidden;padding-top:120px;background:linear-gradient(0deg,#201439 0%,#17122d 50%,transparent 100%),url('/images/sidebar-dj.webp') center top/100% auto no-repeat,#1b1531}
+.sidebar .help-box>svg,.sidebar .help-box>div{position:relative;z-index:1}
+.dj-main-deck,.dj-console-card,.dj-summary{box-shadow:0 12px 35px #0003,inset 0 1px #ffffff08}
+.dj-main-deck{background:linear-gradient(115deg,#211537,#12172d 65%,#16132d)}
+.dj-main-wave{filter:drop-shadow(0 0 12px #ae51ef3b)}
+.dj-console-card{background:linear-gradient(145deg,#1c1936,#121529)}
+.dj-download{background:linear-gradient(105deg,#e447e7,#7445f1);box-shadow:0 5px 20px #b84aea44}
+@media(max-width:720px){.dj-banner:after{right:0;width:65%;opacity:.45}.sidebar .help-box{padding-top:14px;background:#1b1531}}
