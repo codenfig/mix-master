@@ -1,7 +1,7 @@
 """Deterministic, explainable autonomous DJ transition planner.
 
 No chatbot or external model API. Plans are advisory until a renderer supports
-beat-grid alignment and pitch-preserving time stretching.
+beat-grid alignment and audible quality evaluation.
 """
 from __future__ import annotations
 import math
@@ -77,5 +77,5 @@ def plan(tracks: list[dict], transition: int = 12) -> dict:
         "transitions": transitions,
         "quality_score": round(sum(t["compatibility"] for t in transitions) / len(transitions), 1) if transitions else 100.0,
         "strategy": "energy-aware harmonic planning",
-        "note": "Scores estimate metadata compatibility, not audible mix quality. Rendering currently uses crossfades without beatmatching.",
+        "note": "Scores estimate metadata compatibility, not audible mix quality. Rendering uses crossfades and bounded tempo matching; beat-grid synchronization is not implemented.",
     }
