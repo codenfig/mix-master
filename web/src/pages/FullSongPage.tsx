@@ -27,12 +27,12 @@ export default function FullSongPage() {
   const [generating,setGenerating] = useState(false)
   const [audio,setAudio] = useState<{file:{id:string;name:string};download_url:string}|null>(null)
   useEffect(()=>{const controller=new AbortController();const timer=window.setTimeout(()=>controller.abort(),8000);void fetch('/api/full-song/engine',{signal:controller.signal}).then(async response=>{if(!response.ok)throw new Error('Backend unavailable');return response.json() as Promise<{generation_available:boolean;reason:string|null;capabilities?:{instrumental:boolean;vocals:boolean;full_song:boolean}}>}).then(data=>{setCapabilities(data.capabilities||{instrumental:false,vocals:false,full_song:false});setEngineMessage(data.generation_available?'Local engine configured':data.reason||'Engine unavailable')}).catch(()=>setEngineMessage('Backend unavailable. Restart Python server.')).finally(()=>window.clearTimeout(timer));return ()=>{controller.abort();window.clearTimeout(timer)}},[])
-  const [jobId,setJobId] = useState('')
+  const [jobId,setJobId] = useState<string>(()=>{try{return window.sessionStorage.getItem('mixmaster-full-song-job')||''}catch{return ''}})
   const [jobStage,setJobStage] = useState('')
   const [jobElapsed,setJobElapsed] = useState(0)
   useEffect(()=>{
-    if(jobId)window.sessionStorage.setItem('mixmaster-full-song-job',jobId)
-    else window.sessionStorage.removeItem('mixmaster-full-song-job')
+    try {if(jobId)window.sessionStorage.setItem('mixmaster-full-song-job',jobId)
+    else window.sessionStorage.removeItem('mixmaster-full-song-job')} catch { /* storage may be unavailable */ }
   },[jobId])
   useEffect(()=>{
     if(!jobId)return
@@ -54,11 +54,12 @@ export default function FullSongPage() {
     return ()=>{stopped=true;window.clearInterval(interval)}
   },[jobId])
   async function generate(){
+    if(generating||jobId)return
     setGenerating(true);setError('');setAudio(null);setJobElapsed(0);setJobStage('queued')
     const controller=new AbortController()
     const timer=window.setTimeout(()=>controller.abort(),10000)
     try{
-      const response=await fetch('/api/full-song/jobs',{method:'POST',headers:{'Content-Type':'application/json'},signal:controller.signal,body:JSON.stringify({title,description,lyrics,voice,genre,output,bpm,minutes})})
+      const response=await fetch('/api/full-song/jobs',{method:'POST',headers:{'Content-Type':'application/json'},signal:controller.signal,body:JSON.stringify({title,description,lyrics:output==='instrumental'?'':lyrics,voice,genre,output,bpm,minutes})})
       if(!response.ok){const body=await response.json().catch(()=>({}));throw new Error(typeof body.detail==='string'?body.detail:'Could not start generation ('+response.status+').')}
       const job=await response.json() as {id:string}
       setJobId(job.id)
@@ -92,11 +93,11 @@ export default function FullSongPage() {
     <div className="mm-generator-layout">
       <div className="mm-generator-compose">
         <div className="mm-generator-panel-head"><div><WandSparkles size={19}/><strong>Create a song</strong></div><span className="mm-generator-engine">{capabilities[output]?'Engine ready':'Engine unavailable'}</span></div>
-        <div className="fullsong-mode-bar" role="group" aria-label="Music generation mode"><button type="button" aria-pressed={!customMode} className={!customMode?'active':''} onClick={()=>setCustomMode(false)}>Simple</button><button type="button" aria-pressed={customMode} className={customMode?'active':''} onClick={()=>setCustomMode(true)}>Custom</button></div>
+        <div className="fullsong-mode-bar" role="group" aria-label="Music generation mode"><button type="button" aria-pressed={!customMode} className={!customMode?'active':''} onClick={()=>{setCustomMode(false);setOutput('instrumental')}}>Simple</button><button type="button" aria-pressed={customMode} className={customMode?'active':''} onClick={()=>setCustomMode(true)}>Custom</button></div>
         {customMode&&<label>Song title<input value={title} maxLength={120} onChange={e=>setTitle(e.target.value)} placeholder="Give your song a title"/></label>}
         <label className="mm-generator-description">Song description <span className="fullsong-count">{description.length}/{customMode?2000:400}</span><textarea rows={6} value={description} maxLength={customMode?2000:400} onChange={e=>setDescription(e.target.value)} placeholder="A joyful Afro-pop song with rumba guitars, warm bass, bright whistles, uplifting harmonies…"/></label>
         {customMode&&<label>Lyrics <span className="mm-generator-hint">Use [Verse], [Pre-Chorus], [Chorus], [Bridge]</span><textarea rows={10} value={lyrics} maxLength={12000} onChange={e=>setLyrics(e.target.value)} placeholder="[Verse 1]&#10;Tonight we dance beneath the stars&#10;&#10;[Chorus]&#10;I see you…"/></label>}
-        <div className="fullsong-toggles"><label className="fullsong-switch"><input type="checkbox" checked={output==='instrumental'} onChange={e=>setOutput(e.target.checked?'instrumental':'full_song')}/><span>Instrumental</span><small>Music without vocals</small></label><label className="fullsong-switch"><input type="checkbox" checked={privateMode} onChange={e=>setPrivateMode(e.target.checked)}/><span>Private</span><small>Not yet supported</small></label></div>
+        <div className="fullsong-toggles"><label className="fullsong-switch"><input type="checkbox" checked={output==='instrumental'} onChange={e=>{setOutput(e.target.checked?'instrumental':'full_song');if(!e.target.checked)setCustomMode(true)}}/><span>Instrumental</span><small>Music without vocals</small></label><label className="fullsong-switch"><input type="checkbox" checked={privateMode} onChange={e=>setPrivateMode(e.target.checked)}/><span>Private</span><small>Not yet supported</small></label></div>
         {privateMode&&<p className="fullsong-privacy-warning" role="status">Private mode is not available yet. Generation is disabled because generated files do not have per-user access controls.</p>}
         <div className="fullsong-grid">
           <label>Genre<select value={genre} onChange={e=>setGenre(e.target.value)}>{genres.map(g=><option key={g}>{g}</option>)}</select></label>
