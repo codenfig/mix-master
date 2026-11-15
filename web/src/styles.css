@@ -170,3 +170,18 @@
 .dj-console-card{background:linear-gradient(145deg,#1c1936,#121529)}
 .dj-download{background:linear-gradient(105deg,#e447e7,#7445f1);box-shadow:0 5px 20px #b84aea44}
 @media(max-width:720px){.dj-banner:after{right:0;width:65%;opacity:.45}.sidebar .help-box{padding-top:14px;background:#1b1531}}
+
+
+/* Screenshot-matched Mix Preview artwork; files supplied in the companion assets ZIP */
+.dj-preview{gap:14px}
+.dj-banner{background:linear-gradient(90deg,#0e0d21 0%,#100d23e8 34%,#100d2310 68%),url('/images/preview-headphones.png') right center/auto 100% no-repeat,#0e0d21;border-color:#4b2d75}
+.dj-banner-eq{display:none}
+.dj-headphones{display:none}
+.dj-cover{background:url('/images/preview-cover.png') center/cover no-repeat,#1d1038;border:1px solid #b05bf3}
+.dj-cover:before{display:none}
+.dj-main-deck{background:radial-gradient(ellipse at 14% 12%,#61277c4a,transparent 46%),linear-gradient(125deg,#21173d,#10132b 72%);border-color:#65418b}
+.dj-console-card{background:linear-gradient(135deg,#211b3c,#15172e)}
+.dj-summary{background:linear-gradient(150deg,#2a234b,#1a1c3c)}
+.dj-download,.dj-play-btn{box-shadow:0 0 23px #bc44e655}
+.dj-main-wave{filter:drop-shadow(0 0 9px #d246ed66)}
+@media(max-width:760px){.dj-banner{background-size:auto 100%;background-position:75% center}.dj-banner:after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,#100d23f5,#100d2377);pointer-events:none}.dj-banner-copy{z-index:2}}
