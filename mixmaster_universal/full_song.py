@@ -10,6 +10,7 @@ from tempfile import TemporaryDirectory
 import wave
 
 from generated_storage import save_generated
+from song_arrangement import arrangement
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
@@ -59,6 +60,12 @@ def _engine_command(output='instrumental'):
     return executable
 
 
+@router.post("/api/full-song/arrangement")
+def plan_arrangement(project: SongProject):
+    validate_project(project)
+    return arrangement(project.lyrics, project.bpm, project.minutes)
+
+
 @router.get("/api/full-song/engine")
 def engine_status():
     instrumental = _engine_command('instrumental') is not None
@@ -76,7 +83,8 @@ def save_project(project: SongProject):
     PROJECT_ROOT.mkdir(parents=True, exist_ok=True)
     project_id = uuid4().hex
     record = {"id": project_id, "created_at": datetime.now(timezone.utc).isoformat(),
-              "status": "draft", "project": project.model_dump() if hasattr(project, "model_dump") else project.dict()}
+              "status": "draft", "project": project.model_dump() if hasattr(project, "model_dump") else project.dict(),
+              "arrangement": arrangement(project.lyrics, project.bpm, project.minutes)}
     path = PROJECT_ROOT / (project_id + ".json")
     # Exclusive creation avoids accidentally overwriting an existing project.
     with path.open("x", encoding="utf-8") as output:
@@ -110,7 +118,9 @@ def generate_song(project: SongProject):
     with TemporaryDirectory(prefix="mixmaster_full_song_") as directory:
         work = Path(directory)
         request_path, output_path = work / "project.json", work / "song.wav"
-        request_path.write_text(json.dumps(project.model_dump() if hasattr(project, "model_dump") else project.dict()), encoding="utf-8")
+        payload = project.model_dump() if hasattr(project, "model_dump") else project.dict()
+        payload["arrangement"] = arrangement(project.lyrics, project.bpm, project.minutes)
+        request_path.write_text(json.dumps(payload), encoding="utf-8")
         try:
             result = subprocess.run([str(executable), str(request_path), str(output_path)],
                                     cwd=str(work), capture_output=True, text=True, timeout=300, check=False)
