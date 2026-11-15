@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import WaveSurfer from 'wavesurfer.js'
 
-type Props = { url: string | null; onTime: (time: number, duration: number) => void; onReady: (ready: boolean) => void; playSignal: number }
+type Props = { url: string | null; onTime: (time: number, duration: number) => void; onReady: (ready: boolean) => void; playSignal: number; onPlayingChange?: (playing: boolean) => void }
 
-export default function Waveform({ url, onTime, onReady, playSignal }: Props) {
+export default function Waveform({ url, onTime, onReady, playSignal, onPlayingChange }: Props) {
   const container = useRef<HTMLDivElement>(null)
   const instance = useRef<WaveSurfer | null>(null)
   const [playing, setPlaying] = useState(false)
@@ -24,10 +24,10 @@ export default function Waveform({ url, onTime, onReady, playSignal }: Props) {
     instance.current = wave
     wave.on('ready', () => { onReady(true); onTime(0, wave.getDuration()) })
     wave.on('timeupdate', time => onTime(time, wave.getDuration()))
-    wave.on('play', () => setPlaying(true))
-    wave.on('pause', () => setPlaying(false))
-    wave.on('finish', () => setPlaying(false))
-    wave.on('error', () => { onReady(false); setPlaying(false) })
+    wave.on('play', () => { setPlaying(true); onPlayingChange?.(true) })
+    wave.on('pause', () => { setPlaying(false); onPlayingChange?.(false) })
+    wave.on('finish', () => { setPlaying(false); onPlayingChange?.(false) })
+    wave.on('error', () => { onReady(false); setPlaying(false); onPlayingChange?.(false) })
     return () => { instance.current = null; wave.destroy() }
     // Callbacks are only used for display; playback instance is tied to URL.
     // eslint-disable-next-line react-hooks/exhaustive-deps
