@@ -1,0 +1,22 @@
+name: MixMaster checks
+on:
+  push:
+    branches: [main, feature/mixmaster-system-hardening]
+  pull_request:
+jobs:
+  python:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mixmaster_universal
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: sudo apt-get update && sudo apt-get install -y ffmpeg
+      - run: python -m pip install -r requirements.txt pytest httpx
+      - run: python -m compileall -q .
+      - run: python -m pytest -q tests
+      - name: Verify FFmpeg MP3 encoding
+        run: ffmpeg -hide_banner -encoders | grep libmp3lame
