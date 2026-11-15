@@ -42,6 +42,13 @@ export async function analyze(files: File[], count: number, transition: number, 
   return (await post('/api/analyze', files, count, transition, signal)).json() as Promise<AnalysisResult>
 }
 
-export async function mix(files: File[], count: number, transition: number, signal?: AbortSignal): Promise<Blob> {
-  return (await post('/api/mix', files, count, transition, signal)).blob()
+export type MixMetrics = { peak: number; rms: number; nearSilence: number; clippingRisk: boolean }
+export async function mix(files: File[], count: number, transition: number, signal?: AbortSignal): Promise<{ audio: Blob; metrics: MixMetrics }> {
+  const response = await post('/api/mix', files, count, transition, signal)
+  return { audio: await response.blob(), metrics: {
+    peak: Number(response.headers.get('X-MixMaster-Peak') || 0),
+    rms: Number(response.headers.get('X-MixMaster-RMS') || 0),
+    nearSilence: Number(response.headers.get('X-MixMaster-Near-Silence') || 0),
+    clippingRisk: response.headers.get('X-MixMaster-Clipping-Risk') === 'true',
+  } }
 }
