@@ -25,7 +25,7 @@ GENRES = {"Afro-pop", "Rumba", "Dancehall", "Bongo Flava", "Pop", "Afrobeat", "C
 class SongProject(BaseModel):
     title: str = Field(min_length=1, max_length=120)
     description: str = Field(min_length=1, max_length=2000)
-    lyrics: str = Field(min_length=1, max_length=12000)
+    lyrics: str = Field(default='', max_length=12000)
     voice: str = "female"
     genre: str = "Afro-pop"
     output: str = "full_song"
@@ -34,8 +34,8 @@ class SongProject(BaseModel):
 
 
 def validate_project(project: SongProject):
-    if not all((project.title.strip(), project.description.strip(), project.lyrics.strip())):
-        raise HTTPException(422, "Title, description and lyrics must not be blank.")
+    if not project.title.strip() or not project.description.strip() or (project.output != 'instrumental' and not project.lyrics.strip()):
+        raise HTTPException(422, "Title and description are required; lyrics are required for vocal generation.")
     if project.voice not in {"female", "male", "duet"}:
         raise HTTPException(422, "Unsupported singing voice.")
     if project.genre not in GENRES:
