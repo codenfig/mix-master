@@ -1,0 +1,29 @@
+name: Desktop build smoke checks
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'mixmaster_universal/**'
+      - 'windows/**'
+      - 'mac/**'
+      - 'linux/**'
+      - '.github/workflows/desktop-builds.yml'
+jobs:
+  desktop:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        working-directory: mixmaster_universal
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Compile Python application
+        run: python -m compileall -q .
+      - name: Validate desktop entry point
+        run: python -m py_compile desktop.py server.py engine.py
