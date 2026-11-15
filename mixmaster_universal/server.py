@@ -20,6 +20,7 @@ app.mount("/static", StaticFiles(directory=ROOT / "static"), name="static")
 SUPPORTED = {".mp3", ".wav", ".flac", ".m4a", ".ogg", ".aac"}
 MAX_FILE_BYTES = 200 * 1024 * 1024
 VALID_COUNTS = {5, 10, 20}
+MASTERING_PRESETS = {"off", "balanced", "club"}
 
 
 @app.get("/")
@@ -84,8 +85,10 @@ def analyze_songs(songs: list[UploadFile] = File(...), count: int = Form(10)):
 
 
 @app.post("/api/mix")
-def mix(songs: list[UploadFile] = File(...), count: int = Form(10), transition: int = Form(12)):
+def mix(songs: list[UploadFile] = File(...), count: int = Form(10), transition: int = Form(12), mastering: str = Form("balanced")):
     validate_settings(count, transition)
+    if mastering not in MASTERING_PRESETS:
+        raise HTTPException(400, "Unknown mastering preset.")
     with TemporaryDirectory(prefix="mixmaster_") as temp:
         tmp = Path(temp)
         tracks, names = save_uploads(songs, tmp, count)
@@ -94,7 +97,7 @@ def mix(songs: list[UploadFile] = File(...), count: int = Form(10), transition: 
         ordered = [analysis[i] for i in mix_plan['order_indices']]
         out = tmp / "MixMaster_AI_Nonstop.mp3"
         try:
-            quality = render(ordered, out, transition=transition)
+            quality = render(ordered, out, transition=transition, mastering=mastering)
         except Exception as exc:
             raise HTTPException(422, "Audio rendering failed. Check track lengths and FFmpeg installation.") from exc
         saved = Path(tempfile.gettempdir()) / f"mixmaster_{uuid.uuid4().hex}.mp3"
@@ -113,14 +116,16 @@ def mix(songs: list[UploadFile] = File(...), count: int = Form(10), transition: 
 
 
 @app.post("/api/jobs", status_code=202)
-def queue_mix(songs: list[UploadFile] = File(...), count: int = Form(10), transition: int = Form(12)):
+def queue_mix(songs: list[UploadFile] = File(...), count: int = Form(10), transition: int = Form(12), mastering: str = Form("balanced")):
     """Accept uploads, analyze, then render asynchronously in one bounded worker."""
     validate_settings(count, transition)
+    if mastering not in MASTERING_PRESETS:
+        raise HTTPException(400, "Unknown mastering preset.")
     directory = allocate_directory()
     try:
         tracks, names = save_uploads(songs, directory, count)
         analysis = inspect_tracks(tracks, names)
-        job_id = create_job(analysis, transition, directory)
+        job_id = create_job(analysis, transition, directory, mastering=mastering)
         return {"id": job_id, "status": "queued", "status_url": f"/api/jobs/{job_id}"}
     except RuntimeError as exc:
         shutil.rmtree(directory, ignore_errors=True)
