@@ -62,36 +62,68 @@ def match_tempo(audio, source_bpm, target_bpm, max_change=0.06):
     return stretched.astype(np.float32, copy=False), True
 
 
+def _write_audio(out, audio, chunk_frames=65536):
+    """Write float32 stereo PCM in bounded chunks."""
+    for offset in range(0, len(audio), chunk_frames):
+        out.write(np.asarray(audio[offset:offset + chunk_frames], dtype='<f4').tobytes())
+
+
+def decode_stereo_disk(path, directory, sr=44100):
+    """Decode through FFmpeg into a disk-backed array instead of stdout RAM."""
+    destination = Path(directory) / 'decoded.f32'
+    with destination.open('wb') as sink:
+        subprocess.run(
+            ['ffmpeg', '-v', 'error', '-nostdin', '-i', str(path),
+             '-f', 'f32le', '-ac', '2', '-ar', str(sr), '-'],
+            stdout=sink, stderr=subprocess.PIPE, check=True,
+        )
+    samples = destination.stat().st_size // 8
+    if not samples:
+        raise ValueError('Decoded track contains no audio')
+    return np.memmap(destination, dtype='<f4', mode='r', shape=(samples, 2))
+
+
 def render(tracks, output, transition=12, progress=None, beatmatch=True):
-    sr=44100
-    fade=int(sr*transition)
+    """Disk-backed crossfade renderer with optional conservative tempo matching.
+
+    Unstretched tracks remain on disk. Stretching a track still uses RAM, so
+    this is not yet a fully streaming time-stretch implementation.
+    """
+    sr = 44100
+    fade = int(sr * transition)
     previous_bpm = None
     with tempfile.TemporaryDirectory() as tmp:
-        raw=Path(tmp)/'mix.raw'
-        with open(raw,'wb') as out:
-            tail=None
-            for i,t in enumerate(tracks):
-                audio=decode_stereo(t['path'],sr)
-                current_bpm = float(t.get('bpm', 0))
-                if beatmatch and previous_bpm is not None:
-                    audio, _ = match_tempo(audio, current_bpm, previous_bpm)
-                if len(audio)<2*fade: raise ValueError(f'Track must exceed {2*transition} seconds: {t["name"]}')
-                if tail is None:
-                    out.write(audio[:-fade].astype('<f4').tobytes())
-                else:
-                    # Equal-power crossfade; optional conservative tempo matching.
-                    # Beat-phase and phrase alignment are not implemented.
-                    n=min(len(tail),fade)
-                    phase=np.linspace(0,np.pi/2,n,dtype=np.float32)[:,None]
-                    overlap=tail[-n:]*np.cos(phase)+audio[:n]*np.sin(phase)
-                    out.write(overlap.astype('<f4').tobytes())
-                    out.write(audio[n:-fade].astype('<f4').tobytes())
-                tail=audio[-fade:]
-                previous_bpm = current_bpm if current_bpm > 0 else previous_bpm
-                if progress: progress(i+1,len(tracks))
-            out.write(tail.astype('<f4').tobytes())
-        # limiter via peak normalization avoids clipping at overlaps; preserve stereo.
-        # ffmpeg loudnorm in two-pass mastering can be added in a later release.
-        subprocess.run(['ffmpeg','-y','-v','error','-f','f32le','-ar',str(sr),'-ac','2',
-                        '-i',str(raw),'-af','alimiter=limit=0.95','-codec:a','libmp3lame',
-                        '-b:a','320k',str(output)],check=True)
+        raw = Path(tmp) / 'mix.raw'
+        with raw.open('wb') as out:
+            tail = None
+            for i, track in enumerate(tracks):
+                # Each decoded track is scoped to its own directory, allowing
+                # memmap handles to be discarded after processing.
+                with tempfile.TemporaryDirectory(dir=tmp) as decoded_dir:
+                    audio = decode_stereo_disk(track['path'], decoded_dir, sr)
+                    current_bpm = float(track.get('bpm', 0))
+                    if beatmatch and previous_bpm is not None:
+                        audio, _ = match_tempo(audio, current_bpm, previous_bpm)
+                    if len(audio) < 2 * fade:
+                        raise ValueError(f'Track must exceed {2 * transition} seconds: {track["name"]}')
+                    if tail is None:
+                        _write_audio(out, audio[:-fade])
+                    else:
+                        n = min(len(tail), fade)
+                        # Compute only the transition in memory.
+                        phase = np.linspace(0, np.pi / 2, n, dtype=np.float32)[:, None]
+                        overlap = tail[-n:] * np.cos(phase) + audio[:n] * np.sin(phase)
+                        _write_audio(out, overlap)
+                        _write_audio(out, audio[n:-fade])
+                    tail = np.asarray(audio[-fade:], dtype=np.float32).copy()
+                    previous_bpm = current_bpm if current_bpm > 0 else previous_bpm
+                if progress:
+                    progress(i + 1, len(tracks))
+            if tail is not None:
+                _write_audio(out, tail)
+        subprocess.run(
+            ['ffmpeg', '-y', '-v', 'error', '-nostdin', '-f', 'f32le',
+             '-ar', str(sr), '-ac', '2', '-i', str(raw),
+             '-af', 'alimiter=limit=0.95', '-codec:a', 'libmp3lame',
+             '-b:a', '320k', str(output)], check=True,
+        )
