@@ -1,0 +1,40 @@
+/* Consistent flat MixMaster styling for the seven legacy screens.
+   Loaded last; deliberately scoped to avoid altering the functional generator/decks. */
+:root{--mm-legacy-bg:#080b0d;--mm-legacy-panel:#101416;--mm-legacy-inset:#171d20;--mm-legacy-border:#374247;--mm-legacy-text:#f2f7f8;--mm-legacy-muted:#a9b8bf;--mm-legacy-cyan:#00dde5;--mm-legacy-gold:#ffd600}
+.content-overview,.content-preview,.content-history,.content-text-to-song,.content-audio-mastering,.content-voice-studio,.content-settings{max-width:1500px}
+.content-overview .page-heading,.content-preview .page-heading,.content-history .page-heading,.content-text-to-song .page-heading,.content-audio-mastering .page-heading,.content-voice-studio .page-heading,.content-settings .page-heading{padding:2px 0 15px;margin:0 0 17px;border-bottom:1px solid #2c363b}
+.content-overview .page-heading h1,.content-preview .page-heading h1,.content-history .page-heading h1,.content-text-to-song .page-heading h1,.content-audio-mastering .page-heading h1,.content-voice-studio .page-heading h1,.content-settings .page-heading h1{font-size:23px;color:var(--mm-legacy-text);letter-spacing:-.03em}
+.content-overview :is(.hero,.panel,.help-box),.content-preview :is(.dj-banner,.dj-main-deck,.dj-console-card,.dj-summary,.dj-mix-info,.dj-analytics),.content-history :is(.panel,.history-item),.content-settings :is(.panel,.settings,.kick-controls,.custom-mastering),.content-text-to-song :is(.textsong,.textsong-result),.content-audio-mastering :is(.master-hero,.master-panel,.master-selected,.master-controls,.master-player,.master-metric,.master-placeholder),.content-voice-studio :is(.master-hero,.master-panel,.voice-profile,.master-player){background:#101416!important;background-image:none!important;color:var(--mm-legacy-text)!important;border-color:var(--mm-legacy-border)!important;box-shadow:none!important}
+.content-overview :is(.hero,.panel),.content-preview :is(.dj-banner,.dj-main-deck,.dj-console-card),.content-history .history-panel,.content-settings .panel,.content-text-to-song .textsong,.content-audio-mastering :is(.master-hero,.master-panel),.content-voice-studio :is(.master-hero,.master-panel){border:1px solid var(--mm-legacy-border);border-radius:12px}
+.content-overview .hero,.content-preview .dj-banner,.content-audio-mastering .master-hero,.content-voice-studio .master-hero{min-height:145px;padding:22px 26px}
+.content-overview :is(.eyebrow,.hero h1 span,.panel-heading svg,.step-number.done),.content-preview :is(.dj-kicker,.dj-card-label,.dj-console-title svg,.dj-summary-row svg),.content-history .panel-heading svg,.content-settings :is(.panel-heading svg,.field-label),.content-text-to-song .textsong-hero,.content-audio-mastering :is(.master-eyebrow,.master-hero h2 em,.master-panel-title>svg,.master-drop svg),.content-voice-studio :is(.master-eyebrow,.master-hero h2 em,.master-panel-title>svg){color:var(--mm-legacy-cyan)!important;-webkit-text-fill-color:currentColor}
+.content-overview :is(.hero p,.panel-heading p,.help-box p),.content-preview :is(.dj-banner p,.dj-track-heading p,.dj-summary-row small),.content-history :is(.panel-heading p,.history-item span,.history-empty),.content-settings :is(.panel-heading p,.preset-hint),.content-text-to-song :is(.textsong-hero p,.textsong-note,.textsong-result small),.content-audio-mastering :is(.master-hero p,.master-panel-title p,.master-drop span,.master-label,.master-selected small),.content-voice-studio :is(.master-hero p,.master-panel-title p,.voice-note,.voice-consent,.voice-field){color:var(--mm-legacy-muted)!important}
+.content-overview :is(.hero-disc,.disc-inner,.upload-icon,.drop-zone,.preset-options button,.history-item),.content-preview :is(.dj-main-wave,.dj-timeline,.dj-progress-track,.dj-summary-row),.content-settings :is(.preset-options button,.kick-controls,.custom-mastering),.content-text-to-song :is(textarea,select,input,.textsong-result),.content-audio-mastering :is(.master-drop,.master-selected,.master-preset,.master-controls,.master-placeholder,.master-metric),.content-voice-studio :is(.voice-field input,.voice-field select,.voice-profile){background:#171d20!important;background-image:none!important;border-color:#39464c!important;box-shadow:none!important;color:#f2f7f8}
+.content-text-to-song :is(textarea,select,input),.content-voice-studio :is(input,select),.content-settings :is(input,select){accent-color:var(--mm-legacy-cyan)}
+.content-overview :is(button.selected,.preset-options button.selected),.content-settings :is(.preset-options button.selected),.content-audio-mastering .master-preset.selected{background:#0c2b2f!important;color:#00dde5!important;border:1px solid #00dde5!important;box-shadow:none!important}
+.content-text-to-song :is(.textsong-generate,.textsong-result a),.content-audio-mastering .master-action,.content-voice-studio .master-action,.content-preview :is(.dj-download,.dj-play-btn){background:#00dde5!important;background-image:none!important;color:#051719!important;border-color:#00dde5!important;box-shadow:none!important;font-weight:800}
+.content-text-to-song :is(.textsong-generate,.textsong-result a):hover:not(:disabled),.content-audio-mastering .master-action:hover:not(:disabled),.content-voice-studio .master-action:hover:not(:disabled){background:#27f1f4!important}
+.content-audio-mastering :is(.master-controls input[type=range],.master-compression input),.content-settings input[type=range]{accent-color:#00dde5}
+.content-audio-mastering .master-hero h2,.content-voice-studio .master-hero h2{font-size:clamp(26px,3vw,38px);letter-spacing:-.03em}
+.content-audio-mastering .master-hero-icon{background:#0a181b!important;border:7px solid #1f3439!important;color:#00dde5!important;box-shadow:none!important;width:110px;height:110px}
+.content-audio-mastering .master-grid,.content-voice-studio .master-grid{gap:14px}
+.content-audio-mastering .master-panel,.content-voice-studio .master-panel{padding:19px}
+.content-audio-mastering .master-drop{border:2px dashed #6c8188!important;border-radius:10px}
+.content-audio-mastering .master-drop:hover,.content-audio-mastering .master-drop:focus-visible{border-color:#00dde5!important}
+.content-voice-studio .voice-profile button{background:#112a2d;color:#00dde5;border-color:#00dde5}
+.content-voice-studio .voice-field input:focus-visible,.content-text-to-song :is(input,select,textarea):focus-visible{outline:2px solid #00dde5;outline-offset:2px}
+.content-history .history-item{border-bottom:1px solid #334047;padding:13px}
+.content-history .history-panel{min-height:230px}
+.content-settings .workspace-single{max-width:1000px}
+.content-settings .settings{padding:21px}
+.content-settings .field-label{letter-spacing:.07em}
+.content-settings .kick-toggle input{accent-color:#00dde5}
+.content-overview .hero-disc{border:9px solid #29383e;box-shadow:none}
+.content-overview .disc-inner{background:#00dde5!important;color:#062124}
+.content-preview .dj-cover:not([style*="background-image"]){background:#123237!important}
+.content-preview .dj-vinyl{border-color:#303a3e!important}
+.content-preview .dj-banner-eq i,.content-preview .dj-main-wave i{background:#00dde5}
+.content-preview .dj-main-deck{padding:19px}
+.content-preview .dj-summary{background:#14191b!important}
+.content-overview :is(button,a),.content-preview :is(button,a),.content-history button,.content-settings button,.content-text-to-song button,.content-audio-mastering button,.content-voice-studio button{transition:background-color .15s,border-color .15s,color .15s}
+@media(max-width:800px){.content-overview .hero,.content-preview .dj-banner,.content-audio-mastering .master-hero,.content-voice-studio .master-hero{padding:18px;min-height:125px}.content-audio-mastering .master-grid,.content-voice-studio .master-grid{grid-template-columns:1fr}.content-audio-mastering .master-hero-icon{display:none}}
