@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { ArrowRight, Clock3, Download, Headphones, Mic2, Music2, Search, Sparkles, WandSparkles, RefreshCw, FileText, SlidersHorizontal } from 'lucide-react'
 import '../styles/full-song.css'
 
@@ -10,13 +10,14 @@ const genres = ['Afro-pop', 'Rumba', 'Dancehall', 'Bongo Flava', 'Pop', 'Afrobea
 export default function FullSongPage() {
   const [customMode,setCustomMode] = useState(true)
   const [privateMode,setPrivateMode] = useState(false)
+  const projectInput = useRef<HTMLInputElement>(null)
   const [title, setTitle] = useState('I See You')
   const [description, setDescription] = useState('Uplifting Afro-pop with joyful rumba guitar, dancehall bounce, melodic bass, skanking keys, whistles and a wide uplifting chorus.')
   const [lyrics, setLyrics] = useState('[Verse 1]\n\n[Pre-Chorus]\n\n[Chorus]\nI see you\n\n[Verse 2]\n\n[Bridge]\n\n[Final Chorus]')
   useEffect(()=>{
     try {
       const imported = sessionStorage.getItem('mixmaster-imported-lyrics')
-      if(imported){setLyrics(imported);setCustomMode(true);setOutput('instrumental');sessionStorage.removeItem('mixmaster-imported-lyrics')}
+      if(imported){setLyrics(imported);setCustomMode(true);sessionStorage.removeItem('mixmaster-imported-lyrics')}
     } catch { /* browser storage may be unavailable */ }
   },[])
   const [voice, setVoice] = useState<Voice>('female')
@@ -25,6 +26,43 @@ export default function FullSongPage() {
   const [bpm, setBpm] = useState(110)
   const [minutes, setMinutes] = useState(3)
   const [saving, setSaving] = useState(false)
+  const [draftRestored,setDraftRestored] = useState(false)
+  useEffect(()=>{
+    try{
+      const saved=localStorage.getItem('mixmaster-song-draft-v1')
+      if(saved){
+        const draft=JSON.parse(saved) as Record<string,unknown>
+        if(typeof draft.title==='string')setTitle(draft.title.slice(0,120))
+        if(typeof draft.description==='string')setDescription(draft.description.slice(0,2000))
+        if(typeof draft.lyrics==='string'&&!sessionStorage.getItem('mixmaster-imported-lyrics'))setLyrics(draft.lyrics.slice(0,12000))
+        if(typeof draft.genre==='string'&&genres.includes(draft.genre))setGenre(draft.genre)
+        if(draft.voice==='female'||draft.voice==='male'||draft.voice==='duet')setVoice(draft.voice)
+        if(draft.output==='full_song'||draft.output==='instrumental'||draft.output==='vocals')setOutput(draft.output)
+        if(typeof draft.bpm==='number'&&draft.bpm>=60&&draft.bpm<=180)setBpm(draft.bpm)
+        if(draft.minutes===2||draft.minutes===3||draft.minutes===4)setMinutes(draft.minutes)
+      }
+    }catch{/* Invalid browser draft should not prevent rendering. */}
+    setDraftRestored(true)
+  },[])
+  useEffect(()=>{
+    if(!draftRestored)return
+    try{localStorage.setItem('mixmaster-song-draft-v1',JSON.stringify({title,description,lyrics,genre,voice,output,bpm,minutes}))}catch{}
+  },[draftRestored,title,description,lyrics,genre,voice,output,bpm,minutes])
+  async function importProject(file:File){
+    if(file.size>200000){setError('Project JSON is too large.');return}
+    try{
+      const data=JSON.parse(await file.text()) as Record<string,unknown>
+      if(typeof data.title!=='string'||typeof data.description!=='string'||typeof data.lyrics!=='string')throw Error('Invalid MixMaster project JSON.')
+      if(data.title.length>120||data.description.length>2000||data.lyrics.length>12000)throw Error('Project exceeds supported text limits.')
+      setTitle(data.title);setDescription(data.description);setLyrics(data.lyrics);setCustomMode(true)
+      if(typeof data.genre==='string'&&genres.includes(data.genre))setGenre(data.genre)
+      if(data.voice==='female'||data.voice==='male'||data.voice==='duet')setVoice(data.voice)
+      if(data.output==='full_song'||data.output==='instrumental'||data.output==='vocals')setOutput(data.output)
+      if(typeof data.bpm==='number'&&data.bpm>=60&&data.bpm<=180)setBpm(data.bpm)
+      if(data.minutes===2||data.minutes===3||data.minutes===4)setMinutes(data.minutes)
+      setError('');setStatus('Project loaded into the editor.')
+    }catch(e){setError(e instanceof Error?e.message:'Could not read project.')}
+  }
   const [search, setSearch] = useState('')
   const [songs,setSongs] = useState<SavedSong[]>([])
   const [selectedId,setSelectedId] = useState('')
@@ -42,8 +80,9 @@ export default function FullSongPage() {
   async function previewArrangement(){setPlanning(true);setError('');setPlan(null);const controller=new AbortController();const timer=window.setTimeout(()=>controller.abort(),10000);try{const response=await fetch('/api/full-song/arrangement',{method:'POST',headers:{'Content-Type':'application/json'},signal:controller.signal,body:JSON.stringify({title,description,lyrics:customMode?lyrics:'',voice,genre,output,bpm,minutes})});if(!response.ok)throw new Error('Could not plan arrangement ('+response.status+').');setPlan(await response.json())}catch(e){setError(controller.signal.aborted?'Arrangement preview timed out.':e instanceof Error?e.message:'Could not preview arrangement.')}finally{window.clearTimeout(timer);setPlanning(false)}}
   const [capabilities,setCapabilities] = useState({instrumental:false,vocals:false,full_song:false})
   const [engineMessage,setEngineMessage] = useState('Checking local engine…')
+  const [engineRefresh,setEngineRefresh] = useState(0)
   const [generating,setGenerating] = useState(false)
-  useEffect(()=>{const controller=new AbortController();const timer=window.setTimeout(()=>controller.abort(),8000);void fetch('/api/full-song/engine',{signal:controller.signal}).then(async response=>{if(!response.ok)throw new Error('Backend unavailable');return response.json() as Promise<{generation_available:boolean;reason:string|null;capabilities?:{instrumental:boolean;vocals:boolean;full_song:boolean}}>}).then(data=>{setCapabilities(data.capabilities||{instrumental:false,vocals:false,full_song:false});setEngineMessage(data.generation_available?'Local engine configured':data.reason||'Engine unavailable')}).catch(()=>setEngineMessage('Backend unavailable. Restart Python server.')).finally(()=>window.clearTimeout(timer));return ()=>{controller.abort();window.clearTimeout(timer)}},[])
+  useEffect(()=>{const controller=new AbortController();const timer=window.setTimeout(()=>controller.abort(),8000);void fetch('/api/full-song/engine',{signal:controller.signal}).then(async response=>{if(!response.ok)throw new Error('Backend unavailable');return response.json() as Promise<{generation_available:boolean;reason:string|null;capabilities?:{instrumental:boolean;vocals:boolean;full_song:boolean}}>}).then(data=>{setCapabilities(data.capabilities||{instrumental:false,vocals:false,full_song:false});setEngineMessage(data.generation_available?'Local engine configured':data.reason||'Engine unavailable')}).catch(()=>setEngineMessage('Backend unavailable. Restart Python server.')).finally(()=>window.clearTimeout(timer));return ()=>{controller.abort();window.clearTimeout(timer)}},[engineRefresh])
   const [jobId,setJobId] = useState<string>(()=>{try{return window.sessionStorage.getItem('mixmaster-full-song-job')||''}catch{return ''}})
   const [jobStage,setJobStage] = useState('')
   const [jobElapsed,setJobElapsed] = useState(0)
@@ -109,10 +148,10 @@ export default function FullSongPage() {
     <div className="mm-generator-top"><div><span className="mm-generator-kicker"><Sparkles size={14}/> MIXMASTER AI STUDIO</span><h2>Music Generator</h2><p>Describe a song, shape its sound, and explore your creations.</p></div><a className="mm-generator-plan-link" href="#/pricing"><Sparkles size={16}/> Plans & credits <ArrowRight size={15}/></a></div>
     <div className="mm-generator-layout">
       <div className="mm-generator-compose">
-        <div className="mm-generator-panel-head"><div><WandSparkles size={19}/><strong>Create Music</strong></div><span className="mm-generator-engine">{capabilities[output]?'Ready':'Offline'}</span></div>
+        <div className="mm-generator-panel-head"><div><WandSparkles size={19}/><strong>Create Music</strong></div><button type="button" className="mm-generator-engine mm-engine-refresh" title="Check local generation engine" onClick={()=>setEngineRefresh(v=>v+1)}><RefreshCw size={12}/>{capabilities[output]?'Ready':'Not connected'}</button></div>
         <div className="fullsong-mode-bar" role="group" aria-label="Music generation mode"><button type="button" aria-pressed={!customMode} className={!customMode?'active':''} onClick={()=>{setCustomMode(false);setOutput('instrumental')}}>Simple</button><button type="button" aria-pressed={customMode} className={customMode?'active':''} onClick={()=>setCustomMode(true)}>Custom</button></div>
         {customMode&&<label>Lyrics <span className="mm-generator-hint">Use [Verse], [Pre-Chorus], [Chorus], [Bridge]</span><textarea rows={10} value={lyrics} maxLength={12000} onChange={e=>setLyrics(e.target.value)} placeholder="[Verse 1]&#10;Tonight we dance beneath the stars&#10;&#10;[Chorus]&#10;I see you…"/></label>}
-        {customMode&&<div className="mm-lyric-tools"><button type="button" onClick={()=>setLyrics('[Verse 1]\nTonight we dance beneath the stars\nFeel the rhythm in our hearts\n\n[Pre-Chorus]\nEvery step will lead us closer\n\n[Chorus]\nI see you, shining in the light\nTogether we can dance all night\n\n[Verse 2]\n\n[Bridge]\n\n[Final Chorus]')}>Lyric starter · local template</button><span>{lyrics.length}/12000</span></div>}
+        {customMode&&<div className="mm-lyric-tools"><a href="#/lyrics-generator" className="mm-lyrics-generator-link"><WandSparkles size={13}/> AI Lyrics Generator</a><button type="button" onClick={()=>setLyrics('[Verse 1]\nTonight we dance beneath the stars\nFeel the rhythm in our hearts\n\n[Pre-Chorus]\nEvery step will lead us closer\n\n[Chorus]\nI see you, shining in the light\nTogether we can dance all night\n\n[Verse 2]\n\n[Bridge]\n\n[Final Chorus]')}>Lyric starter · local template</button><span>{lyrics.length}/12000</span></div>}
         <label className="mm-generator-description">{customMode?"Style of music":"Song description"} <span className="fullsong-count">{description.length}/{customMode?2000:400}</span><textarea rows={6} value={description} maxLength={customMode?2000:400} onChange={e=>setDescription(e.target.value)} placeholder="A joyful Afro-pop song with rumba guitars, warm bass, bright whistles, uplifting harmonies…"/></label>
         <div className="mm-generator-tags"><button type="button" onClick={()=>setDescription("Joyful Afro-pop, rumba guitars, melodic bass, skanking keys, hand drums and bright whistles")}>Afro-pop</button><button type="button" onClick={()=>setDescription("Warm dancehall groove, syncopated drums, bouncy bass and uplifting chorus")}>Dancehall</button><button type="button" onClick={()=>setDescription("Sparkling country-pop guitar, upbeat rhythm and bright melodic hooks")}>Country pop</button></div>
         <div className="fullsong-toggles"><label className="fullsong-switch"><input type="checkbox" checked={output==='instrumental'} onChange={e=>{setOutput(e.target.checked?'instrumental':'full_song');if(!e.target.checked)setCustomMode(true)}}/><span>Instrumental</span><small>Music without vocals</small></label><label className="fullsong-switch"><input type="checkbox" checked={privateMode} onChange={e=>setPrivateMode(e.target.checked)}/><span>Private</span><small>Not yet supported</small></label></div>
@@ -126,9 +165,9 @@ export default function FullSongPage() {
           {customMode&&<label>Output<select value={output} onChange={e=>setOutput(e.target.value as Output)}><option value="full_song">Full song with vocals</option><option value="instrumental">Instrumental only</option><option value="vocals">Vocals only</option></select></label>}
         </div></details>
         <button className="mm-generator-primary" type="button" disabled={!capabilities[output]||generating||privateMode||!description.trim()||(output!=='instrumental'&&!lyrics.trim())} onClick={()=>void generate()}><Sparkles size={18}/>{generating?'Generating music…':capabilities[output]?'Generate Music':'Singing engine not connected'}<ArrowRight size={18}/></button>
-        <p className="fullsong-footnote">Instrumentals use your configured local engine. Singing requires a connected, compatible vocal engine. Generation times vary by model and hardware.</p>
+        <p className="fullsong-footnote">{engineMessage}. Instrumentals use your configured local engine; singing requires a separately connected vocal engine. No paid API is required for local instrumentals.</p>
         {generating&&<div className="mm-generator-progress" role="status"><Clock3 size={16}/> {jobStage||'Queued'} · {Math.round(jobElapsed)}s elapsed <button type="button" onClick={()=>void cancelGeneration()}>Cancel</button></div>}
-        <details className="mm-generator-advanced"><summary>Advanced song tools</summary><div className="fullsong-actions"><button type="button" disabled={planning} onClick={()=>void previewArrangement()}>{planning?'Planning…':'Preview arrangement'}</button><button type="button" disabled={saving} onClick={()=>void saveDraft()}>{saving?'Saving…':'Save draft'}</button><button type="button" onClick={()=>{const data={title,description,lyrics,voice,genre,output,bpm,minutes};const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});const url=URL.createObjectURL(blob);const link=document.createElement('a');link.href=url;link.download='mixmaster-song-project.json';link.click();window.setTimeout(()=>URL.revokeObjectURL(url),1000)}}><Download size={16}/> Export project JSON</button></div></details>
+        <details className="mm-generator-advanced"><summary>Advanced song tools</summary><input ref={projectInput} type="file" accept=".json,application/json" style={{display:"none"}} aria-label="Import song project" onChange={e=>{const file=e.target.files?.[0];if(file)void importProject(file);e.target.value=""}}/><div className="fullsong-actions"><button type="button" onClick={()=>projectInput.current?.click()}>Import project JSON</button><button type="button" disabled={planning} onClick={()=>void previewArrangement()}>{planning?'Planning…':'Preview arrangement'}</button><button type="button" disabled={saving} onClick={()=>void saveDraft()}>{saving?'Saving…':'Save draft'}</button><button type="button" onClick={()=>{const data={title,description,lyrics,voice,genre,output,bpm,minutes};const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});const url=URL.createObjectURL(blob);const link=document.createElement('a');link.href=url;link.download='mixmaster-song-project.json';link.click();window.setTimeout(()=>URL.revokeObjectURL(url),1000)}}><Download size={16}/> Export project JSON</button></div></details>
         {plan&&<div className="fullsong-banner"><strong>Arrangement · {plan.total_bars} bars · ~{Math.round(plan.estimated_seconds)}s</strong><div className="fullsong-timeline">{plan.sections.map((section,index)=><div key={index} className="fullsong-section" style={{flexGrow:section.bars,opacity:0.65+section.energy*0.35}} title={section.name+' · '+section.bars+' bars'}><span>{section.name}</span><small>{section.bars} bars</small></div>)}</div><p className="fullsong-footnote">Arrangement preview is a plan; your selected engine may not follow it exactly.</p></div>}
         {status&&<p role="status" className="fullsong-banner">{status}</p>}
         {error&&<p role="alert" className="textsong-error">{error}</p>}
