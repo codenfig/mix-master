@@ -8,6 +8,8 @@ import re
 import subprocess
 from tempfile import TemporaryDirectory
 import wave
+from urllib.parse import urlsplit
+from urllib.request import urlopen
 
 from generated_storage import save_generated
 from song_arrangement import arrangement
@@ -44,12 +46,25 @@ def validate_project(project: SongProject):
         raise HTTPException(422, "Unsupported output type.")
 
 
+def _local_ace_step_ready():
+    """Auto-discovery must not claim ready when the local server is down."""
+    base = os.environ.get("ACESTEP_BASE_URL", "http://127.0.0.1:8001").rstrip("/")
+    parsed = urlsplit(base)
+    if parsed.scheme != "http" or parsed.hostname not in {"127.0.0.1", "localhost", "::1"} or parsed.path:
+        return False
+    try:
+        with urlopen(base + "/health", timeout=1.5) as response:
+            return 200 <= response.status < 300
+    except (OSError, ValueError, TimeoutError):
+        return False
+
+
 def _engine_command(output='instrumental'):
     if output != 'instrumental':
         configured = os.environ.get('FULL_SONG_VOCAL_EXECUTABLE', '').strip()
         # An explicitly opted-in ACE-Step service can run on loopback with no API key.
         # For remote services the adapter itself enforces HTTPS + authentication.
-        if not configured and output == 'full_song' and os.environ.get('MIXMASTER_ENABLE_ACESTEP', '') == '1':
+        if not configured and output == 'full_song' and os.environ.get('MIXMASTER_ENABLE_ACESTEP', '') == '1' and _local_ace_step_ready():
             configured = str(Path(__file__).with_name('run_ace_step_gpu.sh'))
         if not configured:
             return None
