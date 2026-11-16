@@ -1,6 +1,7 @@
 import DjDeckStudio from './DjDeckStudio'
 import PricingPage from './pages/PricingPage'
 import FullSongPage from './pages/FullSongPage'
+import LyricsGeneratorPage from './pages/LyricsGeneratorPage'
 import TextToSongPage from './pages/TextToSongPage'
 import GeneratedFilesPage from './pages/GeneratedFilesPage'
 import OverviewPage from './pages/OverviewPage'
@@ -14,7 +15,7 @@ import StemSplitter from './StemSplitter'
 import AudioMastering from './AudioMastering'
 import VoiceStudio from './VoiceStudio'
 
-type Page = 'onboarding' | 'overview' | 'studio' | 'library' | 'preview' | 'history' | 'generated-files' | 'text-to-song' | 'full-song' | 'pricing' | 'settings' | 'vocal-remover' | 'stem-splitter' | 'audio-mastering' | 'voice-studio'
+type Page = 'onboarding' | 'overview' | 'studio' | 'library' | 'preview' | 'history' | 'generated-files' | 'text-to-song' | 'full-song' | 'pricing' | 'settings' | 'vocal-remover' | 'stem-splitter' | 'audio-mastering' | 'voice-studio' | 'lyrics-generator'
 const pages: { id: Page; label: string; subtitle: string }[] = [
   { id: 'onboarding', label: 'Welcome', subtitle: 'Discover MixMaster AI' },
   { id: 'overview', label: 'Overview', subtitle: 'Your creative command center' },
@@ -23,6 +24,7 @@ const pages: { id: Page; label: string; subtitle: string }[] = [
   { id: 'preview', label: 'Mix Preview', subtitle: 'Listen, review and export' },
   { id: 'history', label: 'Mix History', subtitle: 'Your previous sessions' },
   { id: 'generated-files', label: 'Generated Files', subtitle: 'Browse and download your saved audio outputs' },
+  { id: 'lyrics-generator', label: 'AI Lyrics Generator', subtitle: 'Write original lyrics locally with AI' },
   { id: 'text-to-song', label: 'Text to Song', subtitle: 'Compose offline instrumental music from text' },
   { id: 'full-song', label: 'Music Generator', subtitle: 'Plan songs, vocals and arrangements' },
   { id: 'pricing', label: 'Plans & Pricing', subtitle: 'Preview creator subscription plans' },
@@ -338,6 +340,7 @@ export default function App() {
         {page === 'generated-files' && <GeneratedFilesPage/>}
         {page === 'text-to-song' && <TextToSongPage/>}
         {page === 'full-song' && <FullSongPage/>}
+        {page === 'lyrics-generator' && <LyricsGeneratorPage/>}
         {page === 'pricing' && <PricingPage/>}
         {page === 'vocal-remover' && <VocalRemover/>}
         {page === 'stem-splitter' && <StemSplitter/>}
