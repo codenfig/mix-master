@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160" role="img" aria-label="MixMaster AI default music cover">
+<rect width="160" height="160" fill="#123E48"/>
+<circle cx="109" cy="48" r="37" fill="#FFD95A"/>
+<path d="M0 103Q44 85 84 104T160 103V160H0Z" fill="#0BC2CB"/>
+<path d="M0 127Q46 105 85 133T160 123V160H0Z" fill="#06171E"/>
+<path d="M0 143Q50 132 90 144T160 138" stroke="#FFD95A" stroke-width="3" fill="none" opacity=".8"/>
+<path d="M32 96q-8-23 0-48m0 0q-20-12-28-1m28 1q14-21 30-16m-30 16q-21-5-30 9" fill="none" stroke="#06171E" stroke-width="7" stroke-linecap="round"/>
+<circle cx="79" cy="89" r="8" fill="#06171E"/>
+<path d="M77 98l-10 24 14 13 11-18-5-16z" fill="#06171E"/>
+<path d="M83 108l25-8" stroke="#06171E" stroke-width="5" stroke-linecap="round"/>
+<ellipse cx="110" cy="98" rx="16" ry="10" transform="rotate(-18 110 98)" fill="#FFD95A" stroke="#06171E" stroke-width="3"/>
+<path d="M99 101l35-16" stroke="#06171E" stroke-width="4" stroke-linecap="round"/>
+<path d="M71 124l-9 27m21-29l13 30" stroke="#06171E" stroke-width="6" stroke-linecap="round"/>
+<path d="M15 15h22" stroke="#0BC2CB" stroke-width="5" stroke-linecap="round"/>
+<circle cx="24" cy="39" r="3" fill="#FFD95A"/>
+</svg>
