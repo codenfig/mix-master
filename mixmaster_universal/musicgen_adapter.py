@@ -42,8 +42,10 @@ def main():
               f"{project['description']}. No singing, no spoken words.")[:1800]
     inputs = processor(text=[prompt], padding=True, return_tensors="pt").to(device)
     with torch.inference_mode():
-        # MusicGen is limited to 30 seconds; 1000 tokens is ~20 seconds.
-        audio = model.generate(**inputs, do_sample=True, guidance_scale=3.0, max_new_tokens=1000)
+        # A shorter preview is useful on Intel Macs where generation can be slow.
+        # MusicGen is limited to 30 seconds; 1000 tokens is roughly 20 seconds.
+        tokens = max(64, min(1500, int(os.environ.get("MIXMASTER_MUSICGEN_MAX_TOKENS", "1000"))))
+        audio = model.generate(**inputs, do_sample=True, guidance_scale=3.0, max_new_tokens=tokens)
     samples = audio[0].detach().cpu().float().numpy()
     if samples.ndim == 2:
         samples = samples.T
