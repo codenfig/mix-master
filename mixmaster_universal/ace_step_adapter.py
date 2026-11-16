@@ -9,6 +9,7 @@ import os
 import sys
 import time
 from pathlib import Path
+from tempfile import TemporaryDirectory
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlsplit
 from urllib.request import Request, urlopen
@@ -37,6 +38,8 @@ def _api(path, payload=None):
             body = json.load(response)
     except (HTTPError, URLError, TimeoutError) as exc:
         raise RuntimeError("Local ACE-Step API unavailable: " + str(exc)) from exc
+    if not isinstance(body, dict):
+        raise RuntimeError("ACE-Step returned an invalid API response.")
     if body.get("code", 200) != 200 or body.get("error"):
         raise RuntimeError("ACE-Step rejected request: " + str(body.get("error") or body.get("code")))
     return body.get("data")
@@ -78,6 +81,21 @@ def _download_audio(path, destination):
             output.write(chunk)
 
 
+def normalize_pcm_wav(source, destination):
+    """Stream ACE-Step WAV into the uncompressed PCM16 contract expected by jobs."""
+    try:
+        import soundfile as sf
+    except ImportError as exc:
+        raise RuntimeError("Install soundfile in the backend environment to decode ACE-Step WAV.") from exc
+    with sf.SoundFile(str(source), mode="r") as input_audio:
+        if input_audio.samplerate < 8000 or input_audio.channels not in (1, 2) or input_audio.frames <= 0:
+            raise RuntimeError("ACE-Step returned invalid audio channels, sample rate or duration.")
+        with sf.SoundFile(str(destination), mode="w", samplerate=input_audio.samplerate,
+                          channels=input_audio.channels, format="WAV", subtype="PCM_16") as output_audio:
+            for block in input_audio.blocks(blocksize=65536, dtype="float32", always_2d=True):
+                output_audio.write(block)
+
+
 def main():
     if len(sys.argv) != 3:
         raise SystemExit("Usage: ace_step_adapter.py project.json output.wav")
@@ -102,7 +120,10 @@ def main():
                 files = json.loads(files)
             if not files or not isinstance(files, list):
                 raise RuntimeError("ACE-Step returned no audio files.")
-            _download_audio(files[0]["file"], Path(sys.argv[2]))
+            with TemporaryDirectory(prefix="mixmaster_ace_audio_") as temp_dir:
+                raw = Path(temp_dir) / "generated.wav"
+                _download_audio(files[0]["file"], raw)
+                normalize_pcm_wav(raw, Path(sys.argv[2]))
             return
         time.sleep(2)
     raise TimeoutError("ACE-Step did not finish within the local job time limit.")

@@ -8,6 +8,8 @@ import re
 import subprocess
 from tempfile import TemporaryDirectory
 import wave
+from urllib.parse import urlsplit
+from urllib.request import urlopen
 
 from generated_storage import save_generated
 from song_arrangement import arrangement
@@ -44,14 +46,31 @@ def validate_project(project: SongProject):
         raise HTTPException(422, "Unsupported output type.")
 
 
+def _local_ace_step_ready():
+    """Auto-discovery must not claim ready when the local server is down."""
+    base = os.environ.get("ACESTEP_BASE_URL", "http://127.0.0.1:8001").rstrip("/")
+    parsed = urlsplit(base)
+    if parsed.scheme != "http" or parsed.hostname not in {"127.0.0.1", "localhost", "::1"} or parsed.path:
+        return False
+    try:
+        with urlopen(base + "/health", timeout=1.5) as response:
+            return 200 <= response.status < 300
+    except (OSError, ValueError, TimeoutError):
+        return False
+
+
 def _engine_command(output='instrumental'):
     if output != 'instrumental':
         configured = os.environ.get('FULL_SONG_VOCAL_EXECUTABLE', '').strip()
-        if not configured and output == 'full_song' and os.environ.get('ACESTEP_API_URL', '').strip() and os.environ.get('ACESTEP_API_KEY', '').strip():
+        # An explicitly opted-in ACE-Step service can run on loopback with no API key.
+        # For remote services the adapter itself enforces HTTPS + authentication.
+        if not configured and output == 'full_song' and os.environ.get('MIXMASTER_ENABLE_ACESTEP', '') == '1' and _local_ace_step_ready():
             configured = str(Path(__file__).with_name('run_ace_step_gpu.sh'))
         if not configured:
             return None
         executable = Path(configured).expanduser().resolve()
+        if output == 'vocals' and executable.name in {'run_ace_step_gpu.sh', 'run_ace_step_gpu.py', 'ace_step_adapter.py'}:
+            return None  # ACE-Step adapter produces a mixed song, not isolated vocal stems.
         return executable if executable.is_file() and os.access(executable, os.X_OK) else None
 
     """Only an explicitly configured local executable is permitted."""
@@ -73,12 +92,17 @@ def plan_arrangement(project: SongProject):
 @router.get("/api/full-song/engine")
 def engine_status():
     instrumental = _engine_command('instrumental') is not None
-    vocal = _engine_command('vocals') is not None
-    return {"backend": "ready", "generation_available": instrumental or vocal,
-            "capabilities": {"instrumental": instrumental, "vocals": vocal, "full_song": vocal,
-                             "voices": ["female", "male", "duet"] if vocal else []},
-            "engine": "local-executable" if instrumental or vocal else None,
-            "reason": None if instrumental or vocal else "Configure FULL_SONG_ENGINE_EXECUTABLE for instrumentals or FULL_SONG_VOCAL_EXECUTABLE for singing."}
+    vocal_stem_engine = _engine_command('vocals')
+    full_song_engine = _engine_command('full_song')
+    # ACE-Step's built-in adapter returns a mixed song, not an isolated stem.
+    ace_wrapper_names = {"run_ace_step_gpu.sh", "run_ace_step_gpu.py", "ace_step_adapter.py"}
+    vocal_stem = vocal_stem_engine is not None and vocal_stem_engine.name not in ace_wrapper_names
+    full_song = full_song_engine is not None
+    return {"backend": "ready", "generation_available": instrumental or vocal_stem or full_song,
+            "capabilities": {"instrumental": instrumental, "vocals": vocal_stem, "full_song": full_song,
+                             "voices": ["female", "male", "duet"] if full_song or vocal_stem else []},
+            "engine": "local-executable" if instrumental or vocal_stem or full_song else None,
+            "reason": None if instrumental or vocal_stem or full_song else "Configure FULL_SONG_ENGINE_EXECUTABLE for instrumentals, FULL_SONG_VOCAL_EXECUTABLE for singing, or explicitly opt in to local ACE-Step with MIXMASTER_ENABLE_ACESTEP=1."}
 
 
 @router.post("/api/full-song/projects", status_code=201)

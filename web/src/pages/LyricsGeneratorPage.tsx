@@ -3,7 +3,8 @@ import { Copy, Download, Music2, RefreshCw, Send, Sparkles } from 'lucide-react'
 import '../styles/lyrics-generator.css'
 
 type Status = {available:boolean;model:string;reason:string|null}
-type GenerateResult = {lyrics:string;model:string;mode:string}
+type LyricsReview = { sections:string[]; line_count:number; issues:string[]; summary:string }
+type GenerateResult = {lyrics:string;model:string;mode:string;review?:LyricsReview|null}
 const LANGUAGES=['English','Swahili','French','Spanish','Portuguese','Hindi','Arabic','German','Italian']
 const DEFAULT_LYRICS=''
 const key='mixmaster-lyrics-draft'
@@ -21,28 +22,43 @@ export default function LyricsGeneratorPage(){
   const [error,setError]=useState('')
   const [copied,setCopied]=useState(false)
   const [modelUsed,setModelUsed]=useState('')
+  const [review,setReview]=useState<LyricsReview|null>(null)
+  const [previousLyrics,setPreviousLyrics]=useState<string|null>(null)
   const refreshStatus=async()=>{
     try{const res=await fetch('/api/lyrics/status');if(!res.ok)throw Error('Lyrics service is unavailable');setStatus(await res.json())}
     catch{setStatus({available:false,model:'llama3.2:3b',reason:'Start the MixMaster backend and Ollama.'})}
   }
   useEffect(()=>{void refreshStatus()},[])
   useEffect(()=>{try{localStorage.setItem(key,lyrics)}catch{}},[lyrics])
-  const generate=async(mode:'song'|'chorus')=>{
-    if(!topic.trim()){setError('Enter a topic or story for your song.');return}
+  const generate=async(mode:'song'|'chorus'|'refine')=>{
+    const actualTopic=topic.trim()||(mode==='refine'?'Keep the original story and message':'')
+    if(!actualTopic){setError('Enter a topic or story for your song.');return}
+    if(mode==='refine'&&!lyrics.trim()){setError('Write lyrics before refining them.');return}
     setBusy(true);setError('');setCopied(false)
     try{
-      const res=await fetch('/api/lyrics/generate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({topic,genre,mood,language,structure,voice,existing_lyrics:lyrics,mode})})
+      const res=await fetch('/api/lyrics/generate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({topic:actualTopic,genre,mood,language,structure,voice,existing_lyrics:lyrics,mode})})
       const data=await res.json() as GenerateResult & {detail?:string}
       if(!res.ok)throw Error(typeof data.detail==='string'?data.detail:'Lyrics generation failed.')
-      if(mode==='song')setLyrics(data.lyrics)
+      if(mode==='refine'){setPreviousLyrics(lyrics);setLyrics(data.lyrics)}
+      else if(mode==='song'){setPreviousLyrics(null);setLyrics(data.lyrics)}
       else {
         const replacement=data.lyrics.trim()
         const chorus=/\[Chorus\][\s\S]*?(?=\n\s*\[[^\]]+\]|$)/i
         setLyrics(previous=>chorus.test(previous)?previous.replace(chorus,replacement):previous.trim()+'\n\n'+replacement)
       }
+      setReview(data.review||null)
       setModelUsed(data.model)
     }catch(e){setError(e instanceof Error?e.message:'Could not generate lyrics.')}
     finally{setBusy(false)}
+  }
+  const checkLyrics=async()=>{
+    if(!lyrics.trim())return
+    setError('')
+    try{
+      const res=await fetch('/api/lyrics/review',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({lyrics,structure})})
+      if(!res.ok)throw Error('Local lyrics review is unavailable. Start the MixMaster backend.')
+      setReview(await res.json() as LyricsReview)
+    }catch(e){setError(e instanceof Error?e.message:'Could not review lyrics.')}
   }
   const copy=async()=>{try{await navigator.clipboard.writeText(lyrics);setCopied(true)}catch{setError('Clipboard access is unavailable. Select the lyrics and copy manually.')}}
   const save=()=>{const blob=new Blob([lyrics],{type:'text/plain;charset=utf-8'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='mixmaster-lyrics.txt';a.click();window.setTimeout(()=>URL.revokeObjectURL(url),1000)}
@@ -62,13 +78,19 @@ export default function LyricsGeneratorPage(){
         </div>
         <button className="mm-lyrics-generate" disabled={busy||!status?.available} onClick={()=>void generate('song')}><Sparkles size={18}/>{busy?'Writing lyrics…':'Generate Lyrics'}</button>
         <button className="mm-lyrics-outline" disabled={busy||!status?.available||!lyrics.trim()} onClick={()=>void generate('chorus')}><RefreshCw size={16}/> Regenerate Chorus</button>
+        <div className="mm-lyrics-review-buttons">
+          <button className="mm-lyrics-outline" disabled={busy||!lyrics.trim()} onClick={()=>void checkLyrics()}>Review Lyrics</button>
+          <button className="mm-lyrics-outline" disabled={busy||!status?.available||!lyrics.trim()} onClick={()=>void generate('refine')}>Refine Draft with AI</button>
+        </div>
         <div className="mm-lyrics-model"><span className={status?.available?'mm-lyrics-online':'mm-lyrics-offline'}/><div><strong>{status?.available?'Local model ready':'Local model not ready'}</strong><small>{status?.available?status.model:status?.reason||'Checking local Ollama…'}</small></div><button onClick={()=>void refreshStatus()} type="button">Check</button></div>
         {!status?.available&&<p className="mm-lyrics-setup">Install <code>ollama</code>, then run <code>ollama pull llama3.2:3b</code> and start Ollama locally. The MixMaster backend must also be running.</p>}
         {error&&<p role="alert" className="mm-lyrics-error">{error}</p>}
       </section>
       <section className="mm-lyrics-panel mm-lyrics-editor">
         <div className="mm-lyrics-editor-top"><div><h3>Your lyrics</h3><p>Editable draft · automatically saved in this browser</p></div><span>{lyrics.length}/12000</span></div>
-        <textarea aria-label="Generated lyrics" value={lyrics} maxLength={12000} placeholder={'[Verse 1]\n\n[Pre-Chorus]\n\n[Chorus]\n'} onChange={e=>setLyrics(e.target.value)}/>
+        <textarea aria-label="Generated lyrics" value={lyrics} maxLength={12000} placeholder={'[Verse 1]\n\n[Pre-Chorus]\n\n[Chorus]\n'} onChange={e=>{setLyrics(e.target.value);setReview(null)}}/>
+        {review&&<div className="mm-lyrics-review" role="status"><strong>Lyrics review · {review.line_count} lines · {review.sections.length} sections</strong><p>{review.summary}</p>{review.issues.length>0&&<ul>{review.issues.map((issue,index)=><li key={index}>{issue}</li>)}</ul>}</div>}
+        {previousLyrics!==null&&<button type="button" className="mm-lyrics-undo" onClick={()=>{setLyrics(previousLyrics);setPreviousLyrics(null);setReview(null)}}>Undo AI refinement</button>}
         {modelUsed&&<small>Generated locally with {modelUsed}. Review and edit before use.</small>}
         <div className="mm-lyrics-actions"><button disabled={!lyrics.trim()} onClick={()=>void copy()}><Copy size={15}/>{copied?'Copied':'Copy'}</button><button disabled={!lyrics.trim()} onClick={save}><Download size={15}/>Save .txt</button><button className="mm-lyrics-use" disabled={!lyrics.trim()} onClick={useInSong}><Send size={15}/>Use in Music Generator</button></div>
       </section>

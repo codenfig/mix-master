@@ -91,6 +91,88 @@ Open **http://127.0.0.1:8000** in your browser. API health: **http://127.0.0.1:8
 
 This runs the legacy browser UI served from `mixmaster_universal/static/index.html`. The new React web studio is separate: run `cd web && npm install && npm run dev` from the repository root in another terminal, then open http://localhost:5173. The Vite development server proxies API requests to FastAPI on port 8000.
 
+## 🎼 Music Generator and AI Lyrics Generator (development)
+
+The React studio includes a **Music Generator** (`/#/full-song`) and
+**AI Lyrics Generator** (`/#/lyrics-generator`) in addition to DJ mixing,
+audio tools, generated-file browsing, and playback. The studio uses a flat
+black/charcoal theme with cyan `#00DDE5` and gold accents.
+
+**Current capabilities and limitations:**
+
+| Feature | Current implementation |
+| --- | --- |
+| Instrumental previews | Local MusicGen Small adapter; requires separate model download and Python dependencies. Short previews only; audio quality must be tested on each machine. |
+| Singing / full songs | Optional external executable interface; no working singing model is bundled or verified on Intel macOS. |
+| Lyrics | Local Ollama model (default `llama3.2:3b`) generates song or chorus drafts and can refine existing lyrics. |
+| Lyrics review | Offline deterministic checks for song sections, short drafts, long lines and repetition; not a measure of artistic quality. |
+| Song projects | Editor draft persistence, JSON import/export, local generated-file library, playback and downloads. |
+| Licensing | MusicGen Small model weights are noncommercial (CC BY-NC 4.0). Check licenses before offering commercial generation. |
+
+### Quick start on macOS (Python 3.11)
+
+Install backend requirements into an existing Python 3.11 virtual environment.
+For the separately managed Intel Mac environment used during development:
+
+```bash
+cd /path/to/mix-master
+source "$HOME/MixMasterAI/mixmaster-venv/bin/activate"
+cd mixmaster_universal
+python -m pip install -r requirements.txt
+export MIXMASTER_PYTHON="$HOME/MixMasterAI/mixmaster-venv/bin/python"
+export FULL_SONG_ENGINE_EXECUTABLE="$PWD/run_musicgen.sh"
+export FULL_SONG_JOB_TIMEOUT_SECONDS=1800
+export MIXMASTER_MUSICGEN_DEVICE=cpu
+python -m uvicorn server:app --host 127.0.0.1 --port 8000
+```
+
+This assumes MusicGen's dependencies and model weights have already been
+installed; see [FULL_SONG_ENGINE.md](mixmaster_universal/FULL_SONG_ENGINE.md)
+for one-time setup, configuration and diagnostics. If the virtual environment
+does not exist, create one with a compatible Python installation first.
+Do not use a broken or missing `.venv` activation script.
+
+Start the frontend in **another terminal**:
+
+```bash
+cd /path/to/mix-master/web
+npm install
+npm run dev
+```
+
+Open http://localhost:5173/#/full-song or
+http://localhost:5173/#/lyrics-generator.
+
+For local AI lyric generation, install and start
+[Ollama](https://github.com/ollama/ollama), then pull a supported model:
+
+```bash
+ollama pull llama3.2:3b
+```
+
+Ollama must be running and listening on `127.0.0.1:11434`. Set
+`MIXMASTER_LYRICS_MODEL` to choose another locally installed model.
+**Review Lyrics** works without Ollama, but **Generate**, **Regenerate Chorus**
+and **Refine Draft with AI** require it.
+
+Useful endpoints:
+
+- `GET /api/full-song/engine` — instrumental and vocal engine status.
+- `POST /api/full-song/jobs` — start an asynchronous generation job.
+- `GET /api/lyrics/status` — local lyrics-model status.
+- `POST /api/lyrics/generate` — song, chorus, or refinement.
+- `POST /api/lyrics/review` — deterministic lyric feedback.
+
+See [LYRICS_AGENT_WORKFLOW.md](mixmaster_universal/LYRICS_AGENT_WORKFLOW.md)
+for the offline review/revision workflow and
+[MUSIC_LYRICS_UPSTREAM.md](mixmaster_universal/MUSIC_LYRICS_UPSTREAM.md)
+for upstream projects and model compatibility notes.
+
+**Known issue:** MusicGen Small has produced distorted/noisy instrumental
+results on the development Intel Mac. Diagnostic comparison is available via
+`mixmaster_universal/diagnose_musicgen_audio.py`. Do not present this
+engine as producing reliable commercial-quality music or sung lyrics.
+
 ## 🖥 Run Windows, macOS or Linux desktop
 
 From `mixmaster_universal/`:
