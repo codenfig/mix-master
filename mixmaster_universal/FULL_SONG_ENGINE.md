@@ -200,3 +200,59 @@ rather than adding mastering effects. `MIXMASTER_MUSICGEN_DEVICE` accepts
 or higher-quality on every Mac.
 
 For detailed references, see [MUSIC_LYRICS_UPSTREAM.md](MUSIC_LYRICS_UPSTREAM.md).
+
+## ACE-Step local full-song singing (experimental integration)
+
+MixMaster includes an ACE-Step REST adapter for **mixed full songs with vocals**.
+It does not provide a local ACE-Step model installation. On an Intel x86_64 Mac,
+ACE-Step 1.5's usual Python/PyTorch installation may not have compatible
+wheels. Do not assume it can run locally until a supported runtime is proven.
+A user-operated compatible machine on a private network is a separate option,
+but is not offline *on the Mac* and should be treated accordingly.
+
+For a **separately installed, compatible ACE-Step server** listening on the
+Mac's loopback address at `http://127.0.0.1:8001`, configure:
+
+```bash
+source "$HOME/MixMasterAI/mixmaster-venv/bin/activate"
+cd /path/to/mix-master/mixmaster_universal
+export MIXMASTER_PYTHON="$HOME/MixMasterAI/mixmaster-venv/bin/python"
+export MIXMASTER_ENABLE_ACESTEP=1
+export ACESTEP_BASE_URL=http://127.0.0.1:8001
+export FULL_SONG_VOCAL_TIMEOUT_SECONDS=1800
+curl --max-time 5 "$ACESTEP_BASE_URL/health"
+python -m uvicorn server:app --host 127.0.0.1 --port 8000
+```
+
+`MIXMASTER_ENABLE_ACESTEP=1` opts into auto-discovery for `full_song` only.
+The engine status checks whether the loopback ACE-Step health endpoint responds;
+it does **not** guarantee a model is loaded or that generation will succeed.
+The adapter sends lyrics and singing voice preferences to the ACE-Step API,
+polls the task, downloads audio, and streams it into PCM16 WAV for MixMaster.
+Isolated `vocals` stems are **not** supported by this adapter.
+
+If you operate a compatible authenticated HTTPS server, you can explicitly set
+`FULL_SONG_VOCAL_EXECUTABLE` to `run_ace_step_gpu.sh` and configure
+`ACESTEP_BASE_URL` and `ACESTEP_API_KEY`. This is **not** local-only inference;
+network/security and server costs remain your responsibility. Never expose an
+unauthenticated ACE-Step server to the public internet.
+
+For MusicGen decoder isolation, run:
+
+```bash
+python diagnose_musicgen_codec.py
+```
+
+It writes `~/MixMasterAI/codec-diagnostic/reference.wav` and
+`codec_reconstructed.wav`. Listen to both. If the reconstruction is noisy,
+investigate EnCodec weights/decoding. If reconstruction is clean but MusicGen
+output is noisy, investigate token generation, prompts, and model/runtime.
+This test loads the local MusicGen model on CPU and may be slow.
+
+Run targeted checks from `mixmaster_universal`:
+
+```bash
+python -m pytest tests/test_ace_step_adapter.py tests/test_local_ace_step_readiness.py tests/test_musicgen_adapter.py -q
+```
+
+These are unit tests, not proof of a working full-song model.
