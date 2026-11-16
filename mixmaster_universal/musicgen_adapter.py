@@ -77,7 +77,12 @@ def main():
     os.environ["TRANSFORMERS_OFFLINE"] = "1"
     processor = AutoProcessor.from_pretrained(str(model_dir), local_files_only=True)
     model = MusicgenForConditionalGeneration.from_pretrained(str(model_dir), local_files_only=True)
-    device = "mps" if torch.backends.mps.is_available() else "cpu"
+    requested_device = os.environ.get("MIXMASTER_MUSICGEN_DEVICE", "auto").strip().lower()
+    if requested_device not in {"auto", "cpu", "mps"}:
+        raise SystemExit("MIXMASTER_MUSICGEN_DEVICE must be auto, cpu or mps.")
+    if requested_device == "mps" and not torch.backends.mps.is_available():
+        raise SystemExit("MPS was requested but is unavailable on this Mac.")
+    device = ("mps" if torch.backends.mps.is_available() else "cpu") if requested_device == "auto" else requested_device
     try:
         model = model.to(device)
     except (RuntimeError, NotImplementedError):
@@ -96,7 +101,15 @@ def main():
             **inputs, do_sample=True, guidance_scale=guidance, max_new_tokens=tokens
         )
     rate = int(model.config.audio_encoder.sampling_rate)
-    samples = finish_audio(audio_to_samples(audio, np), rate, np)
+    raw_samples = audio_to_samples(audio, np)
+    raw_peak = float(np.max(np.abs(raw_samples)))
+    raw_rms = float(np.sqrt(np.mean(np.square(raw_samples, dtype=np.float64))))
+    print(f"MusicGen decoded audio: {len(raw_samples) / rate:.2f}s, channels={raw_samples.shape[1]}, peak={raw_peak:.4f}, rms={raw_rms:.4f}", flush=True)
+    if os.environ.get("MIXMASTER_MUSICGEN_SAVE_RAW", "0") == "1":
+        raw_path = Path(sys.argv[2]).with_name("musicgen_raw.wav")
+        sf.write(raw_path, raw_samples, rate, subtype="FLOAT")
+        print(f"MusicGen raw diagnostic: {raw_path}", flush=True)
+    samples = finish_audio(raw_samples, rate, np)
     sf.write(sys.argv[2], samples, rate, subtype="PCM_16")
     print(f"MusicGen: wrote {len(samples) / rate:.1f}s of audio", flush=True)
 
