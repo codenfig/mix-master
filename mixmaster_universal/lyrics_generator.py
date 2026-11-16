@@ -6,6 +6,7 @@ import urllib.error
 import urllib.request
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
+from lyrics_quality import build_refinement_prompt, inspect_lyrics
 
 router = APIRouter(prefix="/api/lyrics", tags=["lyrics"])
 OLLAMA_URL = "http://127.0.0.1:11434"
@@ -21,6 +22,16 @@ class LyricsRequest(BaseModel):
     voice: str = Field(default="Any", max_length=50)
     existing_lyrics: str = Field(default="", max_length=12000)
     mode: str = Field(default="song")
+
+class LyricsReviewRequest(BaseModel):
+    lyrics: str = Field(min_length=1, max_length=12000)
+    structure: str = Field(default="standard")
+
+@router.post("/review")
+def review_lyrics(body: LyricsReviewRequest):
+    if body.structure not in STRUCTURES:
+        raise HTTPException(422, "Unsupported song structure.")
+    return inspect_lyrics(body.lyrics, body.structure)
 
 def model_name() -> str:
     return os.environ.get("MIXMASTER_LYRICS_MODEL", "llama3.2:3b")
@@ -48,7 +59,7 @@ def lyrics_status():
 
 @router.post("/generate")
 def generate_lyrics(body: LyricsRequest):
-    if body.language not in LANGUAGES or body.structure not in STRUCTURES or body.mode not in {"song", "chorus"}:
+    if body.language not in LANGUAGES or body.structure not in STRUCTURES or body.mode not in {"song", "chorus", "refine"}:
         raise HTTPException(422, "Unsupported lyrics generation option.")
     status = lyrics_status()
     if not status["available"]:
@@ -58,8 +69,8 @@ def generate_lyrics(body: LyricsRequest):
         "standard": "[Verse 1], [Pre-Chorus], [Chorus], [Verse 2], [Bridge], [Final Chorus]",
         "extended": "[Intro], [Verse 1], [Pre-Chorus], [Chorus], [Verse 2], [Chorus], [Bridge], [Final Chorus], [Outro]",
     }[body.structure]
-    if body.mode == "chorus" and not body.existing_lyrics.strip():
-        raise HTTPException(422, "Enter or generate lyrics before regenerating the chorus.")
+    if body.mode in {"chorus", "refine"} and not body.existing_lyrics.strip():
+        raise HTTPException(422, "Enter or generate lyrics before revising them.")
     instruction = (
         "You are an expert songwriter. Write ORIGINAL, singable song lyrics. Do not imitate a named artist or reproduce existing songs. "
         "Return ONLY lyrics, with section headings in square brackets. No introduction or commentary. "
@@ -68,7 +79,16 @@ def generate_lyrics(body: LyricsRequest):
         f"Language: {body.language}. Genre: {body.genre}. Mood: {body.mood}. Vocal style: {body.voice}. "
         f"Song topic: {body.topic}. "
     )
-    if body.mode == "chorus":
+    if body.mode == "refine":
+        critique = inspect_lyrics(body.existing_lyrics, body.structure)
+        issues = "\n".join("- " + item for item in critique["issues"])
+        if not issues:
+            issues = "- Strengthen natural phrasing, imagery, musical flow and the chorus hook while preserving the original message."
+        instruction = build_refinement_prompt(
+            lyrics=body.existing_lyrics, topic=body.topic, genre=body.genre,
+            mood=body.mood, language=body.language, feedback=issues,
+        )
+    elif body.mode == "chorus":
         instruction += (
             "Rewrite ONLY the chorus, using a [Chorus] heading, to fit the following existing song. "
             "Do not output the rest of the song. Existing song:\n" + body.existing_lyrics
@@ -85,4 +105,5 @@ def generate_lyrics(body: LyricsRequest):
     lyrics = re.sub(r"^\\x60{3}(?:text|markdown)?\\s*\\n|\\n\\x60{3}\\s*$", "", lyrics, flags=re.IGNORECASE).strip()
     if not lyrics:
         raise HTTPException(502, "The local model returned no lyrics.")
-    return {"lyrics": lyrics[:12000], "model": model_name(), "mode": body.mode}
+    return {"lyrics": lyrics[:12000], "model": model_name(), "mode": body.mode,
+            "review": inspect_lyrics(lyrics[:12000], body.structure) if body.mode != "chorus" else None}
