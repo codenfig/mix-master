@@ -1,6 +1,7 @@
 import DjDeckStudio from './DjDeckStudio'
 import PricingPage from './pages/PricingPage'
 import FullSongPage from './pages/FullSongPage'
+import LyricsGeneratorPage from './pages/LyricsGeneratorPage'
 import TextToSongPage from './pages/TextToSongPage'
 import GeneratedFilesPage from './pages/GeneratedFilesPage'
 import OverviewPage from './pages/OverviewPage'
@@ -14,7 +15,7 @@ import StemSplitter from './StemSplitter'
 import AudioMastering from './AudioMastering'
 import VoiceStudio from './VoiceStudio'
 
-type Page = 'onboarding' | 'overview' | 'studio' | 'library' | 'preview' | 'history' | 'generated-files' | 'text-to-song' | 'full-song' | 'pricing' | 'settings' | 'vocal-remover' | 'stem-splitter' | 'audio-mastering' | 'voice-studio'
+type Page = 'onboarding' | 'overview' | 'studio' | 'library' | 'preview' | 'history' | 'generated-files' | 'text-to-song' | 'full-song' | 'pricing' | 'settings' | 'vocal-remover' | 'stem-splitter' | 'audio-mastering' | 'voice-studio' | 'lyrics-generator'
 const pages: { id: Page; label: string; subtitle: string }[] = [
   { id: 'onboarding', label: 'Welcome', subtitle: 'Discover MixMaster AI' },
   { id: 'overview', label: 'Overview', subtitle: 'Your creative command center' },
@@ -23,6 +24,7 @@ const pages: { id: Page; label: string; subtitle: string }[] = [
   { id: 'preview', label: 'Mix Preview', subtitle: 'Listen, review and export' },
   { id: 'history', label: 'Mix History', subtitle: 'Your previous sessions' },
   { id: 'generated-files', label: 'Generated Files', subtitle: 'Browse and download your saved audio outputs' },
+  { id: 'lyrics-generator', label: 'AI Lyrics Generator', subtitle: 'Write original lyrics locally with AI' },
   { id: 'text-to-song', label: 'Text to Song', subtitle: 'Compose offline instrumental music from text' },
   { id: 'full-song', label: 'Music Generator', subtitle: 'Plan songs, vocals and arrangements' },
   { id: 'pricing', label: 'Plans & Pricing', subtitle: 'Preview creator subscription plans' },
@@ -338,6 +340,7 @@ export default function App() {
         {page === 'generated-files' && <GeneratedFilesPage/>}
         {page === 'text-to-song' && <TextToSongPage/>}
         {page === 'full-song' && <FullSongPage/>}
+        {page === 'lyrics-generator' && <LyricsGeneratorPage/>}
         {page === 'pricing' && <PricingPage/>}
         {page === 'vocal-remover' && <VocalRemover/>}
         {page === 'stem-splitter' && <StemSplitter/>}
@@ -359,7 +362,7 @@ export default function App() {
           <div className="studio-intelligence">
             <section className="studio-intel-card"><div className="studio-intel-label"><Sparkles size={17}/> SMART DJ PLAN <span>{analysis?.plan?'ANALYZED':'PENDING'}</span></div><strong>{analysis?.plan?analysis.plan.quality_score+'/100':'Ready when you are'}</strong><p>{analysis?.plan?'Estimated musical compatibility for the proposed sequence.':'Add your tracks and analyze them to reveal the AI-selected sequence.'}</p></section>
             <section className="studio-intel-card studio-intel-energy"><div className="studio-intel-label"><Activity size={17}/> ENERGY JOURNEY <span>{analysis?'LIVE ANALYSIS':'PREVIEW'}</span></div>
-              {plannedTracks.length>1?<svg viewBox="0 0 600 115" preserveAspectRatio="none" role="img" aria-label="Planned energy progression" className="studio-energy-chart"><defs><linearGradient id="studioEnergy" x1="0" y1="0" x2="1" y2="0"><stop stopColor="#d850ef"/><stop offset=".55" stopColor="#8056fb"/><stop offset="1" stopColor="#36baf2"/></linearGradient></defs><polyline fill="none" stroke="url(#studioEnergy)" strokeWidth="4" strokeLinejoin="round" strokeLinecap="round" points={plannedTracks.map((t,i)=>(i*600/(plannedTracks.length-1))+','+(104-t.energy/energyMax*88)).join(' ')}/>{plannedTracks.map((t,i)=><circle key={i} cx={i*600/(plannedTracks.length-1)} cy={104-t.energy/energyMax*88} r="5" fill="#d9adff"/>)}</svg>:<div className="studio-energy-placeholder"><div className="studio-eq-bars" aria-hidden="true">{Array.from({length:43},(_,i)=><i key={i} style={{height:8+Math.abs(Math.sin(i*.67)*Math.cos(i*.16))*48}}/>)}</div><span>Your energy curve appears after track analysis</span></div>}
+              {plannedTracks.length>1?<svg viewBox="0 0 600 115" preserveAspectRatio="none" role="img" aria-label="Planned energy progression" className="studio-energy-chart"><defs><linearGradient id="studioEnergy" x1="0" y1="0" x2="1" y2="0"><stop stopColor="#00e2e8"/><stop offset=".55" stopColor="#00e2e8"/><stop offset="1" stopColor="#36baf2"/></linearGradient></defs><polyline fill="none" stroke="url(#studioEnergy)" strokeWidth="4" strokeLinejoin="round" strokeLinecap="round" points={plannedTracks.map((t,i)=>(i*600/(plannedTracks.length-1))+','+(104-t.energy/energyMax*88)).join(' ')}/>{plannedTracks.map((t,i)=><circle key={i} cx={i*600/(plannedTracks.length-1)} cy={104-t.energy/energyMax*88} r="5" fill="#00e2e8"/>)}</svg>:<div className="studio-energy-placeholder"><div className="studio-eq-bars" aria-hidden="true">{Array.from({length:43},(_,i)=><i key={i} style={{height:8+Math.abs(Math.sin(i*.67)*Math.cos(i*.16))*48}}/>)}</div><span>Your energy curve appears after track analysis</span></div>}
             </section>
           </div>
         </div></details></div>}
