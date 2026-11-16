@@ -106,7 +106,8 @@ def main():
     raw_rms = float(np.sqrt(np.mean(np.square(raw_samples, dtype=np.float64))))
     print(f"MusicGen decoded audio: {len(raw_samples) / rate:.2f}s, channels={raw_samples.shape[1]}, peak={raw_peak:.4f}, rms={raw_rms:.4f}", flush=True)
     if os.environ.get("MIXMASTER_MUSICGEN_SAVE_RAW", "0") == "1":
-        raw_path = Path(sys.argv[2]).with_name("musicgen_raw.wav")
+        raw_path = Path(os.environ.get("MIXMASTER_MUSICGEN_RAW_PATH", "~/MixMasterAI/musicgen_raw_diagnostic.wav")).expanduser()
+        raw_path.parent.mkdir(parents=True, exist_ok=True)
         sf.write(raw_path, raw_samples, rate, subtype="FLOAT")
         print(f"MusicGen raw diagnostic: {raw_path}", flush=True)
     samples = finish_audio(raw_samples, rate, np)
