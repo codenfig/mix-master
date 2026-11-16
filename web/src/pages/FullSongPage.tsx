@@ -13,6 +13,12 @@ export default function FullSongPage() {
   const [title, setTitle] = useState('I See You')
   const [description, setDescription] = useState('Uplifting Afro-pop with joyful rumba guitar, dancehall bounce, melodic bass, skanking keys, whistles and a wide uplifting chorus.')
   const [lyrics, setLyrics] = useState('[Verse 1]\n\n[Pre-Chorus]\n\n[Chorus]\nI see you\n\n[Verse 2]\n\n[Bridge]\n\n[Final Chorus]')
+  useEffect(()=>{
+    try {
+      const imported = sessionStorage.getItem('mixmaster-imported-lyrics')
+      if(imported){setLyrics(imported);setCustomMode(true);setOutput('instrumental');sessionStorage.removeItem('mixmaster-imported-lyrics')}
+    } catch { /* browser storage may be unavailable */ }
+  },[])
   const [voice, setVoice] = useState<Voice>('female')
   const [genre, setGenre] = useState('Afro-pop')
   const [output, setOutput] = useState<Output>('instrumental')
