@@ -65,3 +65,8 @@
 .mm-generator-player{position:sticky;bottom:0;z-index:4;display:flex;align-items:center;gap:12px;min-width:0;border:1px solid #435c5e;border-radius:12px;background:#1b2728;box-shadow:0 -8px 25px #070a0b90;padding:10px 14px}.mm-player-art{display:grid;place-items:center;width:38px;height:38px;border-radius:7px;background:#4a7b7e}.mm-generator-player>div{display:grid;gap:3px;min-width:100px;max-width:210px}.mm-generator-player strong{font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.mm-generator-player small{font-size:10px;color:#aaa0b2}.mm-generator-player audio{flex:1;min-width:0;max-height:38px}.mm-generator-player>a{color:#b9d4d6}
 @media(max-width:1320px){.mm-generator-layout{grid-template-columns:minmax(260px,320px) minmax(320px,1fr)}.mm-generator-detail{grid-column:1/-1;max-height:none}.mm-detail-art{min-height:140px}}
 @media(max-width:780px){.mm-generator-layout{grid-template-columns:minmax(0,1fr)}.mm-generator-compose,.mm-generator-library,.mm-generator-detail{max-height:none}.mm-generator-song-list{max-height:440px}.mm-generator-detail{grid-column:auto}.mm-generator-player{flex-wrap:wrap}.mm-generator-player audio{flex-basis:100%}}
+
+/* Advanced song tools: black buttons with readable white labels. */
+.mm-generator .mm-generator-advanced .fullsong-actions button{background:#000!important;background-image:none!important;color:#fff!important;border:1px solid #3b4549!important;box-shadow:none!important}
+.mm-generator .mm-generator-advanced .fullsong-actions button:hover:not(:disabled){background:#15191b!important;border-color:#00dde5!important}
+.mm-generator .mm-generator-advanced .fullsong-actions button:disabled{background:#000!important;color:#8c989e!important;opacity:.6;cursor:not-allowed}
