@@ -6,7 +6,7 @@ import GeneratedFilesPage from './pages/GeneratedFilesPage'
 import OverviewPage from './pages/OverviewPage'
 import './styles/onboarding.css'
 import { useEffect, useRef, useState } from 'react'
-import { Activity, AudioLines, Check, Download, FileAudio, FolderOpen, Headphones, ListMusic, LoaderCircle, Music2, Play, Pause, RotateCcw, Settings2, SlidersHorizontal, Sparkles, UploadCloud, X, ArrowRight, Crown, ChevronDown } from 'lucide-react'
+import { Activity, AudioLines, Check, Download, FileAudio, FolderOpen, Headphones, LayoutDashboard, ListMusic, LoaderCircle, Music2, Play, Pause, RotateCcw, Settings2, SlidersHorizontal, Sparkles, UploadCloud, X, ArrowRight, Crown, ChevronDown } from 'lucide-react'
 import { analyze, queueMix, fetchJob, downloadJob, type AnalysisResult, type MixMetrics, type MixJob } from './api'
 import Waveform from './Waveform'
 import VocalRemover from './VocalRemover'
@@ -36,7 +36,7 @@ const readPage = (): Page => {
   const hash = window.location.hash.replace(/^#\/?/, '')
   return pages.some(p => p.id === hash) ? hash as Page : 'full-song'
 }
-const primaryPages: Page[] = ['full-song','studio','vocal-remover','stem-splitter','audio-mastering','library','generated-files']
+const primaryPages: Page[] = ['overview','full-song','studio','vocal-remover','stem-splitter','audio-mastering','library','generated-files']
 const extensions = new Set(['mp3', 'wav', 'flac', 'm4a', 'ogg', 'aac'])
 const MAX_BYTES = 200 * 1024 * 1024
 const formatTime = (seconds: number) => Number.isFinite(seconds) ? [Math.floor(seconds / 60), Math.floor(seconds % 60)].map(n => String(n).padStart(2, '0')).join(':') : '--:--'
@@ -311,7 +311,7 @@ export default function App() {
       <div className="nav-label">YOUR STUDIO</div>
       <nav aria-label="Main tools">
         {pages.filter(item=>primaryPages.includes(item.id)).map(item=>{
-          const Icon=item.id==='full-song'?Music2:item.id==='studio'?SlidersHorizontal:item.id==='vocal-remover'?AudioLines:item.id==='stem-splitter'?FileAudio:item.id==='audio-mastering'?Sparkles:item.id==='library'?ListMusic:FolderOpen
+          const Icon=item.id==='overview'?LayoutDashboard:item.id==='full-song'?Music2:item.id==='studio'?SlidersHorizontal:item.id==='vocal-remover'?AudioLines:item.id==='stem-splitter'?FileAudio:item.id==='audio-mastering'?Sparkles:item.id==='library'?ListMusic:FolderOpen
           return <a key={item.id} href={'#/'+item.id} aria-current={page===item.id?'page':undefined} className={'nav'+(page===item.id?' active':'')} onClick={()=>setPage(item.id)}><Icon size={18}/><span>{item.label}</span></a>
         })}
       </nav>
