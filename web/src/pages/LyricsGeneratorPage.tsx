@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Check, Copy, Download, Music2, RefreshCw, Send, Sparkles } from 'lucide-react'
+import { Copy, Download, Music2, RefreshCw, Send, Sparkles } from 'lucide-react'
 import '../styles/lyrics-generator.css'
 
 type Status = {available:boolean;model:string;reason:string|null}
