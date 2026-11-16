@@ -115,7 +115,7 @@ Install backend requirements into an existing Python 3.11 virtual environment.
 For the separately managed Intel Mac environment used during development:
 
 ```bash
-cd "/Users/mac/Documents/Development/projects/AI Applications"
+cd /path/to/mix-master
 source "$HOME/MixMasterAI/mixmaster-venv/bin/activate"
 cd mixmaster_universal
 python -m pip install -r requirements.txt
@@ -135,7 +135,7 @@ Do not use a broken or missing `.venv` activation script.
 Start the frontend in **another terminal**:
 
 ```bash
-cd "/Users/mac/Documents/Development/projects/AI Applications/web"
+cd /path/to/mix-master/web
 npm install
 npm run dev
 ```
