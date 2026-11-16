@@ -69,6 +69,8 @@ def _engine_command(output='instrumental'):
         if not configured:
             return None
         executable = Path(configured).expanduser().resolve()
+        if output == 'vocals' and executable.name in {'run_ace_step_gpu.sh', 'run_ace_step_gpu.py', 'ace_step_adapter.py'}:
+            return None  # ACE-Step adapter produces a mixed song, not isolated vocal stems.
         return executable if executable.is_file() and os.access(executable, os.X_OK) else None
 
     """Only an explicitly configured local executable is permitted."""
