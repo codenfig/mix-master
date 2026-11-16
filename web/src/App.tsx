@@ -317,7 +317,7 @@ export default function App() {
       </nav>
       <details className="mm-more-tools" open={!primaryPages.includes(page)&&page!=='pricing'}>
         <summary>More tools <ChevronDown size={15}/></summary>
-        <nav aria-label="Additional tools">{pages.filter(item=>item.id!=='onboarding'&&item.id!=='pricing'&&!primaryPages.includes(item.id)).map(item=><a key={item.id} href={'#/'+item.id} aria-current={page===item.id?'page':undefined} className={'nav'+(page===item.id?' active':'')} onClick={()=>setPage(item.id)}><AudioLines size={17}/><span>{item.label}</span></a>)}</nav>
+        <nav aria-label="Additional tools">{pages.filter(item=>item.id!=='onboarding'&&item.id!=='pricing'&&item.id!=='settings'&&!primaryPages.includes(item.id)).map(item=><a key={item.id} href={'#/'+item.id} aria-current={page===item.id?'page':undefined} className={'nav'+(page===item.id?' active':'')} onClick={()=>setPage(item.id)}><AudioLines size={17}/><span>{item.label}</span></a>)}</nav>
       </details>
       <div className="sidebar-bottom">
         <div className="mm-upgrade-card"><div><Crown size={19}/><strong>Pro Music</strong></div><small>Plans preview · 90 proposed credits / month</small><a href="#/pricing" onClick={()=>setPage('pricing')}>Explore plans <ArrowRight size={15}/></a></div>
