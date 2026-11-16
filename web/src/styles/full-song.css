@@ -70,3 +70,9 @@
 .mm-generator .mm-generator-advanced .fullsong-actions button{background:#000!important;background-image:none!important;color:#fff!important;border:1px solid #3b4549!important;box-shadow:none!important}
 .mm-generator .mm-generator-advanced .fullsong-actions button:hover:not(:disabled){background:#15191b!important;border-color:#00dde5!important}
 .mm-generator .mm-generator-advanced .fullsong-actions button:disabled{background:#000!important;color:#8c989e!important;opacity:.6;cursor:not-allowed}
+
+/* Song composer integration: offline model status and lyrics workflow */
+.mm-generator .mm-engine-refresh{display:inline-flex;align-items:center;gap:6px;cursor:pointer;font-size:10px;white-space:nowrap}
+.mm-generator .mm-engine-refresh:hover{border-color:#00dde5!important;color:#00dde5!important}
+.mm-generator .mm-lyric-tools .mm-lyrics-generator-link{display:inline-flex;align-items:center;gap:5px;background:#000;border:1px solid #00dde5;border-radius:7px;padding:7px 9px;color:#00dde5;text-decoration:none;font-size:11px;font-weight:750}
+.mm-generator .mm-lyric-tools .mm-lyrics-generator-link:hover{background:#122b2e}
