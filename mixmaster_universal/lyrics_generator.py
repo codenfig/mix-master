@@ -1,6 +1,7 @@
 """Offline lyrics generation through a user-installed local Ollama server."""
 import json
 import os
+import re
 import urllib.error
 import urllib.request
 from fastapi import APIRouter, HTTPException
@@ -60,9 +61,10 @@ def generate_lyrics(body: LyricsRequest):
     if body.mode == "chorus" and not body.existing_lyrics.strip():
         raise HTTPException(422, "Enter or generate lyrics before regenerating the chorus.")
     instruction = (
-        "Write ORIGINAL, singable song lyrics. Do not imitate a named artist or reproduce existing songs. "
+        "You are an expert songwriter. Write ORIGINAL, singable song lyrics. Do not imitate a named artist or reproduce existing songs. "
         "Return ONLY lyrics, with section headings in square brackets. No introduction or commentary. "
-        "Keep language natural, lines rhythmic and memorable, with no copyrighted lyrics. "
+        "Keep language natural, use 6 to 10 syllables per line where practical, and give the chorus a memorable recurring hook. "
+        "Use concise verses and avoid repetitive filler. Do not include existing copyrighted lyrics. "
         f"Language: {body.language}. Genre: {body.genre}. Mood: {body.mood}. Vocal style: {body.voice}. "
         f"Song topic: {body.topic}. "
     )
@@ -72,12 +74,15 @@ def generate_lyrics(body: LyricsRequest):
             "Do not output the rest of the song. Existing song:\n" + body.existing_lyrics
         )
     else:
-        instruction += "Write a complete song using this structure: " + structure + "."
+        instruction += ("Write a complete song using this exact section order: " + structure + ". "
+                        "Write 4 to 8 lines per verse, 2 to 4 lines per pre-chorus, and 4 to 6 lines per chorus. "
+                        "Repeat the chorus hook in the final chorus while allowing a small lyrical variation.")
     result = ollama_request("/api/generate", {
         "model": model_name(), "prompt": instruction, "stream": False,
         "options": {"temperature": 0.85, "num_predict": 1250}
     })
     lyrics = str(result.get("response", "")).strip()
+    lyrics = re.sub(r"^\\x60{3}(?:text|markdown)?\\s*\\n|\\n\\x60{3}\\s*$", "", lyrics, flags=re.IGNORECASE).strip()
     if not lyrics:
         raise HTTPException(502, "The local model returned no lyrics.")
     return {"lyrics": lyrics[:12000], "model": model_name(), "mode": body.mode}
