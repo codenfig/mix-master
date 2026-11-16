@@ -90,8 +90,12 @@ def plan_arrangement(project: SongProject):
 @router.get("/api/full-song/engine")
 def engine_status():
     instrumental = _engine_command('instrumental') is not None
-    vocal_stem = _engine_command('vocals') is not None
-    full_song = _engine_command('full_song') is not None
+    vocal_stem_engine = _engine_command('vocals')
+    full_song_engine = _engine_command('full_song')
+    # ACE-Step's built-in adapter returns a mixed song, not an isolated stem.
+    ace_wrapper_names = {"run_ace_step_gpu.sh", "run_ace_step_gpu.py", "ace_step_adapter.py"}
+    vocal_stem = vocal_stem_engine is not None and vocal_stem_engine.name not in ace_wrapper_names
+    full_song = full_song_engine is not None
     return {"backend": "ready", "generation_available": instrumental or vocal_stem or full_song,
             "capabilities": {"instrumental": instrumental, "vocals": vocal_stem, "full_song": full_song,
                              "voices": ["female", "male", "duet"] if full_song or vocal_stem else []},
