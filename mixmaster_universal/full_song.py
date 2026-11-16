@@ -47,7 +47,9 @@ def validate_project(project: SongProject):
 def _engine_command(output='instrumental'):
     if output != 'instrumental':
         configured = os.environ.get('FULL_SONG_VOCAL_EXECUTABLE', '').strip()
-        if not configured and output == 'full_song' and os.environ.get('ACESTEP_API_URL', '').strip() and os.environ.get('ACESTEP_API_KEY', '').strip():
+        # An explicitly opted-in ACE-Step service can run on loopback with no API key.
+        # For remote services the adapter itself enforces HTTPS + authentication.
+        if not configured and output == 'full_song' and os.environ.get('MIXMASTER_ENABLE_ACESTEP', '') == '1':
             configured = str(Path(__file__).with_name('run_ace_step_gpu.sh'))
         if not configured:
             return None
@@ -73,12 +75,13 @@ def plan_arrangement(project: SongProject):
 @router.get("/api/full-song/engine")
 def engine_status():
     instrumental = _engine_command('instrumental') is not None
-    vocal = _engine_command('vocals') is not None
-    return {"backend": "ready", "generation_available": instrumental or vocal,
-            "capabilities": {"instrumental": instrumental, "vocals": vocal, "full_song": vocal,
-                             "voices": ["female", "male", "duet"] if vocal else []},
-            "engine": "local-executable" if instrumental or vocal else None,
-            "reason": None if instrumental or vocal else "Configure FULL_SONG_ENGINE_EXECUTABLE for instrumentals or FULL_SONG_VOCAL_EXECUTABLE for singing."}
+    vocal_stem = _engine_command('vocals') is not None
+    full_song = _engine_command('full_song') is not None
+    return {"backend": "ready", "generation_available": instrumental or vocal_stem or full_song,
+            "capabilities": {"instrumental": instrumental, "vocals": vocal_stem, "full_song": full_song,
+                             "voices": ["female", "male", "duet"] if full_song or vocal_stem else []},
+            "engine": "local-executable" if instrumental or vocal_stem or full_song else None,
+            "reason": None if instrumental or vocal_stem or full_song else "Configure FULL_SONG_ENGINE_EXECUTABLE for instrumentals, FULL_SONG_VOCAL_EXECUTABLE for singing, or explicitly opt in to local ACE-Step with MIXMASTER_ENABLE_ACESTEP=1."}
 
 
 @router.post("/api/full-song/projects", status_code=201)
