@@ -11,13 +11,14 @@ export default function FullSongPage() {
   const [customMode,setCustomMode] = useState(true)
   const [privateMode,setPrivateMode] = useState(false)
   const projectInput = useRef<HTMLInputElement>(null)
+  const importedLyrics = useRef(false)
   const [title, setTitle] = useState('I See You')
   const [description, setDescription] = useState('Uplifting Afro-pop with joyful rumba guitar, dancehall bounce, melodic bass, skanking keys, whistles and a wide uplifting chorus.')
   const [lyrics, setLyrics] = useState('[Verse 1]\n\n[Pre-Chorus]\n\n[Chorus]\nI see you\n\n[Verse 2]\n\n[Bridge]\n\n[Final Chorus]')
   useEffect(()=>{
     try {
       const imported = sessionStorage.getItem('mixmaster-imported-lyrics')
-      if(imported){setLyrics(imported);setCustomMode(true);sessionStorage.removeItem('mixmaster-imported-lyrics')}
+      if(imported){importedLyrics.current=true;setLyrics(imported);setCustomMode(true);sessionStorage.removeItem('mixmaster-imported-lyrics')}
     } catch { /* browser storage may be unavailable */ }
   },[])
   const [voice, setVoice] = useState<Voice>('female')
@@ -34,7 +35,7 @@ export default function FullSongPage() {
         const draft=JSON.parse(saved) as Record<string,unknown>
         if(typeof draft.title==='string')setTitle(draft.title.slice(0,120))
         if(typeof draft.description==='string')setDescription(draft.description.slice(0,2000))
-        if(typeof draft.lyrics==='string'&&!sessionStorage.getItem('mixmaster-imported-lyrics'))setLyrics(draft.lyrics.slice(0,12000))
+        if(typeof draft.lyrics==='string'&&!importedLyrics.current)setLyrics(draft.lyrics.slice(0,12000))
         if(typeof draft.genre==='string'&&genres.includes(draft.genre))setGenre(draft.genre)
         if(draft.voice==='female'||draft.voice==='male'||draft.voice==='duet')setVoice(draft.voice)
         if(draft.output==='full_song'||draft.output==='instrumental'||draft.output==='vocals')setOutput(draft.output)
