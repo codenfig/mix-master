@@ -25,8 +25,10 @@ The first argument is a JSON object containing `title`, `description`,
 `bpm`, and `minutes`. The second argument is the destination **PCM WAV** file.
 
 The adapter must exit with code 0 after writing valid nonempty PCM WAV audio.
-The backend applies a five-minute subprocess timeout and stores the output in
-Generated Files. Failed outputs are not saved.
+The backend uses `FULL_SONG_JOB_TIMEOUT_SECONDS` (default 1,200 seconds,
+clamped to 60–7,200 seconds) for instrumental jobs. Vocal jobs can use
+`FULL_SONG_VOCAL_TIMEOUT_SECONDS` (defaulting to the same configured value).
+Successful output is stored in Generated Files; failed outputs are not saved.
 
 The engine is **not** bundled and must be installed separately. Do not point
 this setting at untrusted programs. The backend currently does not enforce
@@ -65,14 +67,20 @@ python -m uvicorn server:app --host 127.0.0.1 --port 8000
 The one-time download requires internet and model storage space; subsequent
 inference loads only from `~/MixMasterAI/Models/musicgen-small` without network
 requests. Select **Instrumental** output on the Full Song Studio page.
-The adapter generates approximately 20 seconds of instrumental music per
-request, regardless of the target song length. GPU/MPS availability, model
-dependencies, memory and CPU performance affect generation speed. A five-minute
-backend deadline applies; heavy CPU inference may exceed it.
+The adapter defaults to 512 generated tokens (approximately 10 seconds of audio)
+regardless of the requested song length. Set `MIXMASTER_MUSICGEN_MAX_TOKENS`
+(128–1,500) to adjust preview length. GPU/MPS availability, model dependencies,
+memory and CPU performance affect generation speed. A configurable job deadline
+applies; heavy CPU inference may exceed it.
 
-The wrapper assumes the repository virtualenv exists at
-`mixmaster_universal/.venv`. If your environment is elsewhere, edit the
-launcher or point `FULL_SONG_ENGINE_EXECUTABLE` at a custom executable.
+The wrapper uses `MIXMASTER_PYTHON` when set, otherwise `python3` on `PATH`.
+For a separate virtual environment, set for example:
+
+```bash
+export MIXMASTER_PYTHON="$HOME/MixMasterAI/mixmaster-venv/bin/python"
+```
+
+Ensure that interpreter has MusicGen dependencies installed.
 No model weights are committed to GitHub. Verify the model's license and
 test compatibility with your local PyTorch/Transformers versions.
 
@@ -106,7 +114,7 @@ job ID in browser session storage, so refreshing the page can reconnect
 while the **same Python server process** is running.
 
 Jobs are limited to one active job per Python process. The process group is
-terminated on cancellation or after five minutes. Model stdout/stderr is
+terminated on cancellation or when the configured job timeout expires. Model stdout/stderr is
 captured to a temporary log and the last part is surfaced on engine failure.
 Treat engine error text as potentially sensitive; do not expose this local
 development endpoint publicly without authentication and error sanitization.
@@ -153,3 +161,42 @@ curl --max-time 10 http://127.0.0.1:8000/api/full-song/engine
 ```
 
 A timeout here is a backend availability problem, not slow song composition.
+
+## Intel Mac: reproducible offline preview and audio diagnostics
+
+From the repository root, after installing dependencies and downloading the
+model once, run:
+
+```bash
+source "$HOME/MixMasterAI/mixmaster-venv/bin/activate"
+cd mixmaster_universal
+export MIXMASTER_PYTHON="$HOME/MixMasterAI/mixmaster-venv/bin/python"
+export FULL_SONG_ENGINE_EXECUTABLE="$PWD/run_musicgen.sh"
+export FULL_SONG_JOB_TIMEOUT_SECONDS=1800
+export MIXMASTER_MUSICGEN_DEVICE=cpu
+export MIXMASTER_MUSICGEN_MAX_TOKENS=256
+export MIXMASTER_MUSICGEN_GUIDANCE_SCALE=3.0
+export MIXMASTER_MUSICGEN_SAVE_RAW=1
+python -m uvicorn server:app --host 127.0.0.1 --port 8000
+```
+
+The optional diagnostic file is written to
+`~/MixMasterAI/musicgen_raw_diagnostic.wav` **only after successful decoding**.
+Its location can be changed with `MIXMASTER_MUSICGEN_RAW_PATH`. If the file is
+missing, first verify the backend was restarted with these settings, then check
+whether the generation job finished. Compare raw and exported WAVs using:
+
+```bash
+python diagnose_musicgen_audio.py \
+  "$HOME/MixMasterAI/musicgen_raw_diagnostic.wav" \
+  "/path/to/downloaded-song.wav"
+```
+
+The comparison reports sample rate, duration, RMS, peak and clipping metrics;
+it does not determine whether a recording sounds musical. If raw and exported
+audio are both distorted, investigate inference, model files and the decoder
+rather than adding mastering effects. `MIXMASTER_MUSICGEN_DEVICE` accepts
+`auto`, `cpu`, or `mps` (only where available). Do not assume MPS is faster
+or higher-quality on every Mac.
+
+For detailed references, see [MUSIC_LYRICS_UPSTREAM.md](MUSIC_LYRICS_UPSTREAM.md).
