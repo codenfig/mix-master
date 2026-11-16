@@ -102,7 +102,7 @@ def generate_lyrics(body: LyricsRequest):
         "options": {"temperature": 0.85, "num_predict": 1250}
     })
     lyrics = str(result.get("response", "")).strip()
-    lyrics = re.sub(r"^\\x60{3}(?:text|markdown)?\\s*\\n|\\n\\x60{3}\\s*$", "", lyrics, flags=re.IGNORECASE).strip()
+    lyrics = re.sub(r"^```(?:text|markdown)?[ \t]*\r?\n|\n```[ \t]*$", "", lyrics, flags=re.IGNORECASE).strip()
     if not lyrics:
         raise HTTPException(502, "The local model returned no lyrics.")
     return {"lyrics": lyrics[:12000], "model": model_name(), "mode": body.mode,
