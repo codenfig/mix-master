@@ -77,7 +77,7 @@ def main():
     os.environ["TRANSFORMERS_OFFLINE"] = "1"
     processor = AutoProcessor.from_pretrained(str(model_dir), local_files_only=True)
     model = MusicgenForConditionalGeneration.from_pretrained(str(model_dir), local_files_only=True)
-    requested_device = os.environ.get("MIXMASTER_MUSICGEN_DEVICE", "auto").strip().lower()
+    requested_device = os.environ.get("MIXMASTER_MUSICGEN_DEVICE", "cpu").strip().lower()
     if requested_device not in {"auto", "cpu", "mps"}:
         raise SystemExit("MIXMASTER_MUSICGEN_DEVICE must be auto, cpu or mps.")
     if requested_device == "mps" and not torch.backends.mps.is_available():
