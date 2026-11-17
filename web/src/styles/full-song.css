@@ -339,3 +339,16 @@
 .mm-generator .mm-song-info-field p{font-size:11px;line-height:1.55;color:#d6e5e7;margin:0;overflow-wrap:anywhere}
 .mm-generator .mm-song-info-field small{display:block;font-size:9px;line-height:1.45;color:#94aeb4;margin-top:6px}
 .mm-generator .mm-song-info-field pre{white-space:pre-wrap;overflow-wrap:anywhere;font:inherit;font-size:11px;line-height:1.7;color:#e1f0ee;margin:8px 0 0;max-height:40vh;overflow:auto}
+
+/* Colored action icons in the song More menu */
+.mm-generator .mm-song-more-menu button{display:flex;align-items:center;gap:10px;text-align:left}
+.mm-generator .mm-song-more-menu button svg{flex:0 0 auto;stroke-width:2.2}
+.mm-generator .mm-song-more-menu button:nth-child(1) svg{color:#64d9ff}
+.mm-generator .mm-song-more-menu button:nth-child(2) svg{color:#a994ff}
+.mm-generator .mm-song-more-menu button:nth-child(3) svg{color:#ffc46a}
+.mm-generator .mm-song-more-menu button:nth-child(4) svg{color:#50e2b2}
+.mm-generator .mm-song-more-menu button:nth-child(5) svg{color:#ff7487}
+.mm-generator .mm-song-more-menu button:nth-child(5):hover{color:#ff8999;background:rgba(255,86,109,.12)}
+.mm-generator .mm-sweet-dialog label{display:grid;gap:7px;text-align:left;font-size:12px;color:#c6e0e4;margin:10px 0}
+.mm-generator .mm-sweet-dialog input,.mm-generator .mm-sweet-dialog textarea{width:100%;box-sizing:border-box;border:1px solid #34515b;border-radius:8px;background:#0c2029;color:#e9f7f7;padding:10px;font:inherit}
+.mm-generator .mm-sweet-dialog textarea{resize:vertical}
