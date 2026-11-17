@@ -1,4 +1,5 @@
 import DjDeckStudio from './DjDeckStudio'
+import LandingPage from './pages/LandingPage'
 import PricingPage from './pages/PricingPage'
 import FullSongPage from './pages/FullSongPage'
 import LyricsGeneratorPage from './pages/LyricsGeneratorPage'
@@ -15,8 +16,9 @@ import StemSplitter from './StemSplitter'
 import AudioMastering from './AudioMastering'
 import VoiceStudio from './VoiceStudio'
 
-type Page = 'onboarding' | 'overview' | 'studio' | 'library' | 'preview' | 'history' | 'generated-files' | 'text-to-song' | 'full-song' | 'pricing' | 'settings' | 'vocal-remover' | 'stem-splitter' | 'audio-mastering' | 'voice-studio' | 'lyrics-generator'
+type Page = 'landing' | 'onboarding' | 'overview' | 'studio' | 'library' | 'preview' | 'history' | 'generated-files' | 'text-to-song' | 'full-song' | 'pricing' | 'settings' | 'vocal-remover' | 'stem-splitter' | 'audio-mastering' | 'voice-studio' | 'lyrics-generator'
 const pages: { id: Page; label: string; subtitle: string }[] = [
+  { id: 'landing', label: 'Home', subtitle: 'Create music with MixMaster AI' },
   { id: 'onboarding', label: 'Welcome', subtitle: 'Discover MixMaster AI' },
   { id: 'overview', label: 'Overview', subtitle: 'Your creative command center' },
   { id: 'studio', label: 'DJ Studio', subtitle: 'Build your next continuous set' },
@@ -36,7 +38,7 @@ const pages: { id: Page; label: string; subtitle: string }[] = [
 ]
 const readPage = (): Page => {
   const hash = window.location.hash.replace(/^#\/?/, '')
-  return pages.some(p => p.id === hash) ? hash as Page : 'full-song'
+  return pages.some(p => p.id === hash) ? hash as Page : 'landing'
 }
 const primaryPages: Page[] = ['overview','full-song','studio','vocal-remover','stem-splitter','audio-mastering','library','generated-files']
 const extensions = new Set(['mp3', 'wav', 'flac', 'm4a', 'ogg', 'aac'])
@@ -286,6 +288,7 @@ export default function App() {
     }
   }
 
+  if (page === 'landing') return <LandingPage />
   if (page === 'onboarding') return <div className="onboard-page">
     <header className="onboard-top"><div className="brand"><div className="brand-icon"><img src="/mixmaster-mark.svg" alt="" width={38} height={38}/></div><div><strong>MixMaster <span>AI</span></strong><small>INTELLIGENT DJ STUDIO</small></div></div><button className="onboard-text-link" onClick={()=>navigate('overview')}>Open operations <ArrowRight size={17}/></button></header>
     <main className="onboard-main">
