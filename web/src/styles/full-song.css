@@ -85,3 +85,27 @@
 .mm-song-delete:hover:not(:disabled){color:#ff9999;border-color:#8d4f58;background:#422a31}
 .mm-song-delete:disabled{opacity:.45;cursor:wait}
 .mm-generator-library-notice{font-size:12px;color:#9ce3c7;margin:0}
+
+/* Favorites and SweetAlert-inspired accessible confirmation */
+.mm-favorites-filter{display:inline-flex;align-items:center;justify-content:center;gap:9px;padding:10px 14px;border-radius:12px;border:1px solid #526a77;background:#24333f;color:#c8d9e5;font-weight:700;cursor:pointer;transition:background .2s,transform .2s}
+.mm-favorites-filter:hover,.mm-favorites-filter.active{background:#63364d;border-color:#f29ab8;color:#ffd7e7}
+.mm-favorites-filter span{background:#ffffff20;border-radius:99px;padding:2px 8px}
+.mm-song-favorite{flex-shrink:0;border:0;background:transparent;color:#a8a5b9;cursor:pointer;padding:10px;border-radius:10px;display:grid;place-items:center;transition:color .2s,background .2s,transform .2s}
+.mm-song-favorite:hover,.mm-song-favorite.active{color:#ff7ba7;background:#ff7ba71a}
+.mm-song-favorite:active{transform:scale(.88)}
+.mm-sweet-toast{position:fixed;top:24px;right:24px;z-index:10020;display:flex;align-items:center;gap:12px;max-width:min(400px,calc(100vw - 32px));padding:15px 17px;border:1px solid #4b756f;border-radius:16px;background:linear-gradient(120deg,#1e3b3d,#202639);box-shadow:0 18px 50px #0007;color:#f5fffc;animation:mm-toast-in .25s ease-out}
+.mm-sweet-toast.error{border-color:#ba6474;background:linear-gradient(120deg,#4c2636,#24283a)}
+.mm-sweet-toast strong{font-size:13px;line-height:1.5;flex:1}
+.mm-sweet-toast>span{color:#6cf0c7}.mm-sweet-toast.error>span{color:#ff9baf}
+.mm-sweet-toast button{border:0;background:transparent;color:inherit;cursor:pointer;padding:4px}
+.mm-sweet-overlay{position:fixed;inset:0;z-index:10030;background:#050c16b8;backdrop-filter:blur(7px);display:grid;place-items:center;padding:18px}
+.mm-sweet-dialog{width:min(420px,100%);box-sizing:border-box;padding:30px 26px;border-radius:24px;border:1px solid #52647b;background:linear-gradient(145deg,#293a4a,#1b2033);box-shadow:0 25px 90px #0009;color:white;text-align:center;animation:mm-toast-in .22s ease-out}
+.mm-sweet-icon{margin:0 auto 18px;width:70px;height:70px;display:grid;place-items:center;border-radius:50%;background:#ff738322;color:#ff96a1;border:2px solid #ff849266}
+.mm-sweet-dialog h3{margin:0 0 12px;font-size:24px;color:white}
+.mm-sweet-dialog p{margin:0 0 24px;color:#c8d0df;line-height:1.65;font-size:14px;overflow-wrap:anywhere}
+.mm-sweet-actions{display:flex;gap:10px;justify-content:center}
+.mm-sweet-actions button{flex:1;border:1px solid #647489;background:#3a475a;color:white;border-radius:12px;padding:12px 14px;font-weight:700;cursor:pointer}
+.mm-sweet-actions button.danger{background:linear-gradient(115deg,#ff567e,#d94165);border-color:transparent}
+.mm-sweet-actions button:disabled{opacity:.6;cursor:wait}
+@keyframes mm-toast-in{from{opacity:0;transform:translateY(-12px) scale(.96)}to{opacity:1;transform:translateY(0) scale(1)}}
+@media(max-width:520px){.mm-sweet-toast{top:12px;right:12px;left:12px;max-width:none}.mm-sweet-dialog{padding:24px 18px}}

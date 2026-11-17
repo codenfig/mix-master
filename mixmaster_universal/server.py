@@ -19,6 +19,7 @@ from stem_splitter import router as stem_splitter_router
 from audio_mastering import router as mastering_router
 from voice_studio import router as voice_studio_router
 from generated_storage import router as generated_files_router, save_generated
+from commercial_licensing import router as commercial_licensing_router
 from text_to_song import router as text_to_song_router
 from full_song import router as full_song_router
 from lyrics_generator import router as lyrics_generator_router
@@ -30,6 +31,7 @@ app.include_router(stem_splitter_router)
 app.include_router(mastering_router)
 app.include_router(voice_studio_router)
 app.include_router(generated_files_router)
+app.include_router(commercial_licensing_router)
 app.include_router(text_to_song_router)
 app.include_router(full_song_router)
 app.include_router(lyrics_generator_router)

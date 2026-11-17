@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { ArrowRight, Clock3, Download, Headphones, Mic2, Music2, Search, Sparkles, WandSparkles, RefreshCw, FileText, SlidersHorizontal, Trash2 } from 'lucide-react'
+import { ArrowRight, Clock3, Download, Headphones, Mic2, Music2, Search, Sparkles, WandSparkles, RefreshCw, FileText, SlidersHorizontal, Trash2, Heart, CheckCircle2, AlertTriangle, X } from 'lucide-react'
 import '../styles/full-song.css'
 
 type Voice = 'female' | 'male' | 'duet'
@@ -65,6 +65,13 @@ export default function FullSongPage() {
     }catch(e){setError(e instanceof Error?e.message:'Could not read project.')}
   }
   const [search, setSearch] = useState('')
+  const [favoritesOnly,setFavoritesOnly] = useState(false)
+  const [favorites,setFavorites] = useState<string[]>(()=>{try{const saved=JSON.parse(localStorage.getItem('mixmaster-favorites-v1')||'[]') as unknown;return Array.isArray(saved)?saved.filter((id):id is string=>typeof id==='string'):[]}catch{return []}})
+  const [confirmDelete,setConfirmDelete] = useState<SavedSong|null>(null)
+  const [toast,setToast] = useState<{message:string;kind:'success'|'error'|'info'}|null>(null)
+  useEffect(()=>{try{localStorage.setItem('mixmaster-favorites-v1',JSON.stringify(favorites))}catch{}},[favorites])
+  useEffect(()=>{if(!toast)return;const timer=window.setTimeout(()=>setToast(null),4000);return()=>window.clearTimeout(timer)},[toast])
+  function toggleFavorite(song:SavedSong){const isFavorite=favorites.includes(song.id);setFavorites(current=>isFavorite?current.filter(id=>id!==song.id):[...current,song.id]);setToast({kind:'success',message:isFavorite?'Removed from favorites':'Added to favorites ♥'})}
   const [songs,setSongs] = useState<SavedSong[]>([])
   const [selectedId,setSelectedId] = useState('')
   const [libraryLoading,setLibraryLoading] = useState(false)
@@ -72,13 +79,15 @@ export default function FullSongPage() {
   const [libraryNotice,setLibraryNotice] = useState('')
   const [licenseEmail,setLicenseEmail] = useState('')
   const [requestingLicense,setRequestingLicense] = useState(false)
+  const [licenseRequestId,setLicenseRequestId] = useState('')
+  const [startingCheckout,setStartingCheckout] = useState(false)
   const [deletingId,setDeletingId] = useState<string | null>(null)
   const [refreshKey,setRefreshKey] = useState(0)
   const [showDetails,setShowDetails] = useState(true)
   const [detailTab,setDetailTab] = useState<'lyrics'|'details'|'stems'>('details')
   useEffect(()=>{let active=true;const load=async()=>{setLibraryLoading(true);try{const response=await fetch('/api/generated-files');if(!response.ok)throw new Error('Could not load music library');const data=await response.json() as {files:SavedSong[]};if(active){const items=data.files.filter(f=>f.category==='full_song'||f.category==='text_to_song');setSongs(items);setSelectedId(previous=>items.some(f=>f.id===previous)?previous:items[0]?.id||'');setLibraryError('')}}catch(e){if(active)setLibraryError(e instanceof Error?e.message:'Library unavailable')}finally{if(active)setLibraryLoading(false)}};void load();return()=>{active=false}},[refreshKey])
   async function deleteSong(song:SavedSong) {
-    if(deletingId!==null||!window.confirm('Permanently delete "'+song.name+'"? This action cannot be undone.'))return
+    if(deletingId!==null)return
     setDeletingId(song.id)
     setLibraryError('')
     setLibraryNotice('')
@@ -93,8 +102,10 @@ export default function FullSongPage() {
         setSelectedId(previous=>previous===song.id?(remaining[0]?.id||''):previous)
         return remaining
       })
-      setLibraryNotice('Song deleted successfully.')
-    }catch(e){setLibraryError(e instanceof Error?e.message:'Could not delete song.')}
+      setFavorites(current=>current.filter(id=>id!==song.id))
+      setConfirmDelete(null)
+      setToast({kind:'success',message:'Song deleted successfully.'})
+    }catch(e){setToast({kind:'error',message:e instanceof Error?e.message:'Could not delete song.'})}
     finally{setDeletingId(null)}
   }
   async function requestLicense(song:SavedSong){
@@ -102,14 +113,26 @@ export default function FullSongPage() {
     setRequestingLicense(true);setLibraryError('');setLibraryNotice('')
     try{
       const response=await fetch('/api/generated-files/'+encodeURIComponent(song.id)+'/commercial-license-request',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:licenseEmail})})
-      const data=await response.json() as {detail?:string;message?:string}
+      const data=await response.json() as {detail?:string;message?:string;id?:string}
       if(!response.ok)throw new Error(data.detail||'License request failed.')
+      setLicenseRequestId(data.id||'')
       setLibraryNotice(data.message||'Request received.')
     }catch(e){setLibraryError(e instanceof Error?e.message:'License request failed.')}
     finally{setRequestingLicense(false)}
   }
+  async function startLicenseCheckout(){
+    if(!licenseRequestId)return
+    setStartingCheckout(true);setLibraryError('')
+    try{
+      const response=await fetch('/api/commercial-licenses/requests/'+encodeURIComponent(licenseRequestId)+'/checkout',{method:'POST'})
+      const data=await response.json() as {detail?:string;checkout_url?:string}
+      if(!response.ok)throw new Error(data.detail||'Checkout is not ready.')
+      if(!data.checkout_url||!data.checkout_url.startsWith('https://checkout.stripe.com/'))throw new Error('Invalid Stripe checkout URL.')
+      window.location.assign(data.checkout_url)
+    }catch(e){setLibraryError(e instanceof Error?e.message:'Checkout could not start.');setStartingCheckout(false)}
+  }
   const selectedSong=songs.find(f=>f.id===selectedId)
-  const filteredSongs=songs.filter(f=>f.name.toLowerCase().includes(search.trim().toLowerCase()))
+  const filteredSongs=songs.filter(f=>(!favoritesOnly||favorites.includes(f.id))&&(f.song_title||f.name).toLowerCase().includes(search.trim().toLowerCase()))
   const coverFor = (song:SavedSong) => song.has_artwork?'/api/generated-files/'+song.id+'/artwork':'/cover-'+(Math.max(0,songs.findIndex(item=>item.id===song.id))%4+1)+'.svg'
   const [planning,setPlanning] = useState(false)
   const [plan,setPlan] = useState<{estimated_seconds:number;total_bars:number;sections:{name:string;bars:number;start_seconds:number;duration_seconds:number;energy:number}[]}|null>(null)
@@ -181,6 +204,8 @@ export default function FullSongPage() {
     finally{window.clearTimeout(timer);setSaving(false)}
   }
   return <section className="fullsong mm-generator">
+    {toast&&<div className={'mm-sweet-toast '+toast.kind} role={toast.kind==='error'?'alert':'status'}><span>{toast.kind==='error'?<AlertTriangle size={22}/>:<CheckCircle2 size={22}/>}</span><strong>{toast.message}</strong><button type="button" aria-label="Dismiss notification" onClick={()=>setToast(null)}><X size={17}/></button></div>}
+    {confirmDelete&&<div className="mm-sweet-overlay" onMouseDown={e=>{if(e.target===e.currentTarget&&!deletingId)setConfirmDelete(null)}}><div className="mm-sweet-dialog" role="alertdialog" aria-modal="true" aria-labelledby="mm-confirm-title" aria-describedby="mm-confirm-description"><div className="mm-sweet-icon"><Trash2 size={30}/></div><h3 id="mm-confirm-title">Delete this song?</h3><p id="mm-confirm-description"><strong>{confirmDelete.song_title||confirmDelete.name}</strong> will be permanently removed from My Music. This cannot be undone.</p><div className="mm-sweet-actions"><button type="button" disabled={!!deletingId} onClick={()=>setConfirmDelete(null)}>Keep song</button><button type="button" disabled={!!deletingId} className="danger" onClick={()=>void deleteSong(confirmDelete)}>{deletingId?'Deleting…':'Yes, delete'}</button></div></div></div>}
     <div className="mm-generator-top"><div><span className="mm-generator-kicker"><Sparkles size={14}/> MIXMASTER AI STUDIO</span><h2>Music Generator</h2><p>Describe a song, shape its sound, and explore your creations.</p></div><a className="mm-generator-plan-link" href="#/pricing"><Sparkles size={16}/> Plans & credits <ArrowRight size={15}/></a></div>
     <div className="mm-generator-layout">
       <div className="mm-generator-compose">
@@ -210,18 +235,19 @@ export default function FullSongPage() {
       </div>
       <div className="mm-generator-library">
         <div className="mm-generator-library-head"><div><Headphones size={19}/><strong>My Music</strong><span className="mm-song-count">{songs.length}</span></div><div className="mm-generator-library-actions"><button type="button" title="Refresh library" onClick={()=>setRefreshKey(k=>k+1)} disabled={libraryLoading}><RefreshCw size={16}/></button><button type="button" title="Toggle details" aria-pressed={showDetails} onClick={()=>setShowDetails(v=>!v)}><FileText size={16}/></button></div></div>
+        <button type="button" className={'mm-favorites-filter'+(favoritesOnly?' active':'')} aria-pressed={favoritesOnly} onClick={()=>setFavoritesOnly(v=>!v)}><Heart size={16} fill={favoritesOnly?'currentColor':'none'}/> {favoritesOnly?'Showing favorites':'Favorites'} <span>{favorites.filter(id=>songs.some(song=>song.id===id)).length}</span></button>
         <label className="mm-generator-search"><Search size={16}/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search Music" aria-label="Search generated music"/></label>
         {libraryError&&<p className="mm-generator-library-error" role="alert">{libraryError}</p>}
         {libraryNotice&&<p className="mm-generator-library-notice" role="status">{libraryNotice}</p>}
         <div className="mm-generator-song-list">
-          {filteredSongs.map((song,index)=><div key={song.id} className={'mm-generator-song-row'+(selectedId===song.id?' selected':'')}><button type="button" className="mm-song-select" onClick={()=>{setSelectedId(song.id);setShowDetails(true)}}><span className={'mm-song-art mm-song-art-'+index%4}><img src={coverFor(song)} alt="" loading="lazy"/></span><span className="mm-song-meta"><strong>{(song.song_title||song.name.replace(/\.(wav|mp3|flac)$/i,''))}</strong><small>{new Date(song.created_at).toLocaleString()}</small><span className="mm-song-chip">{song.category==='full_song'?'Full Song':'Text to Song'}</span></span><span className="mm-song-row-actions"><ArrowRight size={15}/></span></button><button type="button" className="mm-song-delete" title={'Delete '+song.name} aria-label={'Delete '+song.name} disabled={deletingId!==null} onClick={()=>void deleteSong(song)}><Trash2 size={16}/></button></div>)}
+          {filteredSongs.map((song,index)=><div key={song.id} className={'mm-generator-song-row'+(selectedId===song.id?' selected':'')}><button type="button" className="mm-song-select" onClick={()=>{setSelectedId(song.id);setShowDetails(true)}}><span className={'mm-song-art mm-song-art-'+index%4}><img src={coverFor(song)} alt="" loading="lazy"/></span><span className="mm-song-meta"><strong>{(song.song_title||song.name.replace(/\.(wav|mp3|flac)$/i,''))}</strong><small>{new Date(song.created_at).toLocaleString()}</small><span className="mm-song-chip">{song.category==='full_song'?'Full Song':'Text to Song'}</span></span><span className="mm-song-row-actions"><ArrowRight size={15}/></span></button><button type="button" className={'mm-song-favorite'+(favorites.includes(song.id)?' active':'')} title={favorites.includes(song.id)?'Remove from favorites':'Add to favorites'} aria-label={favorites.includes(song.id)?'Remove '+song.name+' from favorites':'Add '+song.name+' to favorites'} aria-pressed={favorites.includes(song.id)} onClick={()=>toggleFavorite(song)}><Heart size={17} fill={favorites.includes(song.id)?'currentColor':'none'}/></button><button type="button" className="mm-song-delete" title={'Delete '+song.name} aria-label={'Delete '+song.name} disabled={deletingId!==null} onClick={()=>setConfirmDelete(song)}><Trash2 size={16}/></button></div>)}
           {!libraryLoading&&!filteredSongs.length&&<div className="mm-generator-empty"><div><Music2 size={34}/></div><strong>{search?'No matching tracks':'Your music will appear here'}</strong><p>{search?'Try a different search.':'Create a track to start your music library.'}</p></div>}
           {libraryLoading&&<p className="mm-generator-loading">Loading music…</p>}
         </div>
         <div className="mm-generator-library-footer"><a href="#/generated-files">All generated files <ArrowRight size={14}/></a></div>
       </div>
       {showDetails&&<aside className="mm-generator-detail">
-        {selectedSong?<><div className="mm-detail-art"><div className="mm-detail-vinyl"><div className="mm-detail-vinyl-core"><img src={coverFor(selectedSong)} alt=""/></div></div><span className="mm-detail-bars" aria-hidden="true">{Array.from({length:11},(_,i)=><i key={i} style={{height:15+Math.abs(Math.sin(i*.7))*58}}/>)}</span></div><h3>{(selectedSong.song_title||selectedSong.name.replace(/\.(wav|mp3|flac)$/i,''))}</h3><div className="mm-detail-chips"><span>{selectedSong.category==='full_song'?'Full Song':'Instrumental'}</span><span>{(selectedSong.size/1048576).toFixed(1)} MB</span></div><small>{new Date(selectedSong.created_at).toLocaleString()}</small><div className="mm-detail-actions"><a href={'/api/generated-files/'+selectedSong.id+'/download'}><Download size={16}/> Download</a></div><div className="mm-commercial-license" style={{display:'grid',gap:8,padding:12,border:'1px solid #486466',borderRadius:9}}><strong>Commercial license · per song</strong><p style={{fontSize:12,margin:0}}>Status: {selectedSong.license_status==='licensed'?'Licensed':'Not licensed'}. Paid checkout and rights verification are not yet enabled; a request does not grant commercial rights.</p><label>Contact email<input type="email" value={licenseEmail} onChange={e=>setLicenseEmail(e.target.value)} placeholder="you@example.com"/></label><button type="button" disabled={requestingLicense} onClick={()=>void requestLicense(selectedSong)}>{requestingLicense?'Submitting…':'Request commercial license'}</button></div><div className="mm-detail-tabs" role="tablist" aria-label="Track information"><button type="button" role="tab" aria-selected={detailTab==='lyrics'} className={detailTab==='lyrics'?'active':''} onClick={()=>setDetailTab('lyrics')}>Lyrics</button><button type="button" role="tab" aria-selected={detailTab==='details'} className={detailTab==='details'?'active':''} onClick={()=>setDetailTab('details')}>Details</button><button type="button" role="tab" aria-selected={detailTab==='stems'} className={detailTab==='stems'?'active':''} onClick={()=>setDetailTab('stems')}>Stems</button></div>
+        {selectedSong?<><div className="mm-detail-art"><div className="mm-detail-vinyl"><div className="mm-detail-vinyl-core"><img src={coverFor(selectedSong)} alt=""/></div></div><span className="mm-detail-bars" aria-hidden="true">{Array.from({length:11},(_,i)=><i key={i} style={{height:15+Math.abs(Math.sin(i*.7))*58}}/>)}</span></div><h3>{(selectedSong.song_title||selectedSong.name.replace(/\.(wav|mp3|flac)$/i,''))}</h3><div className="mm-detail-chips"><span>{selectedSong.category==='full_song'?'Full Song':'Instrumental'}</span><span>{(selectedSong.size/1048576).toFixed(1)} MB</span></div><small>{new Date(selectedSong.created_at).toLocaleString()}</small><div className="mm-detail-actions"><a href={'/api/generated-files/'+selectedSong.id+'/download'}><Download size={16}/> Download</a></div><div className="mm-commercial-license" style={{display:'grid',gap:8,padding:12,border:'1px solid #486466',borderRadius:9}}><strong>Commercial license · per song</strong><p style={{fontSize:12,margin:0}}>Status: {selectedSong.license_status==='licensed'?'Licensed':'Not licensed'}. Stripe checkout is available after operator rights approval and server configuration. A request alone grants no commercial rights.</p><label>Contact email<input type="email" value={licenseEmail} onChange={e=>setLicenseEmail(e.target.value)} placeholder="you@example.com"/></label><button type="button" disabled={requestingLicense} onClick={()=>void requestLicense(selectedSong)}>{requestingLicense?'Submitting…':'Request commercial license'}</button>{licenseRequestId&&<><small>Request ID: {licenseRequestId} · Payment becomes available after rights approval.</small><button type="button" disabled={startingCheckout} onClick={()=>void startLicenseCheckout()}>{startingCheckout?'Opening Stripe…':'Pay with Stripe (after approval)'}</button></>}</div><div className="mm-detail-tabs" role="tablist" aria-label="Track information"><button type="button" role="tab" aria-selected={detailTab==='lyrics'} className={detailTab==='lyrics'?'active':''} onClick={()=>setDetailTab('lyrics')}>Lyrics</button><button type="button" role="tab" aria-selected={detailTab==='details'} className={detailTab==='details'?'active':''} onClick={()=>setDetailTab('details')}>Details</button><button type="button" role="tab" aria-selected={detailTab==='stems'} className={detailTab==='stems'?'active':''} onClick={()=>setDetailTab('stems')}>Stems</button></div>
         <div className="mm-detail-tab-content" role="tabpanel">{detailTab==='details'?<><h4>Music details</h4><p>Generated with MixMaster AI. Saved audio is ready to listen to or download.</p></>:detailTab==='lyrics'?<p>Lyrics aren't saved with this generated audio yet. Your draft lyrics remain in the generator on the left.</p>:<div><p>Separate this track into drums, bass, vocals and other sounds using the Stem Splitter.</p><a href="#/stem-splitter" className="mm-detail-stems-link">Open Stem Splitter <ArrowRight size={14}/></a></div>}</div>
         </>:<div className="mm-generator-empty"><Music2 size={34}/><strong>Select a song</strong><p>Your selected track and player will appear here.</p></div>}
         <div className="mm-generator-info"><Mic2 size={17}/><div><strong>Engine status</strong><p>{engineMessage}</p><small>Instrumentals: {capabilities.instrumental?'ready':'unavailable'} · Singing: {capabilities.full_song?'configured':'not connected'}</small></div></div>
