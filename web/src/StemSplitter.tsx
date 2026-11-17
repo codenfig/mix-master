@@ -1,7 +1,7 @@
 import './styles/stem-splitter.css'
 import { useEffect, useRef, useState } from 'react'
 import JSZip from 'jszip'
-import { AudioLines, Download, FileAudio, LoaderCircle, Music2, UploadCloud, X } from 'lucide-react'
+import { AudioLines, Download, FileAudio, LoaderCircle, Music2, UploadCloud, X, CheckCircle2, SlidersHorizontal } from 'lucide-react'
 
 const stems = [
   { key: 'vocals', label: 'Vocals', description: 'Lead and backing voices', icon: '🎙️' },
@@ -17,6 +17,7 @@ export default function StemSplitter() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [elapsed, setElapsed] = useState(0)
+  const [dragging, setDragging] = useState(false)
   const [urls, setUrls] = useState<Record<string, string>>({})
   const [zipUrl, setZipUrl] = useState<string | null>(null)
   const picker = useRef<HTMLInputElement>(null)
@@ -62,19 +63,22 @@ export default function StemSplitter() {
     finally { abort.current = null; setBusy(false) }
   }
   const baseName = (file?.name || 'MixMaster').replace(/\.[^.]+$/, '')
+  const selectedCount = stems.filter(stem => selectedStems[stem.key]).length
+  const completed = Boolean(zipUrl)
   return <div className="stem-page">
-    <section className="stem-hero"><div className="stem-eyebrow"><AudioLines size={16}/> AI SOURCE SEPARATION</div><h2>Stem <em>Splitter.</em></h2><p>Unmix your music into four separate layers. Preview vocals, drums, bass and instruments independently.</p><div className="stem-hero-pills"><span>4 STEMS</span><span>AI-POWERED</span><span>WAV EXPORT</span></div><div className="stem-hero-vinyl" aria-hidden="true"><Music2 size={55}/></div></section>
-    <section className="stem-panel"><div className="stem-panel-heading"><UploadCloud size={23}/><div><h3>Choose your track</h3><p>Upload one song to begin separation.</p></div></div>
+    <section className="stem-hero"><div className="stem-eyebrow"><AudioLines size={16}/> AI SOURCE SEPARATION</div><h2>Stem <em>Splitter.</em></h2><p>Unmix your music into four separate layers. Preview vocals, drums, bass and instruments independently.</p><div className="stem-hero-pills"><span>4 STEMS</span><span>AI-POWERED</span><span>WAV EXPORT</span></div><div className="stem-hero-vinyl" aria-hidden="true"><Music2 size={30}/></div></section>
+    <div className="stem-workspace"><section className="stem-panel"><div className="stem-panel-heading"><UploadCloud size={23}/><div><h3>Choose your track</h3><p>Upload one song to begin separation.</p></div></div>
       <input ref={picker} type="file" className="hidden" accept=".mp3,.wav,.flac,.m4a,.ogg,.aac,audio/*" onChange={e => { select(e.target.files?.[0]); e.target.value = '' }}/>
-      <div className="stem-drop" role="button" tabIndex={0} onClick={()=>!busy&&picker.current?.click()} onKeyDown={e=>{if(!busy&&(e.key==='Enter'||e.key===' ')){e.preventDefault();picker.current?.click()}}} onDragOver={e=>e.preventDefault()} onDrop={e=>{e.preventDefault();select(e.dataTransfer.files[0])}}><FileAudio size={34}/><strong>Drop your song here</strong><span>or click to browse · MP3, WAV, FLAC, M4A, OGG, AAC · Max 200 MiB</span></div>
+      <div className={"stem-drop"+(dragging?" is-dragging":"")} role="button" tabIndex={0} onClick={()=>!busy&&picker.current?.click()} onKeyDown={e=>{if(!busy&&(e.key==='Enter'||e.key===' ')){e.preventDefault();picker.current?.click()}}} onDragOver={e=>{e.preventDefault();setDragging(true)}} onDragLeave={()=>setDragging(false)} onDrop={e=>{e.preventDefault();setDragging(false);select(e.dataTransfer.files[0])}}><FileAudio size={34}/><strong>Drop your song here</strong><span>or click to browse · MP3, WAV, FLAC, M4A, OGG, AAC · Max 200 MiB</span></div>
       {file&&<div className="stem-selected"><FileAudio size={20}/><div><strong>{file.name}</strong><small>{(file.size/1048576).toFixed(1)} MiB</small></div><button disabled={busy} aria-label="Remove file" onClick={()=>{setFile(null);clearResults()}}><X size={17}/></button></div>}
-      <fieldset className="stem-output-selection"><legend>Output stems</legend><div>{stems.map(stem=><label key={stem.key}><input type="checkbox" checked={Boolean(selectedStems[stem.key])} onChange={e=>setSelectedStems(previous=>({...previous,[stem.key]:e.target.checked}))}/><span>{stem.label}</span></label>)}</div><small>All four stems are separated; select which results you want to view and download.</small></fieldset>
+      <fieldset className="stem-output-selection"><legend><SlidersHorizontal size={15}/> Output selection <span>{selectedCount}/4 selected</span></legend><div>{stems.map(stem=><label key={stem.key} className={selectedStems[stem.key]?"is-selected":""}><input type="checkbox" checked={Boolean(selectedStems[stem.key])} onChange={e=>setSelectedStems(previous=>({...previous,[stem.key]:e.target.checked}))}/><span>{stem.icon} {stem.label}</span></label>)}</div><small>The server separates all four stems. Selection controls which results are shown.</small></fieldset>
       <button type="button" className="stem-primary" disabled={!file||busy||!stems.some(stem=>selectedStems[stem.key])} onClick={split}>{busy?<><LoaderCircle className="spin" size={18}/> Separating audio…</>:<><AudioLines size={18}/> Split Into 4 Stems</>}</button>
-      {busy&&<div className="stem-status" role="status">Processing for {Math.floor(elapsed/60)}:{String(elapsed%60).padStart(2,'0')} · This can take several minutes. <button onClick={()=>abort.current?.abort()}>Cancel</button></div>}
+      <div className={"stem-processing"+(busy?" is-active":"")} role="status" aria-live="polite"><span className="stem-processing-icon">{busy?<LoaderCircle className="spin" size={17}/>:completed?<CheckCircle2 size={17}/>:<AudioLines size={17}/>}</span><div><strong>{busy?"Separating audio":completed?"Separation complete":"Ready to process"}</strong><small>{busy?`Elapsed ${Math.floor(elapsed/60)}:${String(elapsed%60).padStart(2,"0")} · Processing may take several minutes`:completed?"Preview and download your stems":"Upload a track, choose outputs, then start separation"}</small></div>{busy&&<button type="button" onClick={()=>abort.current?.abort()}>Cancel</button>}</div>
       {error&&<p className="stem-error" role="alert">{error}</p>}
     </section>
-    <div className="stem-results-heading"><div><h3>Your separated stems</h3><p>Play each part or download individual WAV tracks.</p></div>{zipUrl&&<a className="stem-download-all" href={zipUrl} download={baseName+'_stems.zip'}><Download size={17}/> Download All (ZIP)</a>}</div>
+    <section className="stem-results-panel"><div className="stem-results-heading"><div><h3>Your separated stems</h3><p>Play each part or download individual WAV tracks.</p></div>{zipUrl&&<a className="stem-download-all" href={zipUrl} download={baseName+'_stems.zip'}><Download size={17}/> Download All (ZIP)</a>}</div>
     <div className="stem-results">{stems.filter(stem=>selectedStems[stem.key]).map(stem=><section className="stem-card" key={stem.key}><div className="stem-card-top"><span className="stem-card-emoji">{stem.icon}</span><div><h4>{stem.label}</h4><p>{stem.description}</p></div></div>{urls[stem.key]?<><audio controls preload="none" src={urls[stem.key]} aria-label={stem.label+' preview'}/><a href={urls[stem.key]} download={baseName+'_'+stem.key+'.wav'} className="stem-stem-download"><Download size={16}/> Download {stem.label}</a></>:<div className="stem-awaiting"><AudioLines size={19}/> Awaiting extraction</div>}</section>)}</div>
-    <p className="stem-footnote">AI stem separation is approximate. Some sounds may bleed between stems. Use only music you have permission to process.</p>
+    </section></div>
+    <details className="stem-notes"><summary>Processing notes &amp; supported formats</summary><p>MP3, WAV, FLAC, M4A, OGG and AAC · Maximum 200 MiB per file. Processing time depends on the audio length and server performance.</p><p className="stem-footnote">AI stem separation is approximate. Some sounds may bleed between stems. Use only music you have permission to process.</p></details>
   </div>
 }
