@@ -354,7 +354,7 @@ export default function App() {
         {page === 'audio-mastering' && <AudioMastering/>}
         {page === 'voice-studio' && <VoiceStudio/>}
         {page === 'overview' && <OverviewPage filesCount={files.length} count={count} history={history} analysis={analysis} url={url} busy={busy} navigate={navigate}/>}
-        {page === 'studio' && <div className="mm-deck-stage"><DjDeckStudio files={files} bpm={analysis?.tracks[0]?.bpm} onUpload={()=>input.current?.click()}/><details className="mm-dj-workflow"><summary>Mix workflow &amp; analysis</summary><div className="studio-intro">
+        {page === 'studio' && <div className="mm-deck-stage"><div className="mm-studio-toolbar"><div><span>DJ WORKSPACE</span><strong>Mixing console</strong></div><nav aria-label="Studio sections"><a href="#library" onClick={e=>{e.preventDefault();document.getElementById("library")?.scrollIntoView({behavior:"smooth"})}}>Tracks</a><a href="#settings" onClick={e=>{e.preventDefault();document.getElementById("settings")?.scrollIntoView({behavior:"smooth"})}}>Mix settings</a><button type="button" onClick={()=>navigate("preview")}>Preview <ArrowRight size={13}/></button></nav></div><DjDeckStudio files={files} bpm={analysis?.tracks[0]?.bpm} onUpload={()=>input.current?.click()}/><details className="mm-dj-workflow"><summary>Mix workflow &amp; analysis</summary><div className="studio-intro">
           <section className="studio-hero">
             <div className="studio-hero-copy"><div className="studio-eyebrow"><Sparkles size={15}/> THE AI MIXING STUDIO <span> / SESSION 001</span></div><h2>Make the night <em>flow.</em></h2><p>Drop your tracks. Shape the energy. Let MixMaster AI build a continuous set with seamless transitions and your signature sound.</p><div className="studio-hero-tags"><span><AudioLines size={14}/> BEAT MATCHING</span><span><Activity size={14}/> ENERGY FLOW</span><span><Sparkles size={14}/> AI ARRANGEMENT</span></div></div>
             <div className="studio-hero-art" aria-hidden="true"><div className="studio-hero-halo"/><div className="studio-hero-record"><div className="studio-record-label"><Music2 size={33}/><small>MIXMASTER</small></div></div><div className="studio-hero-eq">{Array.from({length:25},(_,i)=><i key={i} style={{height:(16+Math.abs(Math.sin(i*.82)*Math.cos(i*.21))*74)+'%'}}/>)}</div></div>
@@ -389,7 +389,7 @@ export default function App() {
               </div>
             </div>}
 
-            {page === 'studio' && <section className="panel cover-panel">
+            {page === 'studio' && <details className="panel cover-panel mm-studio-disclosure"><summary><FileAudio size={18}/> Cover art &amp; metadata <span>Optional</span></summary>
               <div className="panel-heading"><div><h2><FileAudio size={20}/> Cover Art &amp; Metadata</h2><p>Personalize your exported MP3 artwork and music-player details.</p></div></div>
               <div className="cover-editor">
                 <label className="cover-upload">
@@ -406,13 +406,13 @@ export default function App() {
               </div>
               {coverError&&<p className="cover-error" role="alert">{coverError}</p>}
               <small className="cover-hint">Artwork and metadata are embedded in the MP3 when you generate the mix.</small>
-            </section>}
-            {(page === 'studio' || page === 'library') && <div className="panel library" id="library">
+            </details>}
+            {(page === 'studio' || page === 'library') && <div className="panel library" id="library"><details className="mm-studio-disclosure" open={page === 'library' ? true : undefined}><summary><ListMusic size={18}/> Track analysis &amp; suggested order <span>{files.length} tracks</span></summary>
               <div className="panel-heading"><div><h2><ListMusic size={20}/> Track Analysis</h2><p>Insights into your selected music.</p></div><button className="subtle" disabled={busy !== null || files.length === 0} onClick={() => chooseFiles([])}><RotateCcw size={15}/> Clear</button></div>
               {page === 'library' && <div className="library-upload-actions"><span>{files.length} tracks in this session</span><button type="button" onClick={() => navigate('studio')}><UploadCloud size={16}/> Add tracks in Create Mix</button></div>}
               <div className="tabs"><button className={tab === 'tracks' ? 'selected' : ''} onClick={() => setTab('tracks')}>Tracks & Insights</button><button className={tab === 'order' ? 'selected' : ''} onClick={() => setTab('order')}>Suggested Order</button></div>
               {tab === 'tracks' ? <div className="table-wrap"><table><thead><tr><th>#</th><th>TRACK</th><th>DURATION</th><th>BPM</th><th>KEY</th><th>ENERGY</th></tr></thead><tbody>{files.length === 0 ? <tr><td className="empty" colSpan={6}><FileAudio size={28}/> Upload tracks to view their analysis.</td></tr> : files.map((file,i) => { const track = analysis?.tracks[i]; return <tr key={i}><td>{String(i+1).padStart(2,'0')}</td><td className="track-name" title={file.name}>{file.name}</td><td>{track ? formatTime(track.duration) : '—'}</td><td>{track ? Math.round(track.bpm) : '—'}</td><td>{track?.key || '—'}</td><td>{track ? <div className="energy-bar"><span style={{width: Math.max(6,track.energy / energyMax * 100)+'%'}}/></div> : '—'}</td></tr> })}</tbody></table></div> : <div>{analysis?.plan && <div className="plan-score"><strong>Mix compatibility: {analysis.plan.quality_score}/100</strong><small>{analysis.plan.strategy} · Estimated from track metadata</small></div>}<ol className="order-list">{analysis?.order.length ? analysis.order.map((name,i) => <li key={i}><span>{String(i+1).padStart(2,'0')}</span>{name}</li>) : <li className="order-empty">Analyze your tracks to see the suggested play order.</li>}</ol>{analysis?.plan?.transitions.map((t, i) => <div className="transition-insight" key={i}><span>{t.from} → {t.to}</span><strong>{t.compatibility}/100</strong>{t.warning && <small>{t.warning}</small>}</div>)}</div>}
-            </div>}
+            </details></div>}
           </section>
 
           {(page === 'studio' || page === 'settings') && <aside className="panel settings" id="settings">
@@ -421,7 +421,7 @@ export default function App() {
             <div className="preset-options">{(['smooth','balanced','quick'] as const).map(value => <button key={value} className={preset === value ? 'selected' : ''} disabled={busy !== null} onClick={() => applyPreset(value)}>{value}</button>)}</div>
             <small className="preset-hint">Styles adjust crossfade duration, not the mixing algorithm.</small>
             <div className="settings-divider"/>
-            <label className="field-label">SMART KICK BEAT</label>
+            <details className="mm-studio-disclosure mm-advanced-settings"><summary><SlidersHorizontal size={17}/> Advanced audio options <span>Kick beat &amp; mastering</span></summary><div className="mm-advanced-body"><label className="field-label">SMART KICK BEAT</label>
             <label className="kick-toggle"><input type="checkbox" checked={kickEnabled} disabled={busy !== null} onChange={e => { setKickEnabled(e.target.checked); resetOutput() }}/><span>Add a constant kick pulse throughout the mix</span></label>
             {kickEnabled && <div className="kick-controls"><label className="field-label" htmlFor="kick-source">KICK SOURCE</label><select id="kick-source" value={kickSourceIndex} disabled={busy !== null} onChange={e => { setKickSourceIndex(Number(e.target.value)); resetOutput() }}><option value={-1}>Synthesized kick (default)</option>{files.map((file, index) => <option key={index} value={index}>Extract from: {file.name}</option>)}</select><small className="preset-hint">Extracts a filtered low-frequency drum transient from the selected song. It is not a clean separated stem.</small><div className="preset-options mastering-options">{(['soft','club'] as const).map(value => <button type="button" key={value} className={kickStyle === value ? 'selected' : ''} disabled={busy !== null} onClick={() => { setKickStyle(value); resetOutput() }}>{value === 'soft' ? 'Subtle' : 'Club'}</button>)}</div><label className="field-label" htmlFor="kick-level">KICK STRENGTH <span>{kickLevel}%</span></label><input id="kick-level" type="range" min={5} max={35} step={1} value={kickLevel} disabled={busy !== null} onChange={e => { setKickLevel(Number(e.target.value)); resetOutput() }}/><small className="preset-hint">Uses the opening song's estimated BPM as a constant tempo. Best for songs already close in tempo.</small></div>}
             <label className="field-label">AUDIO MASTERING</label>
@@ -435,6 +435,7 @@ export default function App() {
               <label className="kick-toggle"><input type="checkbox" checked={compression} disabled={busy !== null} onChange={e => setCompression(e.target.checked)}/> Gentle stereo compression</label>
               <small className="preset-hint">Custom settings apply during export. Adjust conservatively to avoid distortion.</small>
             </div>}
+            </div></details>
             <label className="field-label">NUMBER OF SONGS</label>
             <div className="count-options">{([5,10,20] as const).map(n => <button key={n} className={count === n ? 'selected' : ''} disabled={busy !== null} onClick={() => changeCount(n)}>{n}<small>songs</small></button>)}</div>
             <label className="field-label" htmlFor="transition">TRANSITION DURATION <span>{transition}s</span></label>
