@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { ArrowRight, Clock3, Download, Headphones, Mic2, Music2, Search, Sparkles, WandSparkles, RefreshCw, FileText, SlidersHorizontal } from 'lucide-react'
+import { ArrowRight, Clock3, Download, Headphones, Mic2, Music2, Search, Sparkles, WandSparkles, RefreshCw, FileText, SlidersHorizontal, Trash2 } from 'lucide-react'
 import '../styles/full-song.css'
 
 type Voice = 'female' | 'male' | 'duet'
@@ -69,10 +69,32 @@ export default function FullSongPage() {
   const [selectedId,setSelectedId] = useState('')
   const [libraryLoading,setLibraryLoading] = useState(false)
   const [libraryError,setLibraryError] = useState('')
+  const [libraryNotice,setLibraryNotice] = useState('')
+  const [deletingId,setDeletingId] = useState<string | null>(null)
   const [refreshKey,setRefreshKey] = useState(0)
   const [showDetails,setShowDetails] = useState(true)
   const [detailTab,setDetailTab] = useState<'lyrics'|'details'|'stems'>('details')
   useEffect(()=>{let active=true;const load=async()=>{setLibraryLoading(true);try{const response=await fetch('/api/generated-files');if(!response.ok)throw new Error('Could not load music library');const data=await response.json() as {files:SavedSong[]};if(active){const items=data.files.filter(f=>f.category==='full_song'||f.category==='text_to_song');setSongs(items);setSelectedId(previous=>items.some(f=>f.id===previous)?previous:items[0]?.id||'');setLibraryError('')}}catch(e){if(active)setLibraryError(e instanceof Error?e.message:'Library unavailable')}finally{if(active)setLibraryLoading(false)}};void load();return()=>{active=false}},[refreshKey])
+  async function deleteSong(song:SavedSong) {
+    if(deletingId!==null||!window.confirm('Permanently delete "'+song.name+'"? This action cannot be undone.'))return
+    setDeletingId(song.id)
+    setLibraryError('')
+    setLibraryNotice('')
+    try {
+      const response=await fetch('/api/generated-files/'+encodeURIComponent(song.id),{method:'DELETE'})
+      if(!response.ok){
+        const body=await response.json().catch(()=>null) as {detail?:string}|null
+        throw new Error(body?.detail||'Could not delete song ('+response.status+').')
+      }
+      setSongs(current=>{
+        const remaining=current.filter(item=>item.id!==song.id)
+        setSelectedId(previous=>previous===song.id?(remaining[0]?.id||''):previous)
+        return remaining
+      })
+      setLibraryNotice('Song deleted successfully.')
+    }catch(e){setLibraryError(e instanceof Error?e.message:'Could not delete song.')}
+    finally{setDeletingId(null)}
+  }
   const selectedSong=songs.find(f=>f.id===selectedId)
   const filteredSongs=songs.filter(f=>f.name.toLowerCase().includes(search.trim().toLowerCase()))
   const coverFor = (song:SavedSong) => '/cover-'+(Math.max(0,songs.findIndex(item=>item.id===song.id))%4+1)+'.svg'
@@ -177,8 +199,9 @@ export default function FullSongPage() {
         <div className="mm-generator-library-head"><div><Headphones size={19}/><strong>My Music</strong><span className="mm-song-count">{songs.length}</span></div><div className="mm-generator-library-actions"><button type="button" title="Refresh library" onClick={()=>setRefreshKey(k=>k+1)} disabled={libraryLoading}><RefreshCw size={16}/></button><button type="button" title="Toggle details" aria-pressed={showDetails} onClick={()=>setShowDetails(v=>!v)}><FileText size={16}/></button></div></div>
         <label className="mm-generator-search"><Search size={16}/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search Music" aria-label="Search generated music"/></label>
         {libraryError&&<p className="mm-generator-library-error" role="alert">{libraryError}</p>}
+        {libraryNotice&&<p className="mm-generator-library-notice" role="status">{libraryNotice}</p>}
         <div className="mm-generator-song-list">
-          {filteredSongs.map((song,index)=><button type="button" key={song.id} className={'mm-generator-song-row'+(selectedId===song.id?' selected':'')} onClick={()=>{setSelectedId(song.id);setShowDetails(true)}}><span className={'mm-song-art mm-song-art-'+index%4}><img src={coverFor(song)} alt="" loading="lazy"/></span><span className="mm-song-meta"><strong>{song.name.replace(/\.(wav|mp3|flac)$/i,'')}</strong><small>{new Date(song.created_at).toLocaleString()}</small><span className="mm-song-chip">{song.category==='full_song'?'Full Song':'Text to Song'}</span></span><span className="mm-song-row-actions"><ArrowRight size={15}/></span></button>)}
+          {filteredSongs.map((song,index)=><div key={song.id} className={'mm-generator-song-row'+(selectedId===song.id?' selected':'')}><button type="button" className="mm-song-select" onClick={()=>{setSelectedId(song.id);setShowDetails(true)}}><span className={'mm-song-art mm-song-art-'+index%4}><img src={coverFor(song)} alt="" loading="lazy"/></span><span className="mm-song-meta"><strong>{song.name.replace(/\.(wav|mp3|flac)$/i,'')}</strong><small>{new Date(song.created_at).toLocaleString()}</small><span className="mm-song-chip">{song.category==='full_song'?'Full Song':'Text to Song'}</span></span><span className="mm-song-row-actions"><ArrowRight size={15}/></span></button><button type="button" className="mm-song-delete" title={'Delete '+song.name} aria-label={'Delete '+song.name} disabled={deletingId!==null} onClick={()=>void deleteSong(song)}><Trash2 size={16}/></button></div>)}
           {!libraryLoading&&!filteredSongs.length&&<div className="mm-generator-empty"><div><Music2 size={34}/></div><strong>{search?'No matching tracks':'Your music will appear here'}</strong><p>{search?'Try a different search.':'Create a track to start your music library.'}</p></div>}
           {libraryLoading&&<p className="mm-generator-loading">Loading music…</p>}
         </div>
