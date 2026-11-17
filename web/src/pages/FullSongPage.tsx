@@ -264,6 +264,7 @@ export default function FullSongPage() {
       </div>
       {showDetails&&<aside className="mm-generator-detail mm-lyrics-only-panel" aria-label="Song name, style and lyrics">
         {selectedSong?<div className="mm-lyrics-only-content">
+          <div className="mm-detail-art mm-song-cover-top"><div className="mm-detail-vinyl"><div className="mm-detail-vinyl-core"><img src={coverFor(selectedSong)} alt={"Cover artwork for "+(selectedSong.song_title||selectedSong.name)}/></div></div><span className="mm-detail-bars" aria-hidden="true">{Array.from({length:11},(_,i)=><i key={i} style={{height:15+Math.abs(Math.sin(i*.7))*58}}/>)}</span></div>
           <div className="mm-song-info-field"><span>Song name</span><h3>{selectedSong.song_title||selectedSong.name.replace(/\.(wav|mp3|flac)$/i,'')}</h3></div>
           <div className="mm-song-info-field"><span>Style</span><p>{description.trim()||'No style entered'}</p><small>Current generator style · not saved with this track</small></div>
           <div className="mm-song-info-field"><span>Lyrics</span>{lyrics.trim()?<><small>Current lyrics draft · not saved with this track</small><pre>{lyrics}</pre></>:<p className="mm-lyrics-only-empty">No lyrics are saved with this track.</p>}</div>
