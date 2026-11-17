@@ -7,7 +7,7 @@ import numpy as np
 import soundfile as sf
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
-from generated_storage import save_generated
+from generated_storage import save_generated, song_identity
 
 router = APIRouter()
 RATE = 22050
@@ -126,7 +126,9 @@ def text_to_song(request: SongRequest):
             compose(request, path)
         except TimeoutError as exc:
             raise HTTPException(status_code=504, detail=str(exc)) from exc
-        saved = save_generated(path, "text_to_song", path.name, "audio/wav")
+        song_title, artwork = song_identity("", request.text, request.genre.title())
+        filename = "".join(ch if ch.isalnum() or ch in "-_ " else "" for ch in song_title).strip().replace(" ", "_")[:90] or "MixMaster_Song"
+        saved = save_generated(path, "text_to_song", filename + ".wav", "audio/wav", song_title=song_title, artwork_svg=artwork)
         return {"file": saved, "download_url": f"/api/generated-files/{saved['id']}/download"}
     finally:
         temp.cleanup()

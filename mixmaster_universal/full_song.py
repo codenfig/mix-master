@@ -11,7 +11,7 @@ import wave
 from urllib.parse import urlsplit
 from urllib.request import urlopen
 
-from generated_storage import save_generated
+from generated_storage import save_generated, song_identity
 from song_arrangement import arrangement
 from full_song_jobs import router as job_router, submit as submit_job, status as job_status, cancel as cancel_job
 
@@ -187,5 +187,7 @@ def generate_song(project: SongProject):
                     raise ValueError("Invalid WAV format")
         except (wave.Error, ValueError, EOFError) as exc:
             raise HTTPException(502, "Local engine output must be a valid PCM WAV.") from exc
-        saved = save_generated(output_path, "full_song", "MixMaster_Full_Song.wav", "audio/wav")
+        song_title, artwork = song_identity(project.title, project.description, project.genre, project.lyrics)
+        filename = "".join(ch if ch.isalnum() or ch in "-_ " else "" for ch in song_title).strip().replace(" ", "_")[:90] or "MixMaster_Song"
+        saved = save_generated(output_path, "full_song", filename + ".wav", "audio/wav", song_title=song_title, artwork_svg=artwork)
         return {"file": saved, "download_url": f"/api/generated-files/{saved['id']}/download"}

@@ -16,7 +16,7 @@ import subprocess
 import wave
 
 from fastapi import APIRouter, HTTPException
-from generated_storage import save_generated
+from generated_storage import save_generated, song_identity
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -104,7 +104,9 @@ def _execute(job_id, project, executable, arrangement):
                     raise InterruptedError("Generation cancelled.")
                 with _lock:
                     job["stage"] = "saving"
-                saved = save_generated(output_file, "full_song", "MixMaster_Full_Song.wav", "audio/wav")
+                song_title, artwork = song_identity(project.get("title", ""), project.get("description", ""), project.get("genre", ""), project.get("lyrics", ""))
+                filename = "".join(ch if ch.isalnum() or ch in "-_ " else "" for ch in song_title).strip().replace(" ", "_")[:90] or "MixMaster_Song"
+                saved = save_generated(output_file, "full_song", filename + ".wav", "audio/wav", song_title=song_title, artwork_svg=artwork)
                 with _lock:
                     job.update(status="completed", stage="completed", file=saved,
                                download_url=f"/api/generated-files/{saved['id']}/download")

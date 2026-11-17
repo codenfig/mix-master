@@ -4,7 +4,7 @@ import '../styles/full-song.css'
 
 type Voice = 'female' | 'male' | 'duet'
 type Output = 'full_song' | 'instrumental' | 'vocals'
-type SavedSong = {id:string;name:string;category:string;created_at:string;size:number;mime:string}
+type SavedSong = {id:string;name:string;category:string;created_at:string;size:number;mime:string;song_title?:string;has_artwork?:number;license_status?:string}
 const genres = ['Afro-pop', 'Rumba', 'Dancehall', 'Bongo Flava', 'Pop', 'Afrobeat', 'Country Pop']
 
 export default function FullSongPage() {
@@ -70,6 +70,8 @@ export default function FullSongPage() {
   const [libraryLoading,setLibraryLoading] = useState(false)
   const [libraryError,setLibraryError] = useState('')
   const [libraryNotice,setLibraryNotice] = useState('')
+  const [licenseEmail,setLicenseEmail] = useState('')
+  const [requestingLicense,setRequestingLicense] = useState(false)
   const [deletingId,setDeletingId] = useState<string | null>(null)
   const [refreshKey,setRefreshKey] = useState(0)
   const [showDetails,setShowDetails] = useState(true)
@@ -95,9 +97,20 @@ export default function FullSongPage() {
     }catch(e){setLibraryError(e instanceof Error?e.message:'Could not delete song.')}
     finally{setDeletingId(null)}
   }
+  async function requestLicense(song:SavedSong){
+    if(!licenseEmail.trim()){setLibraryError('Enter a contact email.');return}
+    setRequestingLicense(true);setLibraryError('');setLibraryNotice('')
+    try{
+      const response=await fetch('/api/generated-files/'+encodeURIComponent(song.id)+'/commercial-license-request',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:licenseEmail})})
+      const data=await response.json() as {detail?:string;message?:string}
+      if(!response.ok)throw new Error(data.detail||'License request failed.')
+      setLibraryNotice(data.message||'Request received.')
+    }catch(e){setLibraryError(e instanceof Error?e.message:'License request failed.')}
+    finally{setRequestingLicense(false)}
+  }
   const selectedSong=songs.find(f=>f.id===selectedId)
   const filteredSongs=songs.filter(f=>f.name.toLowerCase().includes(search.trim().toLowerCase()))
-  const coverFor = (song:SavedSong) => '/cover-'+(Math.max(0,songs.findIndex(item=>item.id===song.id))%4+1)+'.svg'
+  const coverFor = (song:SavedSong) => song.has_artwork?'/api/generated-files/'+song.id+'/artwork':'/cover-'+(Math.max(0,songs.findIndex(item=>item.id===song.id))%4+1)+'.svg'
   const [planning,setPlanning] = useState(false)
   const [plan,setPlan] = useState<{estimated_seconds:number;total_bars:number;sections:{name:string;bars:number;start_seconds:number;duration_seconds:number;energy:number}[]}|null>(null)
   async function previewArrangement(){setPlanning(true);setError('');setPlan(null);const controller=new AbortController();const timer=window.setTimeout(()=>controller.abort(),10000);try{const response=await fetch('/api/full-song/arrangement',{method:'POST',headers:{'Content-Type':'application/json'},signal:controller.signal,body:JSON.stringify({title,description,lyrics:customMode?lyrics:'',voice,genre,output,bpm,minutes})});if(!response.ok)throw new Error('Could not plan arrangement ('+response.status+').');setPlan(await response.json())}catch(e){setError(controller.signal.aborted?'Arrangement preview timed out.':e instanceof Error?e.message:'Could not preview arrangement.')}finally{window.clearTimeout(timer);setPlanning(false)}}
@@ -201,14 +214,14 @@ export default function FullSongPage() {
         {libraryError&&<p className="mm-generator-library-error" role="alert">{libraryError}</p>}
         {libraryNotice&&<p className="mm-generator-library-notice" role="status">{libraryNotice}</p>}
         <div className="mm-generator-song-list">
-          {filteredSongs.map((song,index)=><div key={song.id} className={'mm-generator-song-row'+(selectedId===song.id?' selected':'')}><button type="button" className="mm-song-select" onClick={()=>{setSelectedId(song.id);setShowDetails(true)}}><span className={'mm-song-art mm-song-art-'+index%4}><img src={coverFor(song)} alt="" loading="lazy"/></span><span className="mm-song-meta"><strong>{song.name.replace(/\.(wav|mp3|flac)$/i,'')}</strong><small>{new Date(song.created_at).toLocaleString()}</small><span className="mm-song-chip">{song.category==='full_song'?'Full Song':'Text to Song'}</span></span><span className="mm-song-row-actions"><ArrowRight size={15}/></span></button><button type="button" className="mm-song-delete" title={'Delete '+song.name} aria-label={'Delete '+song.name} disabled={deletingId!==null} onClick={()=>void deleteSong(song)}><Trash2 size={16}/></button></div>)}
+          {filteredSongs.map((song,index)=><div key={song.id} className={'mm-generator-song-row'+(selectedId===song.id?' selected':'')}><button type="button" className="mm-song-select" onClick={()=>{setSelectedId(song.id);setShowDetails(true)}}><span className={'mm-song-art mm-song-art-'+index%4}><img src={coverFor(song)} alt="" loading="lazy"/></span><span className="mm-song-meta"><strong>{(song.song_title||song.name.replace(/\.(wav|mp3|flac)$/i,''))}</strong><small>{new Date(song.created_at).toLocaleString()}</small><span className="mm-song-chip">{song.category==='full_song'?'Full Song':'Text to Song'}</span></span><span className="mm-song-row-actions"><ArrowRight size={15}/></span></button><button type="button" className="mm-song-delete" title={'Delete '+song.name} aria-label={'Delete '+song.name} disabled={deletingId!==null} onClick={()=>void deleteSong(song)}><Trash2 size={16}/></button></div>)}
           {!libraryLoading&&!filteredSongs.length&&<div className="mm-generator-empty"><div><Music2 size={34}/></div><strong>{search?'No matching tracks':'Your music will appear here'}</strong><p>{search?'Try a different search.':'Create a track to start your music library.'}</p></div>}
           {libraryLoading&&<p className="mm-generator-loading">Loading music…</p>}
         </div>
         <div className="mm-generator-library-footer"><a href="#/generated-files">All generated files <ArrowRight size={14}/></a></div>
       </div>
       {showDetails&&<aside className="mm-generator-detail">
-        {selectedSong?<><div className="mm-detail-art"><div className="mm-detail-vinyl"><div className="mm-detail-vinyl-core"><img src={coverFor(selectedSong)} alt=""/></div></div><span className="mm-detail-bars" aria-hidden="true">{Array.from({length:11},(_,i)=><i key={i} style={{height:15+Math.abs(Math.sin(i*.7))*58}}/>)}</span></div><h3>{selectedSong.name.replace(/\.(wav|mp3|flac)$/i,'')}</h3><div className="mm-detail-chips"><span>{selectedSong.category==='full_song'?'Full Song':'Instrumental'}</span><span>{(selectedSong.size/1048576).toFixed(1)} MB</span></div><small>{new Date(selectedSong.created_at).toLocaleString()}</small><div className="mm-detail-actions"><a href={'/api/generated-files/'+selectedSong.id+'/download'}><Download size={16}/> Download</a></div><div className="mm-detail-tabs" role="tablist" aria-label="Track information"><button type="button" role="tab" aria-selected={detailTab==='lyrics'} className={detailTab==='lyrics'?'active':''} onClick={()=>setDetailTab('lyrics')}>Lyrics</button><button type="button" role="tab" aria-selected={detailTab==='details'} className={detailTab==='details'?'active':''} onClick={()=>setDetailTab('details')}>Details</button><button type="button" role="tab" aria-selected={detailTab==='stems'} className={detailTab==='stems'?'active':''} onClick={()=>setDetailTab('stems')}>Stems</button></div>
+        {selectedSong?<><div className="mm-detail-art"><div className="mm-detail-vinyl"><div className="mm-detail-vinyl-core"><img src={coverFor(selectedSong)} alt=""/></div></div><span className="mm-detail-bars" aria-hidden="true">{Array.from({length:11},(_,i)=><i key={i} style={{height:15+Math.abs(Math.sin(i*.7))*58}}/>)}</span></div><h3>{(selectedSong.song_title||selectedSong.name.replace(/\.(wav|mp3|flac)$/i,''))}</h3><div className="mm-detail-chips"><span>{selectedSong.category==='full_song'?'Full Song':'Instrumental'}</span><span>{(selectedSong.size/1048576).toFixed(1)} MB</span></div><small>{new Date(selectedSong.created_at).toLocaleString()}</small><div className="mm-detail-actions"><a href={'/api/generated-files/'+selectedSong.id+'/download'}><Download size={16}/> Download</a></div><div className="mm-commercial-license" style={{display:'grid',gap:8,padding:12,border:'1px solid #486466',borderRadius:9}}><strong>Commercial license · per song</strong><p style={{fontSize:12,margin:0}}>Status: {selectedSong.license_status==='licensed'?'Licensed':'Not licensed'}. Paid checkout and rights verification are not yet enabled; a request does not grant commercial rights.</p><label>Contact email<input type="email" value={licenseEmail} onChange={e=>setLicenseEmail(e.target.value)} placeholder="you@example.com"/></label><button type="button" disabled={requestingLicense} onClick={()=>void requestLicense(selectedSong)}>{requestingLicense?'Submitting…':'Request commercial license'}</button></div><div className="mm-detail-tabs" role="tablist" aria-label="Track information"><button type="button" role="tab" aria-selected={detailTab==='lyrics'} className={detailTab==='lyrics'?'active':''} onClick={()=>setDetailTab('lyrics')}>Lyrics</button><button type="button" role="tab" aria-selected={detailTab==='details'} className={detailTab==='details'?'active':''} onClick={()=>setDetailTab('details')}>Details</button><button type="button" role="tab" aria-selected={detailTab==='stems'} className={detailTab==='stems'?'active':''} onClick={()=>setDetailTab('stems')}>Stems</button></div>
         <div className="mm-detail-tab-content" role="tabpanel">{detailTab==='details'?<><h4>Music details</h4><p>Generated with MixMaster AI. Saved audio is ready to listen to or download.</p></>:detailTab==='lyrics'?<p>Lyrics aren't saved with this generated audio yet. Your draft lyrics remain in the generator on the left.</p>:<div><p>Separate this track into drums, bass, vocals and other sounds using the Stem Splitter.</p><a href="#/stem-splitter" className="mm-detail-stems-link">Open Stem Splitter <ArrowRight size={14}/></a></div>}</div>
         </>:<div className="mm-generator-empty"><Music2 size={34}/><strong>Select a song</strong><p>Your selected track and player will appear here.</p></div>}
         <div className="mm-generator-info"><Mic2 size={17}/><div><strong>Engine status</strong><p>{engineMessage}</p><small>Instrumentals: {capabilities.instrumental?'ready':'unavailable'} · Singing: {capabilities.full_song?'configured':'not connected'}</small></div></div>
