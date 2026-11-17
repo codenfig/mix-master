@@ -170,3 +170,25 @@
 }
 @media(max-width:430px){.mm-deck-mixer{grid-template-columns:1fr}.mm-deck-performance{grid-template-columns:minmax(0,1fr) 92px}.mm-deck-vinyl{width:92px}}
 @media(prefers-reduced-motion:reduce){.mm-deck-vinyl.has-track{animation:none}}
+
+/* Slim upload card on the Studio page; other pages retain their original sizing. */
+@media(min-width:1000px){
+ .workspace:has(.studio-upload-card){grid-template-columns:minmax(240px, .72fr) minmax(0, 1.6fr) minmax(230px, .78fr)}
+}
+.workspace:has(.studio-upload-card) .studio-upload-card{padding:9px 11px}
+.workspace:has(.studio-upload-card) .studio-upload-card .panel-heading{margin-bottom:5px;gap:6px}
+.workspace:has(.studio-upload-card) .studio-upload-card .panel-heading h2{font-size:14px;gap:6px;margin:0}
+.workspace:has(.studio-upload-card) .studio-upload-card .panel-heading h2 svg{width:16px;height:16px}
+.workspace:has(.studio-upload-card) .studio-upload-card .panel-heading p{font-size:10px;margin:2px 0 0}
+.workspace:has(.studio-upload-card) .studio-upload-card .pill{font-size:10px;padding:4px 7px;white-space:nowrap}
+.workspace:has(.studio-upload-card) .studio-drop-zone{padding:9px 8px;gap:4px;min-height:0}
+.workspace:has(.studio-upload-card) .studio-drop-zone .upload-icon{margin:0}
+.workspace:has(.studio-upload-card) .studio-drop-zone .upload-icon svg{width:19px;height:19px}
+.workspace:has(.studio-upload-card) .studio-drop-zone strong{font-size:12px;line-height:1.2}
+.workspace:has(.studio-upload-card) .studio-drop-zone>span{font-size:10px;line-height:1.25}
+.workspace:has(.studio-upload-card) .studio-drop-zone .browse-button{padding:6px 9px;font-size:11px}
+.workspace:has(.studio-upload-card) .studio-drop-zone small{font-size:9px;line-height:1.2}
+.workspace:has(.studio-upload-card) .upload-feedback{margin-top:6px}
+.workspace:has(.studio-upload-card) .upload-feedback-heading{gap:4px;font-size:10px}
+.workspace:has(.studio-upload-card) .selected-tracks{max-height:110px;overflow-y:auto}
+@media(max-width:999px){.workspace:has(.studio-upload-card){grid-template-columns:initial}}
