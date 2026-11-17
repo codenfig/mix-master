@@ -8,7 +8,7 @@ type SavedSong = {id:string;name:string;category:string;created_at:string;size:n
 const genres = ['Afro-pop', 'Rumba', 'Dancehall', 'Bongo Flava', 'Pop', 'Afrobeat', 'Country Pop']
 
 export default function FullSongPage() {
-  const [customMode,setCustomMode] = useState(true)
+  const [customMode,setCustomMode] = useState(false)
   const [voicePanelOpen,setVoicePanelOpen] = useState(false)
   const [stylePanel,setStylePanel] = useState<'genre'|'mood'|'voice'|'tempo'|null>(null)
   const styleOptions={genre:['Afro-pop','Rumba','Dancehall','Bongo Flava','Pop','Afrobeat','Country Pop'],mood:['Uplifting','Romantic','Dreamy','Energetic','Calm','Melancholic'],voice:['Warm vocals','Soft harmonies','Soulful','Choir','Instrumental'],tempo:['Slow groove','Mid-tempo','Fast','Dance rhythm']} as const
@@ -17,7 +17,7 @@ export default function FullSongPage() {
   const projectInput = useRef<HTMLInputElement>(null)
   const importedLyrics = useRef(false)
   const [title, setTitle] = useState('I See You')
-  const [description, setDescription] = useState('Uplifting Afro-pop with joyful rumba guitar, dancehall bounce, melodic bass, skanking keys, whistles and a wide uplifting chorus.')
+  const [description, setDescription] = useState('Sparkling country-pop guitar, upbeat rhythm and bright melodic hooks.')
   const [lyrics, setLyrics] = useState('[Verse 1]\n\n[Pre-Chorus]\n\n[Chorus]\nI see you\n\n[Verse 2]\n\n[Bridge]\n\n[Final Chorus]')
   useEffect(()=>{
     try {
