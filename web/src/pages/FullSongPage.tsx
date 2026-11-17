@@ -72,6 +72,8 @@ export default function FullSongPage() {
   const [libraryNotice,setLibraryNotice] = useState('')
   const [licenseEmail,setLicenseEmail] = useState('')
   const [requestingLicense,setRequestingLicense] = useState(false)
+  const [licenseRequestId,setLicenseRequestId] = useState('')
+  const [startingCheckout,setStartingCheckout] = useState(false)
   const [deletingId,setDeletingId] = useState<string | null>(null)
   const [refreshKey,setRefreshKey] = useState(0)
   const [showDetails,setShowDetails] = useState(true)
@@ -102,11 +104,23 @@ export default function FullSongPage() {
     setRequestingLicense(true);setLibraryError('');setLibraryNotice('')
     try{
       const response=await fetch('/api/generated-files/'+encodeURIComponent(song.id)+'/commercial-license-request',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:licenseEmail})})
-      const data=await response.json() as {detail?:string;message?:string}
+      const data=await response.json() as {detail?:string;message?:string;id?:string}
       if(!response.ok)throw new Error(data.detail||'License request failed.')
+      setLicenseRequestId(data.id||'')
       setLibraryNotice(data.message||'Request received.')
     }catch(e){setLibraryError(e instanceof Error?e.message:'License request failed.')}
     finally{setRequestingLicense(false)}
+  }
+  async function startLicenseCheckout(){
+    if(!licenseRequestId)return
+    setStartingCheckout(true);setLibraryError('')
+    try{
+      const response=await fetch('/api/commercial-licenses/requests/'+encodeURIComponent(licenseRequestId)+'/checkout',{method:'POST'})
+      const data=await response.json() as {detail?:string;checkout_url?:string}
+      if(!response.ok)throw new Error(data.detail||'Checkout is not ready.')
+      if(!data.checkout_url||!data.checkout_url.startsWith('https://checkout.stripe.com/'))throw new Error('Invalid Stripe checkout URL.')
+      window.location.assign(data.checkout_url)
+    }catch(e){setLibraryError(e instanceof Error?e.message:'Checkout could not start.');setStartingCheckout(false)}
   }
   const selectedSong=songs.find(f=>f.id===selectedId)
   const filteredSongs=songs.filter(f=>f.name.toLowerCase().includes(search.trim().toLowerCase()))
@@ -221,7 +235,7 @@ export default function FullSongPage() {
         <div className="mm-generator-library-footer"><a href="#/generated-files">All generated files <ArrowRight size={14}/></a></div>
       </div>
       {showDetails&&<aside className="mm-generator-detail">
-        {selectedSong?<><div className="mm-detail-art"><div className="mm-detail-vinyl"><div className="mm-detail-vinyl-core"><img src={coverFor(selectedSong)} alt=""/></div></div><span className="mm-detail-bars" aria-hidden="true">{Array.from({length:11},(_,i)=><i key={i} style={{height:15+Math.abs(Math.sin(i*.7))*58}}/>)}</span></div><h3>{(selectedSong.song_title||selectedSong.name.replace(/\.(wav|mp3|flac)$/i,''))}</h3><div className="mm-detail-chips"><span>{selectedSong.category==='full_song'?'Full Song':'Instrumental'}</span><span>{(selectedSong.size/1048576).toFixed(1)} MB</span></div><small>{new Date(selectedSong.created_at).toLocaleString()}</small><div className="mm-detail-actions"><a href={'/api/generated-files/'+selectedSong.id+'/download'}><Download size={16}/> Download</a></div><div className="mm-commercial-license" style={{display:'grid',gap:8,padding:12,border:'1px solid #486466',borderRadius:9}}><strong>Commercial license · per song</strong><p style={{fontSize:12,margin:0}}>Status: {selectedSong.license_status==='licensed'?'Licensed':'Not licensed'}. Paid checkout and rights verification are not yet enabled; a request does not grant commercial rights.</p><label>Contact email<input type="email" value={licenseEmail} onChange={e=>setLicenseEmail(e.target.value)} placeholder="you@example.com"/></label><button type="button" disabled={requestingLicense} onClick={()=>void requestLicense(selectedSong)}>{requestingLicense?'Submitting…':'Request commercial license'}</button></div><div className="mm-detail-tabs" role="tablist" aria-label="Track information"><button type="button" role="tab" aria-selected={detailTab==='lyrics'} className={detailTab==='lyrics'?'active':''} onClick={()=>setDetailTab('lyrics')}>Lyrics</button><button type="button" role="tab" aria-selected={detailTab==='details'} className={detailTab==='details'?'active':''} onClick={()=>setDetailTab('details')}>Details</button><button type="button" role="tab" aria-selected={detailTab==='stems'} className={detailTab==='stems'?'active':''} onClick={()=>setDetailTab('stems')}>Stems</button></div>
+        {selectedSong?<><div className="mm-detail-art"><div className="mm-detail-vinyl"><div className="mm-detail-vinyl-core"><img src={coverFor(selectedSong)} alt=""/></div></div><span className="mm-detail-bars" aria-hidden="true">{Array.from({length:11},(_,i)=><i key={i} style={{height:15+Math.abs(Math.sin(i*.7))*58}}/>)}</span></div><h3>{(selectedSong.song_title||selectedSong.name.replace(/\.(wav|mp3|flac)$/i,''))}</h3><div className="mm-detail-chips"><span>{selectedSong.category==='full_song'?'Full Song':'Instrumental'}</span><span>{(selectedSong.size/1048576).toFixed(1)} MB</span></div><small>{new Date(selectedSong.created_at).toLocaleString()}</small><div className="mm-detail-actions"><a href={'/api/generated-files/'+selectedSong.id+'/download'}><Download size={16}/> Download</a></div><div className="mm-commercial-license" style={{display:'grid',gap:8,padding:12,border:'1px solid #486466',borderRadius:9}}><strong>Commercial license · per song</strong><p style={{fontSize:12,margin:0}}>Status: {selectedSong.license_status==='licensed'?'Licensed':'Not licensed'}. Paid checkout and rights verification are not yet enabled; a request does not grant commercial rights.</p><label>Contact email<input type="email" value={licenseEmail} onChange={e=>setLicenseEmail(e.target.value)} placeholder="you@example.com"/></label><button type="button" disabled={requestingLicense} onClick={()=>void requestLicense(selectedSong)}>{requestingLicense?'Submitting…':'Request commercial license'}</button>{licenseRequestId&&<><small>Request ID: {licenseRequestId} · Payment becomes available after rights approval.</small><button type="button" disabled={startingCheckout} onClick={()=>void startLicenseCheckout()}>{startingCheckout?'Opening Stripe…':'Pay with Stripe (after approval)'}</button></>}</div><div className="mm-detail-tabs" role="tablist" aria-label="Track information"><button type="button" role="tab" aria-selected={detailTab==='lyrics'} className={detailTab==='lyrics'?'active':''} onClick={()=>setDetailTab('lyrics')}>Lyrics</button><button type="button" role="tab" aria-selected={detailTab==='details'} className={detailTab==='details'?'active':''} onClick={()=>setDetailTab('details')}>Details</button><button type="button" role="tab" aria-selected={detailTab==='stems'} className={detailTab==='stems'?'active':''} onClick={()=>setDetailTab('stems')}>Stems</button></div>
         <div className="mm-detail-tab-content" role="tabpanel">{detailTab==='details'?<><h4>Music details</h4><p>Generated with MixMaster AI. Saved audio is ready to listen to or download.</p></>:detailTab==='lyrics'?<p>Lyrics aren't saved with this generated audio yet. Your draft lyrics remain in the generator on the left.</p>:<div><p>Separate this track into drums, bass, vocals and other sounds using the Stem Splitter.</p><a href="#/stem-splitter" className="mm-detail-stems-link">Open Stem Splitter <ArrowRight size={14}/></a></div>}</div>
         </>:<div className="mm-generator-empty"><Music2 size={34}/><strong>Select a song</strong><p>Your selected track and player will appear here.</p></div>}
         <div className="mm-generator-info"><Mic2 size={17}/><div><strong>Engine status</strong><p>{engineMessage}</p><small>Instrumentals: {capabilities.instrumental?'ready':'unavailable'} · Singing: {capabilities.full_song?'configured':'not connected'}</small></div></div>
