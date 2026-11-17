@@ -27,7 +27,7 @@ export default function FullSongPage() {
   },[])
   const [voice, setVoice] = useState<Voice>('female')
   const [genre, setGenre] = useState('Afro-pop')
-  const [output, setOutput] = useState<Output>('instrumental')
+  const [output, setOutput] = useState<Output>('full_song')
   const [bpm, setBpm] = useState(110)
   const [minutes, setMinutes] = useState(3)
   const [saving, setSaving] = useState(false)
@@ -194,17 +194,8 @@ export default function FullSongPage() {
   const [capabilities,setCapabilities] = useState({instrumental:false,vocals:false,full_song:false})
   const [engineMessage,setEngineMessage] = useState('Checking local engine…')
   const [engineRefresh,setEngineRefresh] = useState(0)
-  const [engineChecked,setEngineChecked] = useState(false)
   const [generating,setGenerating] = useState(false)
-  useEffect(()=>{const controller=new AbortController();const timer=window.setTimeout(()=>controller.abort(),8000);void fetch('/api/full-song/engine',{signal:controller.signal}).then(async response=>{if(!response.ok)throw new Error('Backend unavailable');return response.json() as Promise<{generation_available:boolean;reason:string|null;capabilities?:{instrumental:boolean;vocals:boolean;full_song:boolean}}>}).then(data=>{setCapabilities(data.capabilities||{instrumental:false,vocals:false,full_song:false});setEngineChecked(true);setEngineMessage(data.generation_available?'Local engine configured':data.reason||'Engine unavailable')}).catch(()=>setEngineMessage('Backend unavailable. Restart Python server.')).finally(()=>window.clearTimeout(timer));return ()=>{controller.abort();window.clearTimeout(timer)}},[engineRefresh])
-  // On a fresh visit, offer actual singing when available instead of silently defaulting to previews.
-  // Never override a saved user's output choice.
-  useEffect(()=>{
-    if(!engineChecked||!capabilities.full_song||!draftRestored)return
-    try {if(localStorage.getItem('mixmaster-song-draft-v1'))return} catch {return}
-    setOutput('full_song')
-    setCustomMode(true)
-  },[engineChecked,capabilities.full_song,draftRestored])
+  useEffect(()=>{const controller=new AbortController();const timer=window.setTimeout(()=>controller.abort(),8000);void fetch('/api/full-song/engine',{signal:controller.signal}).then(async response=>{if(!response.ok)throw new Error('Backend unavailable');return response.json() as Promise<{generation_available:boolean;reason:string|null;capabilities?:{instrumental:boolean;vocals:boolean;full_song:boolean}}>}).then(data=>{setCapabilities(data.capabilities||{instrumental:false,vocals:false,full_song:false});setEngineMessage(data.generation_available?'Local engine configured':data.reason||'Engine unavailable')}).catch(()=>setEngineMessage('Backend unavailable. Restart Python server.')).finally(()=>window.clearTimeout(timer));return ()=>{controller.abort();window.clearTimeout(timer)}},[engineRefresh])
   const [jobId,setJobId] = useState<string>(()=>{try{return window.sessionStorage.getItem('mixmaster-full-song-job')||''}catch{return ''}})
   const [jobStage,setJobStage] = useState('')
   const [jobElapsed,setJobElapsed] = useState(0)
