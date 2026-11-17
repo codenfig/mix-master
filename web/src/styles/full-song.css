@@ -76,3 +76,12 @@
 .mm-generator .mm-engine-refresh:hover{border-color:#00dde5!important;color:#00dde5!important}
 .mm-generator .mm-lyric-tools .mm-lyrics-generator-link{display:inline-flex;align-items:center;gap:5px;background:#000;border:1px solid #00dde5;border-radius:7px;padding:7px 9px;color:#00dde5;text-decoration:none;font-size:11px;font-weight:750}
 .mm-generator .mm-lyric-tools .mm-lyrics-generator-link:hover{background:#122b2e}
+
+/* Keep song selection and destructive actions separate for keyboard and touch users. */
+.mm-generator-song-row{padding:0;cursor:default}
+.mm-song-select{display:flex;align-items:center;gap:11px;min-width:0;flex:1;padding:8px;border:0;border-radius:9px;background:transparent;color:inherit;text-align:left;cursor:pointer}
+.mm-song-select:focus-visible,.mm-song-delete:focus-visible{outline:2px solid #00e2e8;outline-offset:-2px}
+.mm-song-delete{display:grid;place-items:center;flex:none;margin-right:7px;padding:9px;border:1px solid transparent;border-radius:8px;background:transparent;color:#b1c6c7;cursor:pointer}
+.mm-song-delete:hover:not(:disabled){color:#ff9999;border-color:#8d4f58;background:#422a31}
+.mm-song-delete:disabled{opacity:.45;cursor:wait}
+.mm-generator-library-notice{font-size:12px;color:#9ce3c7;margin:0}
