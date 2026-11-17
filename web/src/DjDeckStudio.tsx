@@ -7,6 +7,7 @@ const bars = Array.from({length:62}, (_,i) => 16 + Math.round(Math.abs(Math.sin(
 
 export default function DjDeckStudio({files,bpm,onUpload}:Props) {
   const [sources,setSources] = useState<string[]>([])
+  const [deckTracks,setDeckTracks] = useState<[number,number]>([0,1])
   const [playing,setPlaying] = useState<[boolean,boolean]>([false,false])
   const [crossfade,setCrossfade] = useState(50)
   const [positions,setPositions] = useState<[number,number]>([0,0])
@@ -15,9 +16,9 @@ export default function DjDeckStudio({files,bpm,onUpload}:Props) {
   const players = [leftRef,rightRef]
 
   useEffect(()=>{
-    const urls = files.slice(0,2).map(file=>URL.createObjectURL(file))
+    const urls = files.map(file=>URL.createObjectURL(file))
     setSources(urls)
-    setPlaying([false,false]);setPositions([0,0])
+    setPlaying([false,false]);setPositions([0,0]);setDeckTracks([0,1])
     return ()=> urls.forEach(url=>URL.revokeObjectURL(url))
   },[files])
   useEffect(()=>{
@@ -26,7 +27,7 @@ export default function DjDeckStudio({files,bpm,onUpload}:Props) {
   },[crossfade,sources])
   async function toggle(index:0|1) {
     const player=players[index].current
-    if(!player||!sources[index])return
+    if(!player||!sources[deckTracks[index]])return
     if(!player.paused){player.pause();return}
     try{await player.play()}catch{setPlaying(old=>old.map((v,i)=>i===index?false:v) as [boolean,boolean])}
   }
@@ -36,19 +37,21 @@ export default function DjDeckStudio({files,bpm,onUpload}:Props) {
     player.pause();player.currentTime=0
     setPositions(old=>old.map((v,i)=>i===index?0:v) as [number,number])
   }
+  function loadDeck(index:0|1,trackIndex:number){const player=players[index].current;if(player){player.pause();player.currentTime=0}setDeckTracks(old=>old.map((value,i)=>i===index?trackIndex:value) as [number,number]);setPlaying(old=>old.map((value,i)=>i===index?false:value) as [boolean,boolean]);setPositions(old=>old.map((value,i)=>i===index?0:value) as [number,number])}
   return <section className="mm-decks" aria-label="DJ mixing preview">
     <header className="mm-decks-heading"><div><span className="mm-decks-eyebrow"><SlidersHorizontal size={16}/> DJ STUDIO · LIVE DECKS</span><h2>DJ Mixing Studio</h2><p>Cue, preview and blend two tracks. Open the workflow below for export settings.</p></div><span className="mm-decks-status"><Headphones size={15}/> Browser preview</span></header>
     <div className="mm-decks-grid">
       {([0,1] as const).map(index=><section className={'mm-deck mm-deck-'+index} key={index}>
-        <div className="mm-deck-track"><span className="mm-deck-mini-art"><AudioLines size={22}/></span><div><small>DECK {index===0?'A':'B'}</small><strong title={files[index]?.name}>{files[index]?.name||'No track loaded'}</strong><span>{files[index]?'Ready to preview':'Upload at least '+(index+1)+' tracks'}</span></div></div>
+        <div className="mm-deck-track"><span className="mm-deck-mini-art"><AudioLines size={22}/></span><div><small>DECK {index===0?'A':'B'}</small><strong title={files[deckTracks[index]]?.name}>{files[index]?.name||'No track loaded'}</strong><span>{files[deckTracks[index]]?'Ready to preview':'Upload at least '+(index+1)+' tracks'}</span></div></div>
         <div className="mm-deck-performance"><div className="mm-deck-wave" aria-hidden="true">{bars.map((height,i)=><i key={i} style={{height:(i%7===0?height*.7:height)+'%'}}/>)}</div>
-        <div className={'mm-deck-vinyl'+(playing[index]?' is-spinning':'')} aria-hidden="true"><div className="mm-deck-vinyl-center"><Disc3 size={38}/></div></div></div>
-        <div className="mm-deck-transport"><button type="button" onClick={()=>cue(index)} disabled={!sources[index]}><RotateCcw size={14}/> CUE</button><button type="button" className="mm-deck-play" disabled={!sources[index]} aria-label={(playing[index]?'Pause':'Play')+' deck '+(index===0?'A':'B')} onClick={()=>void toggle(index)}>{playing[index]?<Pause size={20} fill="currentColor"/>:<Play size={20} fill="currentColor"/>}</button><span className="mm-deck-clock">{Math.floor(positions[index]/60).toString().padStart(2,'0')}:{Math.floor(positions[index]%60).toString().padStart(2,'0')}</span></div>
-        <audio ref={players[index]} src={sources[index]} preload="metadata" onPlay={()=>setPlaying(old=>old.map((v,i)=>i===index?true:v) as [boolean,boolean])} onPause={()=>setPlaying(old=>old.map((v,i)=>i===index?false:v) as [boolean,boolean])} onTimeUpdate={e=>{const value=e.currentTarget.currentTime;setPositions(old=>old.map((v,i)=>i===index?value:v) as [number,number])}} onEnded={()=>setPlaying(old=>old.map((v,i)=>i===index?false:v) as [boolean,boolean])}/>
+        <div className={'mm-deck-vinyl'+(sources[deckTracks[index]]?' has-track':'')+(playing[index]?' is-spinning':'')} aria-hidden="true"><div className="mm-deck-vinyl-center"><Disc3 size={38}/></div></div></div>
+        <div className="mm-deck-transport"><button type="button" onClick={()=>cue(index)} disabled={!sources[deckTracks[index]]}><RotateCcw size={14}/> CUE</button><button type="button" className="mm-deck-play" disabled={!sources[index]} aria-label={(playing[index]?'Pause':'Play')+' deck '+(index===0?'A':'B')} onClick={()=>void toggle(index)}>{playing[index]?<Pause size={20} fill="currentColor"/>:<Play size={20} fill="currentColor"/>}</button><span className="mm-deck-clock">{Math.floor(positions[index]/60).toString().padStart(2,'0')}:{Math.floor(positions[index]%60).toString().padStart(2,'0')}</span></div>
+        <audio ref={players[index]} src={sources[deckTracks[index]]} preload="metadata" onPlay={()=>setPlaying(old=>old.map((v,i)=>i===index?true:v) as [boolean,boolean])} onPause={()=>setPlaying(old=>old.map((v,i)=>i===index?false:v) as [boolean,boolean])} onTimeUpdate={e=>{const value=e.currentTarget.currentTime;setPositions(old=>old.map((v,i)=>i===index?value:v) as [number,number])}} onEnded={()=>setPlaying(old=>old.map((v,i)=>i===index?false:v) as [boolean,boolean])}/>
       </section>)}
       <aside className="mm-deck-mixer"><div className="mm-mixer-header"><SlidersHorizontal size={17}/> LIVE MIXER <span>PREVIEW</span></div><div className="mm-mixer-stats"><div className="mm-mixer-info"><span>BPM</span><strong>{bpm?Math.round(bpm):'—'}</strong></div><div className="mm-mixer-info"><span>TRACKS</span><strong>{files.length}</strong></div></div><div className="mm-mixer-levels"><div><span>DECK A</span><strong>{100-crossfade}%</strong></div><div><span>DECK B</span><strong>{crossfade}%</strong></div></div><div className="mm-crossfader mm-crossfader-inline"><label htmlFor="mm-live-crossfader">Crossfader</label><input id="mm-live-crossfader" type="range" min={0} max={100} value={crossfade} onChange={e=>setCrossfade(Number(e.target.value))} aria-label="Balance deck A and deck B"/><div className="mm-crossfader-ends"><span>A</span><span>B</span></div></div><details className="mm-mixer-details"><summary>Effects &amp; preview info</summary><p>Effects are not available in this browser preview.</p><fieldset className="mm-mixer-effects"><legend>Coming soon</legend>{["Reverb","Echo","Delay","Flanger","Phaser"].map(effect=><label key={effect}><span>{effect}</span><input type="checkbox" disabled aria-label={effect+" unavailable in browser preview"}/></label>)}</fieldset><div className="mm-mixer-guide"><Volume2 size={15}/> Browser audio only. Final DJ mixes use the render engine.</div></details></aside>
     </div>
 
+    {files.length>0&&<section className="mm-deck-library" aria-label="Loaded tracks"><div className="mm-deck-library-heading"><strong>TRACK LIBRARY</strong><span>{files.length} {files.length===1?'track':'tracks'} · Load into either deck</span></div><div className="mm-deck-library-list">{files.map((file,i)=><div className="mm-deck-library-row" key={i}><span title={file.name}>{file.name}</span><button type="button" aria-label={'Load '+file.name+' into deck A'} aria-pressed={deckTracks[0]===i} onClick={()=>loadDeck(0,i)}>A</button><button type="button" aria-label={'Load '+file.name+' into deck B'} aria-pressed={deckTracks[1]===i} onClick={()=>loadDeck(1,i)}>B</button></div>)}</div></section>}
     {!files.length&&<button className="mm-decks-upload" type="button" onClick={onUpload}><UploadCloud size={16}/> Upload tracks below to activate both decks</button>}
   </section>
 }
