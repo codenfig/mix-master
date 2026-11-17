@@ -22,6 +22,7 @@ from generated_storage import router as generated_files_router, save_generated
 from commercial_licensing import router as commercial_licensing_router
 from text_to_song import router as text_to_song_router
 from full_song import router as full_song_router
+from song_extension import router as song_extension_router
 from lyrics_generator import router as lyrics_generator_router
 
 ROOT = Path(__file__).resolve().parent
@@ -34,6 +35,7 @@ app.include_router(generated_files_router)
 app.include_router(commercial_licensing_router)
 app.include_router(text_to_song_router)
 app.include_router(full_song_router)
+app.include_router(song_extension_router)
 app.include_router(lyrics_generator_router)
 app.mount("/static", StaticFiles(directory=ROOT / "static"), name="static")
 SUPPORTED = {".mp3", ".wav", ".flac", ".m4a", ".ogg", ".aac"}

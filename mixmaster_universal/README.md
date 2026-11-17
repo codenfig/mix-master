@@ -73,3 +73,37 @@ The engine estimates 4/4, four-bar phrase entry points from detected tempo and f
 For each crossfade the engine evaluates up to four candidate entry offsets (0, 0.25, 0.5 and 0.75 seconds), scoring short-time loudness mismatch, spectral centroid mismatch and peak overload. It selects the highest-scoring candidate and reports the score and number of attempts via the async job status API. These are signal-based proxy scores, **not learned perceptual ratings**. Optimization is local to each crossfade; it does not rerender entire mixes, analyze human preferences or guarantee professional results. The frontend displays the per-transition report after rendering.
 
 Run regression tests from this directory with `python -m pytest tests -q` after installing the test dependencies and FFmpeg.
+
+
+## Audio-conditioned Extend Music (experimental integration)
+
+The Music Generator's **More → Extend** editor previews the selected song, lets the user
+choose a cutoff, continuation prompt, optional lyrics and duration, and polls an
+asynchronous extension job. The original audio is passed to a separate extension
+engine; a text-to-music engine cannot be used as a substitute.
+
+Set `FULL_SONG_EXTENSION_EXECUTABLE` to an executable file implementing this contract:
+
+```text
+extension_engine /absolute/temp/request.json /absolute/temp/continuation.wav
+```
+
+The request JSON includes `source_audio_path` (an actual locally materialized PCM WAV),
+`source_duration_seconds`, `start_seconds`, `duration_seconds`, `prompt`,
+`lyrics`, `title` and `source_file_id`. The executable **must** use the audio
+around the requested start point as conditioning context and output only the newly
+generated continuation as uncompressed PCM WAV. It must exit nonzero on failure.
+It must not return a complete copy of the original track or generate from text alone.
+
+The integration does **not** bundle, install, or verify a continuation-capable AI model.
+Until a compatible executable is configured, the editor disables generation and the
+API returns HTTP 503. This is intentional: ordinary song generation is not extension.
+
+Install FFmpeg on the backend PATH to merge the original through the selected cutoff
+and the generated continuation, with a 0.5-second-or-shorter crossfade. The merged
+track and standalone extension are both saved to My Music. Without FFmpeg, only the
+standalone extension is saved, and the editor reports the missing merge capability.
+The server keeps jobs in memory, so restarting the server loses their status.
+
+Endpoints: `GET /api/full-song/extensions/capabilities`,
+`POST /api/full-song/extensions`, `GET /api/full-song/extensions/{job_id}`.
