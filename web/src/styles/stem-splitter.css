@@ -64,3 +64,50 @@
 .stem-notes p{margin:0;padding:0 14px 10px;font-size:10px;line-height:1.5}
 @media(max-width:1050px){.stem-workspace{grid-template-columns:1fr}.stem-results{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:600px){.stem-hero{padding:16px}.stem-hero-vinyl{opacity:.18}.stem-panel,.stem-results-panel{padding:12px}.stem-results{grid-template-columns:1fr}.stem-hero-pills{gap:5px}.stem-hero-pills span{font-size:8px}}
+
+/* Screenshot-matched Stem Splitter: centered stem tiles, thin teal outlines, compact proportions */
+.stem-page{max-width:1160px;margin:0 auto;gap:10px}
+.stem-hero{padding:17px 20px;min-height:116px;background:radial-gradient(circle at 93% 40%,#15594f55,transparent 26%),linear-gradient(115deg,#10181b,#111b20);border:1px solid #285b59;box-shadow:inset 0 1px #3f918244,0 0 18px #0b6e5b1a}
+.stem-hero h2{font-size:clamp(25px,3vw,35px);margin:5px 0 4px;line-height:1.15}
+.stem-hero p{font-size:10px;max-width:700px}
+.stem-hero-pills{margin-top:8px}
+.stem-hero-pills span{padding:4px 8px;background:#1a2e30;border:1px solid #365c59;border-radius:30px;color:#b6ded1}
+.stem-hero-vinyl{width:78px;height:78px;right:4%;border:4px solid #133e3e;background:radial-gradient(circle,#0b3230 0 37%,#092022 38% 50%,#154746 52% 56%,#0b171b 58%);box-shadow:0 0 0 3px #126d6655,0 0 26px #0fd2ae33}
+.stem-hero-vinyl svg{width:24px;height:24px;padding:9px;background:linear-gradient(145deg,#0be0ba,#088c83);color:#d6fff2}
+.stem-workspace{grid-template-columns:minmax(260px,.8fr) minmax(0,1.2fr);gap:10px;align-items:start}
+.stem-panel,.stem-results-panel{padding:12px;border-radius:10px;background:#0d1519;border-color:#2c5554;box-shadow:inset 0 1px #ffffff08}
+.stem-panel-heading{gap:8px}
+.stem-panel-heading h3{font-size:14px}
+.stem-panel-heading p{font-size:10px}
+.stem-drop{height:138px;min-height:0;margin-top:10px;background:#11191d;border:1.5px dashed #3c7770;border-radius:9px}
+.stem-drop>svg{width:25px;height:25px}
+.stem-drop strong{font-size:12px}
+.stem-drop span{max-width:260px;font-size:9px}
+.stem-output-selection{margin-top:9px;padding:7px 0 0;border:0;background:none}
+.stem-output-selection legend{padding:0;margin-bottom:6px}
+.stem-output-selection>div{gap:6px}
+.stem-output-selection label{padding:7px 9px;background:#142b2b;border:1px solid #2d5d55;border-radius:6px}
+.stem-output-selection label.is-selected{background:#164e43;border-color:#318c78}
+.stem-output-selection label span{font-weight:700}
+.stem-output-selection small{margin-top:6px;font-size:9px}
+.stem-primary{margin-top:9px;padding:9px;border-radius:7px}
+.stem-processing{margin-top:8px;padding:8px;border-radius:7px}
+.stem-results-panel{gap:10px}
+.stem-results-heading h3{font-size:15px;color:#4ce2ba}
+.stem-results-heading p{font-size:10px}
+.stem-results{gap:9px;grid-template-columns:repeat(2,minmax(0,1fr))}
+.stem-card{display:flex;flex-direction:column;justify-content:space-between;overflow:hidden;min-height:166px;padding:0;border:1px solid #344e50;border-radius:8px;background:linear-gradient(155deg,#1a3435,#162629);box-shadow:inset 0 1px #ffffff09}
+.stem-card-top{display:flex;flex:1;min-height:127px;flex-direction:column;align-items:center;justify-content:center;gap:7px;padding:12px 8px 6px;text-align:center}
+.stem-card-emoji{display:grid;place-items:center;width:66px;height:66px;border:0;border-radius:13px;background:linear-gradient(145deg,#187d70,#12504f);color:#58ead1;box-shadow:inset 0 1px #ffffff15,0 10px 22px #0002}
+.stem-card-top h4{font-size:13px;color:#f5f8f7;margin:0}
+.stem-card-top p{display:none}
+.stem-awaiting{margin:0;min-height:30px;padding:7px 10px;border:0;background:#263c40;color:#b3c4c6;font-size:10px;gap:7px}
+.stem-awaiting svg{width:13px;height:13px}
+.stem-card-output{padding:8px;background:#172c2f}
+.stem-card-output audio{width:100%;height:32px;margin:0}
+.stem-stem-download{margin-top:6px;padding:7px}
+.stem-notes{background:#142a27;border-color:#254c45}
+.stem-notes summary{padding:8px 12px}
+@media(max-width:1050px){.stem-workspace{grid-template-columns:minmax(0,1fr) minmax(0,1.2fr)}}
+@media(max-width:820px){.stem-workspace{grid-template-columns:1fr}.stem-results{grid-template-columns:repeat(2,minmax(0,1fr))}.stem-drop{height:125px}}
+@media(max-width:460px){.stem-results{gap:7px}.stem-card{min-height:145px}.stem-card-top{min-height:110px}.stem-card-emoji{width:53px;height:53px}.stem-card-emoji svg{width:25px;height:25px}.stem-hero-vinyl{opacity:.2}}
