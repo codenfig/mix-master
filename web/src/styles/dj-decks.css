@@ -173,7 +173,7 @@
 
 /* Slim upload card on the Studio page; other pages retain their original sizing. */
 @media(min-width:1000px){
- .workspace:has(.studio-upload-card){grid-template-columns:minmax(240px, .72fr) minmax(0, 1.6fr) minmax(230px, .78fr)}
+ .workspace:has(.studio-upload-card){grid-template-columns:minmax(480px, 1.44fr) minmax(0, 1.6fr) minmax(230px, .78fr)}
 }
 .workspace:has(.studio-upload-card) .studio-upload-card{padding:9px 11px}
 .workspace:has(.studio-upload-card) .studio-upload-card .panel-heading{margin-bottom:5px;gap:6px}
