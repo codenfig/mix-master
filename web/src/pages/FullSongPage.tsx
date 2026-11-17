@@ -282,7 +282,7 @@ export default function FullSongPage() {
             <button type="button" onClick={()=>{setSelectedId(song.id);setToast({kind:'error',message:'Extending an existing audio track is not yet supported by the generation engine.'})}}><AudioLines size={15} aria-hidden="true"/> Extend</button>
             <button type="button" onClick={()=>{setLicenseSong(song);setSelectedId(song.id)}}><ShieldCheck size={15} aria-hidden="true"/> License</button>
             <button type="button" disabled={deletingId!==null} onClick={()=>setConfirmDelete(song)}><Trash2 size={15} aria-hidden="true"/> Delete</button>
-          </div></details><button type="button" className="mm-song-delete" title={'Delete '+song.name} aria-label={'Delete '+song.name} disabled={deletingId!==null} onClick={()=>setConfirmDelete(song)}><Trash2 size={16}/></button></div>)}
+          </div></details></div>)}
           {!libraryLoading&&!filteredSongs.length&&<div className="mm-generator-empty"><div><Music2 size={34}/></div><strong>{search?'No matching tracks':'Your music will appear here'}</strong><p>{search?'Try a different search.':'Create a track to start your music library.'}</p></div>}
           {libraryLoading&&<p className="mm-generator-loading">Loading music…</p>}
         </div>
