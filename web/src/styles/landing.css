@@ -143,3 +143,11 @@
 @media(max-width:760px){.mm-landing .ml-hero-v2{grid-template-columns:1fr;padding:58px 20px 65px}.mm-landing .ml-hero-v2 h1{font-size:clamp(49px,10vw,70px)}.mm-landing .ml-hero-stage{max-width:550px;width:100%;margin:auto}.mm-landing .ml-stage-main{height:280px}}
 @media(max-width:480px){.mm-landing .ml-hero-v2 h1{font-size:50px}.mm-landing .ml-hero-stage{padding:17px}.mm-landing .ml-stage-main{height:240px}.mm-landing .ml-stage-record{width:185px;height:185px}.mm-landing .ml-stage-track strong{font-size:15px}.mm-landing .ml-stage-top,.mm-landing .ml-stage-bottom{font-size:8px}}
 @media(prefers-reduced-motion:reduce){.mm-landing .ml-stage-record{animation:none}.mm-landing .ml-hero-genres button{transition:none}}
+
+/* Public page routes */
+.mm-landing .ml-route-hero{max-width:1180px;margin:0 auto;padding:95px 32px 45px;text-align:center;background:radial-gradient(ellipse at 50% 50%,#174c3d2d,transparent 70%)}
+.mm-landing .ml-route-hero h1{font-family:'Space Grotesk',sans-serif;font-size:clamp(38px,5vw,66px);letter-spacing:-.055em;line-height:1.1;margin:18px auto;max-width:850px}
+.mm-landing .ml-route-hero p{color:#b4c8c4;line-height:1.7;margin:0 auto 26px;max-width:600px}
+.mm-landing .ml-route-hero .ml-btn{font-size:12px!important;padding:11px 18px}
+.mm-landing .ml-route-hero + .ml-section{padding-top:30px}
+@media(max-width:760px){.mm-landing .ml-route-hero{padding:65px 20px 25px}}
