@@ -141,3 +141,55 @@
 @media(max-width:1250px){.mm-generator-layout{grid-template-columns:minmax(280px,.85fr) minmax(370px,1.3fr)}.mm-generator-detail{grid-column:2}}
 @media(max-width:780px){.mm-generator-layout{grid-template-columns:1fr}.mm-generator-detail{grid-column:auto}.mm-reference-player{flex-wrap:wrap}.mm-player-seek{flex-basis:32%}.mm-generator-song-row .mm-song-quick{width:28px}}
 @media(max-width:480px){.mm-generator-song-row .mm-song-quick:nth-of-type(3){display:none}.mm-reference-player .mm-player-share{display:none}.mm-reference-player .mm-player-title{max-width:125px}.mm-reference-player{gap:6px;padding:9px}}
+
+/* Full Song visual polish: consistent spacing, hierarchy and responsive behavior */
+.mm-generator.fullsong{--mm-bg:#0e1014;--mm-panel:#171a20;--mm-panel-raised:#1e232b;--mm-border:#303741;--mm-text:#f4f6f8;--mm-muted:#9da9b6;--mm-green:#24c99a;color:var(--mm-text);gap:16px;min-width:0}
+.mm-generator *{box-sizing:border-box}
+.mm-generator-top{padding:20px 24px;background:linear-gradient(120deg,#182529,#141923 72%);border:1px solid var(--mm-border);border-radius:16px}
+.mm-generator-top h2{font-size:clamp(24px,2.5vw,32px);line-height:1.15;margin:7px 0}
+.mm-generator-top p{color:var(--mm-muted)}
+.mm-generator-layout{grid-template-columns:minmax(255px,0.86fr) minmax(420px,1.55fr) minmax(255px,0.85fr);align-items:start;gap:14px}
+.mm-generator-compose,.mm-generator-library,.mm-generator-detail{min-width:0;background:var(--mm-panel);border:1px solid var(--mm-border);border-radius:16px;padding:20px;box-shadow:0 8px 26px #0002}
+.mm-generator-compose{gap:16px}
+.mm-generator-library{gap:12px}
+.mm-generator-panel-head,.mm-generator-library-head{gap:12px;min-width:0}
+.mm-generator-panel-head strong,.mm-generator-library-head strong{font-size:15px;letter-spacing:-.01em}
+.mm-generator-library-head>div:first-child{min-width:0}
+.mm-generator .mm-generator-search{border:1px solid var(--mm-border);background:#10141a;border-radius:11px}
+.mm-generator .mm-generator-search input{background:transparent;border:0;color:var(--mm-text);min-width:0}
+.mm-generator .mm-generator-search:focus-within{border-color:var(--mm-green);box-shadow:0 0 0 3px #24c99a18}
+.mm-generator-song-list{max-height:min(65vh,670px);min-height:170px;overflow-y:auto;overflow-x:hidden;scrollbar-width:thin;scrollbar-color:#4a5662 transparent}
+.mm-generator-song-row{gap:3px;min-width:0;padding:4px;border:1px solid transparent;background:transparent;border-radius:11px}
+.mm-generator-song-row:hover{background:#242a32;border-color:#343d47}
+.mm-generator-song-row.selected{background:#25333a;border-color:#3c665f}
+.mm-generator .mm-song-select{min-width:0;padding:7px 5px;gap:10px}
+.mm-generator .mm-song-art{flex-shrink:0}
+.mm-generator .mm-song-meta{min-width:0;flex:1}
+.mm-generator .mm-song-meta strong{color:#f6f7f9;font-size:13px;line-height:1.4}
+.mm-generator .mm-song-meta small{color:var(--mm-muted);font-size:11px}
+.mm-generator .mm-song-chip{font-size:10px}
+.mm-generator .mm-song-row-actions{display:none}
+.mm-generator .mm-song-quick,.mm-generator .mm-song-favorite,.mm-generator .mm-song-delete,.mm-generator .mm-song-more>summary{flex-shrink:0;width:30px;height:32px;padding:6px;color:#b4bfca;border-radius:8px}
+.mm-generator .mm-song-favorite.active,.mm-generator .mm-player-heart.active{color:#ff5685}
+.mm-generator .mm-song-quick:hover,.mm-generator .mm-song-more>summary:hover{background:#34404a;color:#4be1b6}
+.mm-generator .mm-song-delete:hover{background:#542a35;color:#ff9aab}
+.mm-generator .mm-favorites-filter{justify-self:start;padding:8px 12px;background:#20262e;border-color:#39424d;color:#c8d2dc;font-size:12px}
+.mm-generator .mm-favorites-filter.active{color:#ffabc7;background:#432b39;border-color:#855069}
+.mm-generator .mm-generator-primary{border-radius:12px;background:linear-gradient(110deg,#29d5a8,#17ad87);color:#08271f;box-shadow:0 7px 22px #16b78d25;font-weight:800}
+.mm-generator .mm-generator-primary:disabled{box-shadow:none;opacity:.55}
+.mm-generator .mm-generator-detail{gap:14px}
+.mm-generator .mm-detail-art{max-width:100%;overflow:hidden}
+.mm-generator .mm-detail-art img{max-width:100%}
+.mm-generator .mm-detail-chips{flex-wrap:wrap}
+.mm-generator .mm-commercial-license{background:#1d262d;border-color:#38545a!important;border-radius:12px!important}
+.mm-generator .mm-detail-tabs{min-width:0}
+.mm-generator .mm-reference-player{position:sticky;bottom:10px;z-index:35;min-width:0;padding:11px 15px;border:1px solid #3b454d;border-radius:15px;background:#171d24f5;box-shadow:0 12px 38px #0006}
+.mm-generator .mm-reference-player .mm-player-title{min-width:0;flex:1 1 130px}
+.mm-generator .mm-reference-player .mm-player-title strong{font-size:12px}
+.mm-generator .mm-player-seek{width:100%;min-width:50px;flex:2 1 140px}
+.mm-generator .mm-reference-player a{color:#d8e3e9;display:grid;place-items:center}
+.mm-generator button:focus-visible,.mm-generator a:focus-visible,.mm-generator input:focus-visible,.mm-generator summary:focus-visible{outline:2px solid #47e5b8;outline-offset:2px}
+@media(max-width:1430px){.mm-generator-layout{grid-template-columns:minmax(260px,.8fr) minmax(390px,1.3fr)}.mm-generator-detail{grid-column:2;grid-row:2}}
+@media(max-width:900px){.mm-generator-layout{grid-template-columns:minmax(0,1fr)}.mm-generator-detail{grid-column:auto;grid-row:auto}.mm-generator-compose,.mm-generator-library,.mm-generator-detail{padding:17px}.mm-generator-song-list{max-height:480px}}
+@media(max-width:600px){.mm-generator-top{padding:18px;flex-wrap:wrap}.mm-generator .mm-generator-song-row{gap:0}.mm-generator .mm-song-quick{display:none}.mm-generator .mm-song-more>summary,.mm-generator .mm-song-favorite,.mm-generator .mm-song-delete{display:grid}.mm-generator .mm-reference-player{bottom:0;gap:8px;padding:10px}.mm-generator .mm-reference-player .mm-player-title{flex:1 1 calc(100% - 85px)}.mm-generator .mm-player-controls{order:2}.mm-generator .mm-player-clock{order:3}.mm-generator .mm-player-seek{order:3;flex:1 1 90px}.mm-generator .mm-player-share,.mm-generator .mm-player-heart{order:2}}
+@media(prefers-reduced-motion:reduce){.mm-generator .mm-generator-song-row,.mm-generator .mm-song-quick,.mm-generator .mm-song-favorite,.mm-generator .mm-favorites-filter{transition:none}}
