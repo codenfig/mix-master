@@ -328,3 +328,14 @@
 @media(max-width:1100px){.mm-generator .mm-generator-layout{grid-template-columns:minmax(190px,.85fr) minmax(300px,1.7fr) minmax(180px,.75fr)}.mm-generator .mm-generator-song-row .mm-song-quick:nth-of-type(3),.mm-generator .mm-generator-song-row .mm-song-quick:nth-of-type(4){display:none}}
 @media(max-width:830px){.mm-generator .mm-generator-layout{grid-template-columns:minmax(0,1fr) minmax(0,1.3fr)}.mm-generator .mm-generator-detail{grid-column:1/-1;max-height:none;min-height:0}.mm-generator .mm-generator-compose,.mm-generator .mm-generator-library{max-height:calc(100dvh - 160px)}}
 @media(max-width:590px){.mm-generator .mm-generator-layout{grid-template-columns:1fr}.mm-generator .mm-generator-compose,.mm-generator .mm-generator-library,.mm-generator .mm-generator-detail{max-height:none;min-height:0}.mm-generator .mm-generator-song-list{max-height:360px}.mm-generator .mm-reference-player{flex-wrap:wrap}.mm-generator .mm-player-seek{flex:1 1 120px}.mm-generator .mm-generator-top{flex-wrap:wrap}.mm-generator .mm-detail-art{height:150px}}
+
+/* Song details: only title, style and lyrics */
+.mm-generator .mm-lyrics-only-panel{display:flex;flex-direction:column;gap:0}
+.mm-generator .mm-lyrics-only-content{display:grid;gap:12px;align-content:start;min-width:0}
+.mm-generator .mm-song-info-field{min-width:0;padding-bottom:12px;border-bottom:1px solid #263b45}
+.mm-generator .mm-song-info-field:last-child{border-bottom:0}
+.mm-generator .mm-song-info-field>span{display:block;color:#48e2d8;font-size:10px;font-weight:800;letter-spacing:.04em;margin-bottom:6px}
+.mm-generator .mm-song-info-field h3{font-size:15px;line-height:1.4;overflow-wrap:anywhere;margin:0}
+.mm-generator .mm-song-info-field p{font-size:11px;line-height:1.55;color:#d6e5e7;margin:0;overflow-wrap:anywhere}
+.mm-generator .mm-song-info-field small{display:block;font-size:9px;line-height:1.45;color:#94aeb4;margin-top:6px}
+.mm-generator .mm-song-info-field pre{white-space:pre-wrap;overflow-wrap:anywhere;font:inherit;font-size:11px;line-height:1.7;color:#e1f0ee;margin:8px 0 0;max-height:40vh;overflow:auto}
