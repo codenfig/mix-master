@@ -232,3 +232,11 @@
 .mm-visible-title input{margin-top:8px;background:#141619!important;border-color:#3a4148!important}
 .mm-generator-compose .mm-generator-primary{position:sticky;bottom:8px;z-index:5;min-height:55px;font-size:16px;box-shadow:0 9px 30px #0005}
 @media(max-width:600px){.mm-style-palette{padding:8px}.mm-style-palette button{font-size:11px;padding:8px 10px}.mm-generator-compose .mm-generator-primary{bottom:0}}
+
+/* Compact Simple / Custom switch */
+.mm-generator .fullsong-mode-bar{position:relative;display:flex;align-items:center;width:100%;max-width:330px;min-height:45px;padding:4px;gap:0;border:1px solid #36454b;border-radius:999px;background:#11191e;box-shadow:inset 0 1px 4px #0004}
+.mm-generator .fullsong-mode-bar button{position:relative;z-index:1;flex:1;min-width:0;min-height:35px;padding:7px 14px;border:0;border-radius:999px;background:transparent;color:#a9bac1;font-size:13px;font-weight:750;letter-spacing:.01em;cursor:pointer;transition:color .2s,background .2s,box-shadow .2s}
+.mm-generator .fullsong-mode-bar button.active{background:#15cba6;color:#052b27;box-shadow:0 2px 12px #00e0b34a}
+.mm-generator .fullsong-mode-bar button:not(.active):hover{color:#f2ffff;background:#ffffff0a}
+.mm-generator .fullsong-mode-bar button:focus-visible{outline:2px solid #67f2d6;outline-offset:2px}
+@media(prefers-reduced-motion:reduce){.mm-generator .fullsong-mode-bar button{transition:none}}
