@@ -16,9 +16,13 @@ import StemSplitter from './StemSplitter'
 import AudioMastering from './AudioMastering'
 import VoiceStudio from './VoiceStudio'
 
-type Page = 'landing' | 'onboarding' | 'overview' | 'studio' | 'library' | 'preview' | 'history' | 'generated-files' | 'text-to-song' | 'full-song' | 'pricing' | 'settings' | 'vocal-remover' | 'stem-splitter' | 'audio-mastering' | 'voice-studio' | 'lyrics-generator'
+type Page = 'landing' | 'features' | 'how-it-works' | 'studio-preview' | 'faq' | 'onboarding' | 'overview' | 'studio' | 'library' | 'preview' | 'history' | 'generated-files' | 'text-to-song' | 'full-song' | 'pricing' | 'settings' | 'vocal-remover' | 'stem-splitter' | 'audio-mastering' | 'voice-studio' | 'lyrics-generator'
 const pages: { id: Page; label: string; subtitle: string }[] = [
   { id: 'landing', label: 'Home', subtitle: 'Create music with MixMaster AI' },
+  { id: 'features', label: 'Features', subtitle: 'Explore MixMaster AI tools' },
+  { id: 'how-it-works', label: 'How It Works', subtitle: 'From idea to music' },
+  { id: 'studio-preview', label: 'Studio Preview', subtitle: 'Explore the creator workspace' },
+  { id: 'faq', label: 'FAQ', subtitle: 'Frequently asked questions' },
   { id: 'onboarding', label: 'Welcome', subtitle: 'Discover MixMaster AI' },
   { id: 'overview', label: 'Overview', subtitle: 'Your creative command center' },
   { id: 'studio', label: 'DJ Studio', subtitle: 'Build your next continuous set' },
@@ -288,7 +292,7 @@ export default function App() {
     }
   }
 
-  if (page === 'landing') return <LandingPage />
+  if (page === 'landing' || page === 'features' || page === 'how-it-works' || page === 'studio-preview' || page === 'faq') return <LandingPage route={page} />
   if (page === 'onboarding') return <div className="onboard-page">
     <header className="onboard-top"><div className="brand"><div className="brand-icon"><img src="/mixmaster-mark.svg" alt="" width={38} height={38}/></div><div><strong>MixMaster <span>AI</span></strong><small>INTELLIGENT DJ STUDIO</small></div></div><button className="onboard-text-link" onClick={()=>navigate('overview')}>Open operations <ArrowRight size={17}/></button></header>
     <main className="onboard-main">
