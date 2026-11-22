@@ -1,8 +1,21 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { Activity, ArrowRight, Check, Download, FileAudio, Headphones, ListMusic, Music2, Play, Sparkles, UploadCloud, X } from 'lucide-react'
+import './styles/music-mix.css'
 
 type Track = { name: string; bpm: number; key: string; energy: number; duration: number }
 type Analysis = { tracks: Track[]; order_indices: number[]; progression: string }
 type Mode = 'build-up' | 'cool-down' | 'balanced' | 'wave'
+const modes: { id: Mode; label: string; description: string; icon: string }[] = [
+  { id: 'build-up', label: 'Build Up', description: 'Calm → energetic', icon: '▂▄▆█' },
+  { id: 'cool-down', label: 'Cool Down', description: 'Energetic → calm', icon: '█▆▄▂' },
+  { id: 'wave', label: 'Energy Wave', description: 'Low and high', icon: '∿∿' },
+  { id: 'balanced', label: 'Balanced', description: 'Similar energy', icon: '▅▅▅▅' },
+]
+const time = (value: number) => {
+  const seconds = Math.max(0, Math.round(value))
+  return Math.floor(seconds / 60) + ':' + String(seconds % 60).padStart(2, '0')
+}
+const accepted = /\.(mp3|wav|flac|m4a|ogg|aac)$/i
 
 export default function MusicMixPage() {
   const [files, setFiles] = useState<File[]>([])
@@ -10,13 +23,22 @@ export default function MusicMixPage() {
   const [transition, setTransition] = useState(8)
   const [analysis, setAnalysis] = useState<Analysis | null>(null)
   const [audio, setAudio] = useState<string | null>(null)
-  const [busy, setBusy] = useState(false)
+  const [busy, setBusy] = useState<'analyze' | 'render' | null>(null)
   const [error, setError] = useState('')
-  const [controller, setController] = useState<AbortController | null>(null)
+  const [dragging, setDragging] = useState(false)
+  const input = useRef<HTMLInputElement>(null)
+  const controller = useRef<AbortController | null>(null)
 
+  useEffect(() => () => { controller.current?.abort() }, [])
   useEffect(() => () => { if (audio) URL.revokeObjectURL(audio) }, [audio])
+
   function reset() { setAnalysis(null); setAudio(null); setError('') }
-  function data() {
+  function addFiles(incoming: File[]) {
+    setFiles(incoming)
+    reset()
+    if (input.current) input.current.value = ''
+  }
+  function payload() {
     const body = new FormData()
     files.forEach(file => body.append('songs', file))
     body.append('progression', mode)
@@ -25,11 +47,11 @@ export default function MusicMixPage() {
   }
   async function run(action: 'analyze' | 'render') {
     const abort = new AbortController()
-    setController(abort)
-    setBusy(true)
+    controller.current = abort
+    setBusy(action)
     setError('')
     try {
-      const response = await fetch('/api/music-mix/' + action, { method: 'POST', body: data(), signal: abort.signal })
+      const response = await fetch('/api/music-mix/' + action, { method: 'POST', body: payload(), signal: abort.signal })
       if (!response.ok) {
         const body = await response.json().catch(() => ({})) as { detail?: string }
         throw new Error(body.detail || 'Music Mix request failed (' + response.status + ')')
@@ -39,50 +61,139 @@ export default function MusicMixPage() {
     } catch (err) {
       if (!(err instanceof DOMException && err.name === 'AbortError'))
         setError(err instanceof Error ? err.message : 'Music Mix failed')
-    } finally { setBusy(false); setController(null) }
+    } finally {
+      controller.current = null
+      setBusy(null)
+    }
   }
-  const valid = files.length >= 2 && files.length <= 20 && files.every(f =>
-    /\.(mp3|wav|flac|m4a|ogg|aac)$/i.test(f.name) && f.size > 0 && f.size <= 200 * 1024 * 1024)
+  const valid = files.length >= 2 && files.length <= 20 && files.every(f => accepted.test(f.name) && f.size > 0 && f.size <= 200 * 1024 * 1024)
   const ordered = analysis?.order_indices.map(i => analysis.tracks[i]) || []
   const maxEnergy = Math.max(0.00001, ...ordered.map(t => t.energy))
-  return <div className="panel" style={{maxWidth:900, margin:'0 auto', padding:24, display:'grid', gap:20}}>
-    <div><h2>Music Mix — Energy Flow</h2><p>Combine complete songs into one continuous listening journey. Separate from DJ Studio: no beatmatching or live decks.</p></div>
-    <label style={{display:'grid', gap:8}}>Upload 2–20 songs
-      <input type="file" multiple accept=".mp3,.wav,.flac,.m4a,.ogg,.aac,audio/*"
-        disabled={busy} onChange={e => { setFiles(Array.from(e.target.files || [])); reset() }} />
-    </label>
-    <div aria-live="polite">{files.length} songs selected {files.length > 20 ? '(maximum 20)' : ''}</div>
-    <label style={{display:'grid', gap:8}}>Energy progression
-      <select value={mode} disabled={busy} onChange={e => {setMode(e.target.value as Mode); reset()}}>
-        <option value="build-up">Build Up — calm to energetic (default)</option>
-        <option value="cool-down">Cool Down — energetic to calm</option>
-        <option value="balanced">Balanced — similar energy together</option>
-        <option value="wave">Energy Wave — alternate low and high</option>
-      </select>
-    </label>
-    <label>Crossfade transition: {transition} seconds
-      <input type="range" min={4} max={32} value={transition} disabled={busy}
-        onChange={e => {setTransition(Number(e.target.value)); reset()}} style={{display:'block',width:'100%'}}/>
-    </label>
-    <div style={{display:'flex', gap:12, flexWrap:'wrap'}}>
-      <button className="action secondary" disabled={!valid || busy} onClick={() => void run('analyze')}>Analyze energy &amp; arrange</button>
-      <button className="action primary" disabled={!valid || busy} onClick={() => void run('render')}>{busy ? 'Processing…' : 'Create Music Mix'}</button>
-      {busy && <button className="action secondary" onClick={() => controller?.abort()}>Stop waiting</button>}
+  const totalDuration = ordered.reduce((sum, track) => sum + track.duration, 0) - Math.max(0, ordered.length - 1) * transition
+  const levels = ordered.map(t => Math.max(6, Math.round(t.energy / maxEnergy * 100)))
+  const estimated = ordered.length > 0
+
+  return <div className="music-mix-page">
+    <header className="music-mix-hero">
+      <div className="music-mix-hero-copy">
+        <span className="music-mix-kicker"><Sparkles size={14}/> SMART AUDIO WORKFLOW</span>
+        <h2>Music Mix <span>— Energy Flow</span></h2>
+        <p>Combine multiple complete songs into one seamless mix, automatically arranged by energy.</p>
+      </div>
+      <div className="music-mix-hero-art" aria-hidden="true">
+        <div className="music-mix-art-bars">{[22,38,26,58,43,75,49,91,64,100,76,54,83,46,65,32,48].map((height,i) => <i key={i} style={{height:height+'%'}}/>)}</div>
+        <div className="music-mix-art-disc"><Headphones size={42}/></div>
+      </div>
+    </header>
+
+    <div className="music-mix-steps" aria-label="Mix creation steps">
+      {['Upload songs','Analyze energy','Arrange by energy','Create mix'].map((step,i) =>
+        <div key={step} className="music-mix-step"><span>{i+1}</span><strong>{step}</strong>{i<3 && <ArrowRight size={15}/>}</div>)}
     </div>
-    {error && <p role="alert" style={{color:'#ff8787'}}>{error}</p>}
-    {ordered.length > 0 && <section aria-label="Energy-based song order"><h3>Suggested listening order</h3>
-      <ol>{ordered.map((track,i) => <li key={i} style={{padding:'8px 0'}}>
-        <strong>{track.name}</strong> — {Math.round(track.bpm)} BPM
-        <div aria-label={'Relative energy ' + Math.round(track.energy / maxEnergy * 100) + '%'}
-          style={{height:7, background:'#263c43', borderRadius:4, marginTop:6}}>
-          <div style={{width:(track.energy / maxEnergy * 100)+'%', height:'100%', background:'#00dde5', borderRadius:4}} />
+
+    <div className="music-mix-setup">
+      <section className="music-mix-upload">
+        <div className={'music-mix-dropzone'+(dragging?' is-dragging':'')}
+          role="button" tabIndex={busy? -1 : 0} aria-label="Upload 2 to 20 audio files"
+          onClick={() => !busy && input.current?.click()}
+          onKeyDown={e => { if ((e.key==='Enter'||e.key===' ')&&!busy) {e.preventDefault();input.current?.click()} }}
+          onDragOver={e => {e.preventDefault();if(!busy)setDragging(true)}}
+          onDragLeave={e => {e.preventDefault();setDragging(false)}}
+          onDrop={e => {e.preventDefault();setDragging(false);if(!busy)addFiles(Array.from(e.dataTransfer.files))}}>
+          <div className="music-mix-upload-icon"><UploadCloud size={30}/></div>
+          <strong>Upload Multiple Songs</strong>
+          <span>Drag and drop or click to select 2–20 audio files</span>
+          <small>MP3 · WAV · FLAC · M4A · OGG · AAC</small>
+          <input ref={input} type="file" multiple accept=".mp3,.wav,.flac,.m4a,.ogg,.aac,audio/*"
+            disabled={!!busy} onChange={e => addFiles(Array.from(e.target.files || []))} />
         </div>
-      </li>)}</ol>
-      <p>Energy is estimated from audio loudness, not a perceptual quality score.</p>
+        <div className="music-mix-file-heading"><span>{files.length} song{files.length===1?'':'s'} selected</span>{files.length>0 && <button disabled={!!busy} onClick={()=>addFiles([])}><X size={14}/> Clear</button>}</div>
+        {files.length>0 && <div className="music-mix-files">{files.map((file,i)=><div key={i} className="music-mix-file"><FileAudio size={15}/><span title={file.name}>{file.name}</span><small>{(file.size/1024/1024).toFixed(1)} MB</small></div>)}</div>}
+        {!valid && files.length>0 && <p className="music-mix-validation">Choose 2–20 supported audio files, up to 200 MB each.</p>}
+      </section>
+
+      <section className="music-mix-controls">
+        <h3>Energy Progression</h3>
+        <div className="music-mix-modes">{modes.map(option=><button key={option.id}
+          className={'music-mix-mode'+(mode===option.id?' selected':'')}
+          aria-pressed={mode===option.id} disabled={!!busy}
+          onClick={()=>{setMode(option.id);reset()}}>
+          <span className="music-mix-mode-icon">{option.icon}</span>
+          <strong>{option.label}</strong><small>{option.description}</small>
+          {mode===option.id && <Check className="music-mix-mode-check" size={14}/>}
+        </button>)}</div>
+        <div className="music-mix-slider-heading"><label htmlFor="music-mix-transition">Crossfade Transition</label><strong>{transition} seconds</strong></div>
+        <input id="music-mix-transition" className="music-mix-slider" type="range" min={4} max={32}
+          value={transition} disabled={!!busy} onChange={e=>{setTransition(Number(e.target.value));reset()}}/>
+        <div className="music-mix-slider-labels"><span>4 seconds</span><span>32 seconds</span></div>
+      </section>
+    </div>
+
+    {busy && <section className="music-mix-processing" role="status" aria-live="polite" aria-label={busy==='analyze'?'Analyzing song energy':'Creating music mix'}>
+      <div className="music-mix-processing-visual music-mix-card-scan" aria-hidden="true">
+        <div className="music-mix-scan-wave music-mix-scan-wave-left">{[20,45,75,40,100,65,35,80,50].map((h,i)=><i key={i} style={{height:h+'%',animationDelay:i*.11+'s'}}/>)}</div>
+        <div className="music-mix-scan-stack">
+          <div className="music-mix-scan-card music-mix-scan-card-back back-three"/>
+          <div className="music-mix-scan-card music-mix-scan-card-back back-two"/>
+          <div className="music-mix-scan-card music-mix-scan-card-back back-one"/>
+          <div className="music-mix-scan-card music-mix-scan-card-front"><Music2 size={40}/></div>
+          <div className="music-mix-scan-beam"/>
+        </div>
+        <div className="music-mix-scan-wave music-mix-scan-wave-right">{[50,80,35,65,100,40,75,45,20].map((h,i)=><i key={i} style={{height:h+'%',animationDelay:i*.11+'s'}}/>)}</div>
+      </div>
+      <div className="music-mix-processing-copy">
+        <span className="music-mix-processing-eyebrow"><span className="music-mix-processing-dot"/> {busy==='analyze'?'ANALYSIS IN PROGRESS':'MIX CREATION IN PROGRESS'}</span>
+        <h3>{busy==='analyze'?'Analyzing songs…':'Blending your music into one journey…'}</h3>
+        <p>{busy==='analyze'?'Analyzing '+files.length+' uploaded songs and finding the best '+modes.find(m=>m.id===mode)?.label+' order.':'Combining '+files.length+' full songs with '+transition+'-second crossfades.'}</p>
+        <div className="music-mix-processing-indeterminate" aria-label="Processing; exact progress unavailable"><span/></div>
+        <small>Processing time depends on file size and song length. The bar shows activity, not a measured percentage.</small>\n        <div className="music-mix-processing-stages"><div><FileAudio size={20}/><span>Reading audio</span></div><ArrowRight size={15}/><div className="is-current"><Activity size={20}/><span>Analyzing energy</span></div><ArrowRight size={15}/><div><ListMusic size={20}/><span>Arranging songs</span></div><ArrowRight size={15}/><div><Check size={20}/><span>Finalizing order</span></div></div>\n        <button className="music-mix-processing-cancel" onClick={()=>controller.current?.abort()}>Cancel processing</button>
+      </div>
     </section>}
-    {audio && <section><h3>Your Music Mix is ready</h3><audio controls src={audio} style={{width:'100%'}} />
-      <a className="action primary" href={audio} download="Music_Mix.mp3" style={{display:'inline-block',marginTop:12}}>Download Music Mix MP3</a>
-    </section>}
-    <small>Processing happens on your local audio server. Use only audio you have permission to mix.</small>
+    {!busy && <>
+    <section className="music-mix-order">
+      <div className="music-mix-section-title"><div><h3><Activity size={20}/> Song Order <span>(by Energy)</span></h3>
+        <p>{estimated ? ordered.length+' songs arranged for '+modes.find(m=>m.id===mode)?.label : 'Analyze your uploaded songs to see their energy-based order'}</p></div>
+        {estimated && <span className="music-mix-count">{ordered.length} tracks</span>}
+      </div>
+      {estimated ? <div className="music-mix-track-row">{ordered.map((track,i)=><div className="music-mix-track-wrap" key={i}>
+        <div className="music-mix-track"><div className="music-mix-track-art"><Music2 size={28}/><b>{i+1}</b></div>
+          <div className="music-mix-track-body"><strong title={track.name}>{track.name}</strong>
+            <small>{Math.round(track.bpm)} BPM · {time(track.duration)}</small>
+            <div className="music-mix-energy-label"><span>Relative energy</span><span>{Math.round(track.energy/maxEnergy*100)}%</span></div>
+            <div className="music-mix-energy-meter"><span style={{width:levels[i]+'%'}}/></div>
+          </div></div>
+        {i<ordered.length-1 && <ArrowRight className="music-mix-track-arrow" size={18}/>}
+      </div>)}</div>
+      : <div className="music-mix-empty"><ListMusic size={28}/><p>Your energy-sorted songs will appear here.</p><span>Upload at least two songs, then select Analyze energy &amp; arrange.</span></div>}
+    </section>
+
+    <section className="music-mix-timeline">
+      <div className="music-mix-section-title"><div><h3>Mix Timeline <span>(Complete Mix)</span></h3>
+        <p>{estimated ? 'Estimated song sequence with '+transition+'-second crossfades' : 'Your complete energy journey will appear after analysis'}</p></div>
+        {estimated && <span className="music-mix-count">≈ {time(Math.max(0,totalDuration))}</span>}
+      </div>
+      <div className="music-mix-timeline-chart" aria-label="Energy progression timeline">
+        {estimated ? <div className="music-mix-timeline-segments">{ordered.map((track,i)=><div className="music-mix-timeline-segment" key={i}
+          style={{flex:Math.max(1,track.duration), '--level':levels[i]+'%'} as React.CSSProperties}>
+          <div className="music-mix-timeline-fill"/><span>Song {i+1}</span>
+        </div>)}</div> : <div className="music-mix-timeline-placeholder">{[24,36,48,62,78,94].map((h,i)=><i key={i} style={{height:h+'%'}}/>)}</div>}
+        <div className="music-mix-timeline-axis"><span>0:00</span><span>{estimated ? time(Math.max(0,totalDuration)) : 'End of mix'}</span></div>
+      </div>
+    </section>
+
+    <div className="music-mix-actions">
+      <button className="music-mix-analyze" disabled={!valid || !!busy} onClick={()=>void run('analyze')}>
+        <Activity size={18}/>{busy==='analyze'?'Analyzing songs…':'Analyze energy & arrange'}
+      </button>
+      <button className="music-mix-create" disabled={!valid || !!busy} onClick={()=>void run('render')}>
+        <Music2 size={20}/>{busy==='render'?'Creating your mix…':'Create Music Mix'}<ArrowRight size={18}/>
+      </button>
+      {busy && <button className="music-mix-cancel" onClick={()=>controller.current?.abort()}>Cancel request</button>}
+    </div>
+    </>}
+    {error && <p className="music-mix-error" role="alert">{error}</p>}
+    {audio && <section className="music-mix-result"><h3><Check size={20}/> Your Music Mix is ready</h3>
+      <audio controls src={audio}/><a className="music-mix-download" href={audio} download="Music_Mix.mp3"><Download size={18}/> Download Music Mix MP3</a></section>}
+    <p className="music-mix-footnote">Audio is processed by your local server. Energy is estimated from loudness. Only mix audio you have permission to use.</p>
   </div>
 }
