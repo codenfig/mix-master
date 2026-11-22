@@ -171,7 +171,7 @@ export default function MusicMixPage() {
     </div>
     {busy && <section className="music-mix-processing" role="status" aria-live="polite" aria-label={busy==='analyze'?'Analyzing song energy':'Creating music mix'}>
       <div className="music-mix-processing-visual" aria-hidden="true">
-        <div className="music-mix-processing-orbit"><Music2 size={30}/></div>
+        <div className="music-mix-processing-orbit"><div className="music-mix-vinyl-grooves"><div className="music-mix-vinyl-label"><Music2 size={19}/></div></div></div>
         <div className="music-mix-processing-bars">{[28,50,72,43,90,62,38,80,55,100,65,42,85,54,31,70,46].map((h,i)=><i key={i} style={{height:h+'%',animationDelay:(i*.085)+'s'}}/>)}</div>
       </div>
       <div className="music-mix-processing-copy">
