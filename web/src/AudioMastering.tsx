@@ -1,6 +1,6 @@
 import './styles/audio-mastering.css'
 import { useEffect, useRef, useState } from 'react'
-import { Activity, AudioLines, Download, FileAudio, LoaderCircle, RotateCcw, SlidersHorizontal, Sparkles, UploadCloud, X } from 'lucide-react'
+import { Activity, AudioLines, Check, ChevronRight, Download, FileAudio, Headphones, LoaderCircle, RotateCcw, SlidersHorizontal, Sparkles, UploadCloud, X } from 'lucide-react'
 
 type Preset = 'balanced' | 'club' | 'streaming' | 'warm' | 'dynamic' | 'custom'
 type ExportFormat = 'wav' | 'mp3' | 'flac'
@@ -48,6 +48,7 @@ export default function AudioMastering() {
   const [highpass, setHighpass] = useState(0)
   const [limiter, setLimiter] = useState(false)
   const [exportFormat, setExportFormat] = useState<ExportFormat>('wav')
+  const [dragActive, setDragActive] = useState(false)
   const [busy, setBusy] = useState(false)
   const [elapsed, setElapsed] = useState(0)
   const [error, setError] = useState('')
@@ -135,35 +136,51 @@ export default function AudioMastering() {
     }
   }
 
-  return <div className="master-page">
+  return <div className="master-page master-studio">
     <section className="master-hero">
-      <div className="master-eyebrow"><Sparkles size={16}/> PROFESSIONAL AUDIO FINISHING</div>
-      <h2>Audio <em>Mastering.</em></h2>
-      <p>Polish tonal balance, control dynamics and export a carefully measured master.</p>
-      <div className="master-hero-tags"><span>6 MASTERING STYLES</span><span>4-BAND EQ</span><span>STEREO & DYNAMICS</span><span>WAV · MP3 · FLAC</span></div>
-      <div className="master-hero-icon" aria-hidden="true"><AudioLines size={55}/></div>
+      <div className="master-hero-copy">
+        <div className="master-eyebrow"><span className="master-live-dot"/> MIXMASTER AI <span className="master-eyebrow-divider"/> MASTERING SUITE / 01</div>
+        <h2>Give every sound<br/><em>its final form.</em></h2>
+        <p>A beautifully precise finishing room for your music. Shape tone, refine dynamics, and create a master ready for the world.</p>
+        <div className="master-hero-tags"><span><Check size={12}/> 6 SIGNATURE STYLES</span><span><Check size={12}/> 4-BAND EQ</span><span><Check size={12}/> STUDIO EXPORT</span></div>
+      </div>
+      <div className="master-hero-art" aria-hidden="true">
+        <div className="master-art-orbit master-art-orbit-one"/><div className="master-art-orbit master-art-orbit-two"/>
+        <div className="master-art-disc"><div className="master-art-disc-inner"><AudioLines size={39}/></div></div>
+        <div className="master-art-wave">{Array.from({length: 37}, (_, i) => <i key={i} style={{height: `${15 + Math.abs(Math.sin(i * .47) * Math.cos(i * .19)) * 78}%`}}/>)}</div>
+        <div className="master-art-caption">SONIC PRECISION <span>✦</span> CREATIVE FREEDOM</div>
+      </div>
     </section>
-
+    <div className="master-flow" aria-label="Mastering workflow">
+      <div className="master-flow-step is-active"><span>01</span><div><strong>Import audio</strong><small>Choose your track</small></div></div>
+      <ChevronRight size={16} aria-hidden="true"/>
+      <div className={'master-flow-step' + (file ? ' is-active' : '')}><span>02</span><div><strong>Shape the sound</strong><small>Set your signature</small></div></div>
+      <ChevronRight size={16} aria-hidden="true"/>
+      <div className={'master-flow-step' + (output ? ' is-active' : '')}><span>03</span><div><strong>Listen & deliver</strong><small>Compare and export</small></div></div>
+    </div>
     <div className="master-grid">
-      <section className="master-panel">
-        <div className="master-panel-title"><UploadCloud size={22}/><div><h3>Upload your song</h3><p>Upload one audio file to master.</p></div></div>
+      <section className="master-panel master-workspace">
+        <div className="master-section-kicker">01 / SOURCE AUDIO</div>
+        <div className="master-panel-title"><span className="master-title-icon"><UploadCloud size={20}/></span><div><h3>Start with your sound</h3><p>Every great master begins with a great recording.</p></div></div>
         <input className="hidden" ref={picker} type="file" accept=".mp3,.wav,.flac,.m4a,.ogg,.aac,audio/*"
           onChange={e => { select(e.target.files?.[0]); e.target.value = '' }}/>
-        <div className="master-drop" role="button" tabIndex={0} onClick={() => !busy && picker.current?.click()}
+        <div className={"master-drop" + (dragActive ? " is-dragging" : "")} role="button" aria-label="Choose an audio file to master" tabIndex={0} aria-disabled={busy} onClick={() => !busy && picker.current?.click()}
           onKeyDown={e => { if (!busy && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); picker.current?.click() } }}
-          onDragOver={e => e.preventDefault()} onDrop={e => { e.preventDefault(); select(e.dataTransfer.files[0]) }}>
-          <FileAudio size={35}/><strong>Drop your audio here</strong>
-          <span>or click to browse · MP3, WAV, FLAC, M4A, OGG, AAC · 200 MiB max</span>
+          onDragEnter={e => { e.preventDefault(); if (!busy) setDragActive(true) }}
+          onDragLeave={e => { e.preventDefault(); setDragActive(false) }}
+          onDragOver={e => e.preventDefault()} onDrop={e => { e.preventDefault(); setDragActive(false); select(e.dataTransfer.files[0]) }}>
+          <span className="master-drop-icon"><UploadCloud size={27}/></span><strong>{dragActive ? 'Release to import your track' : 'Drop your track into the studio'}</strong>
+          <span>Drag & drop or <b>browse files</b> to get started</span><small>MP3 · WAV · FLAC · M4A · OGG · AAC &nbsp; / &nbsp; MAX 200 MiB</small>
         </div>
         {file && <div className="master-selected"><FileAudio size={20}/><div><strong>{file.name}</strong><small>{(file.size / 1048576).toFixed(1)} MiB</small></div>
           <button type="button" disabled={busy} onClick={() => { setFile(null); invalidateOutput() }} aria-label="Remove song"><X size={17}/></button></div>}
 
-        <h4 className="master-label">Mastering style</h4>
+        <div className="master-subsection-head"><div><div className="master-section-kicker">02 / SOUND CHARACTER</div><h4 className="master-label">Choose your signature</h4><p>One starting point. Endless possibilities.</p></div><Sparkles size={19}/></div>
         <div className="master-presets">
           {presets.map(item => <button type="button" key={item.id}
             className={'master-preset' + (preset === item.id ? ' selected' : '')}
             onClick={() => choosePreset(item.id)} disabled={busy} aria-pressed={preset === item.id}>
-            <strong>{item.title}</strong><small>{item.subtitle}</small>
+            <span className="master-preset-top"><span className="master-preset-glyph" aria-hidden="true">{item.id === 'balanced' ? '◈' : item.id === 'club' ? '◉' : item.id === 'streaming' ? '≋' : item.id === 'warm' ? '◐' : item.id === 'dynamic' ? '⌁' : '✳'}</span>{preset === item.id && <Check size={14}/>}</span><strong>{item.title}</strong><small>{item.subtitle}</small>
           </button>)}
         </div>
         <p className="master-hint">Selected target: <strong>{preset === 'custom' ? target : presetTargets[preset].loudness} LUFS</strong> · true peak ceiling: <strong>{preset === 'custom' ? peak : presetTargets[preset].ceiling} dBTP</strong>. Targets are approximate.</p>
@@ -179,7 +196,7 @@ export default function AudioMastering() {
         </div>}
 
         <details className="master-advanced">
-          <summary><SlidersHorizontal size={18}/> Advanced mastering controls</summary>
+          <summary><span className="master-advanced-summary-icon"><SlidersHorizontal size={18}/></span><span><strong>Advanced mastering</strong><small>Fine-tune the details that make your sound yours</small></span><span className="master-expand-indicator">+</span></summary>
           <div className="master-controls">
             <div className="master-advanced-top"><h4 className="master-section-label">Tone & stereo image</h4>
               <button type="button" disabled={busy} onClick={resetAdvanced}><RotateCcw size={13}/> Reset</button></div>
@@ -205,7 +222,7 @@ export default function AudioMastering() {
         </details>
 
         <div className="master-export-options">
-          <h4 className="master-label">Export format</h4>
+          <div className="master-subsection-head"><div><div className="master-section-kicker">03 / DELIVERY</div><h4 className="master-label">Choose your format</h4><p>High-quality output, ready for your next destination.</p></div><Download size={19}/></div>
           <div className="master-format-options">
             {([
               ['wav', 'WAV', '24-bit lossless'],
@@ -218,25 +235,31 @@ export default function AudioMastering() {
           </div>
         </div>
 
-        <button className="master-action" disabled={!file || busy} onClick={() => void master()}>
-          {busy ? <><LoaderCircle className="spin" size={19}/> Mastering your song…</> : <><SlidersHorizontal size={19}/> Master My Song</>}
+        <button className="master-action master-main-action" disabled={!file || busy} onClick={() => void master()}>
+          {busy ? <><LoaderCircle className="spin" size={19}/> Mastering your song…</> : <><Sparkles size={19}/> Create My Master <ChevronRight size={18}/></>}
         </button>
         {busy && <p className="master-status" role="status">Mastering in progress · {Math.floor(elapsed / 60)}:{String(elapsed % 60).padStart(2, '0')} elapsed <button onClick={() => abort.current?.abort()}>Stop checking</button></p>}
         {error && <p className="master-error" role="alert">{error}</p>}
       </section>
 
-      <section className="master-panel">
-        <div className="master-panel-title"><AudioLines size={22}/><div><h3>Listen & export</h3><p>Compare the original and mastered versions.</p></div></div>
-        {file && <div className="master-player"><strong>Original song</strong><OriginalPlayer file={file}/></div>}
-        {output ? <div className="master-player master-ready"><strong>Mastered song</strong><span>Processing complete · {completedFormat.toUpperCase()} export</span>
+      <section className="master-panel master-monitor">
+        <div className="master-section-kicker">MONITORING / A-B REFERENCE</div>
+        <div className="master-panel-title"><span className="master-title-icon"><Headphones size={20}/></span><div><h3>The listening room</h3><p>Hear the difference. Trust your ears.</p></div></div>
+        <div className="master-monitor-display" aria-hidden="true">
+          <div className="master-monitor-display-head"><span><span className="master-live-dot"/> STEREO OUTPUT</span><span>{output ? 'MASTER READY' : 'AWAITING AUDIO'}</span></div>
+          <div className="master-monitor-wave">{Array.from({length: 55}, (_, i) => <i key={i} style={{height: `${10 + Math.abs(Math.sin(i * .35) * Math.cos(i * .11)) * 85}%`}}/>)}</div>
+          <div className="master-monitor-display-foot"><span>L</span><span>STEREO MONITOR</span><span>R</span></div>
+        </div>
+        {file && <div className="master-player"><div className="master-player-heading"><span className="master-player-letter">A</span><div><strong>Original mix</strong><small>Unprocessed reference</small></div></div><OriginalPlayer file={file}/></div>}
+        {output ? <div className="master-player master-ready"><div className="master-player-heading"><span className="master-player-letter is-mastered">B</span><div><strong>Final master</strong><small>Processing complete · {completedFormat.toUpperCase()} export</small></div><Check size={18}/></div>
           <audio controls src={output} aria-label="Mastered song preview"/>
           <a className="master-action" href={output} download><Download size={18}/> Download {completedFormat.toUpperCase()}</a>
-        </div> : <div className="master-placeholder"><AudioLines size={49}/><h3>Your mastered song will appear here</h3><p>Select a song and a mastering style to begin.</p></div>}
+        </div> : <div className="master-placeholder"><span className="master-placeholder-icon"><Headphones size={31}/></span><h3>Your next sound starts here</h3><p>Import a track, choose your signature and hit Create My Master. Your finished audio will appear here.</p></div>}
       </section>
     </div>
 
     {comparison && <section className="master-panel master-comparison">
-      <div className="master-panel-title"><Activity size={22}/><div><h3>Before vs. After — Sound Measurements</h3><p>Full-song measurements from FFmpeg EBU R128 analysis.</p></div></div>
+      <div className="master-section-kicker">THE NUMBERS BEHIND THE SOUND</div><div className="master-panel-title"><span className="master-title-icon"><Activity size={20}/></span><div><h3>Mastering insights</h3><p>Before & after measurements from FFmpeg EBU R128 analysis.</p></div></div>
       <div className="master-comparison-grid">
         {([
           ['Integrated loudness', 'integrated_lufs', 'LUFS', 'Higher (less negative) means louder overall'],
