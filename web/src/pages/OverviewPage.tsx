@@ -1,11 +1,22 @@
-import { Activity, ArrowRight, AudioLines, ListMusic, Music2, Sparkles } from 'lucide-react'
-import type { AnalysisResult } from '../api'
+import { ArrowRight, AudioLines, FolderOpen, ListMusic, Music2, Sparkles, WandSparkles } from 'lucide-react'
 
-type Props = { filesCount: number; count: number; history: {tracks:number;created:string}[]; analysis: AnalysisResult | null; url: string | null; busy: string | null; navigate: (page: 'studio' | 'preview' | 'history') => void }
-export default function OverviewPage({filesCount,count,history,analysis,url,busy,navigate}:Props){
- return (<div className="overview-page">
-          <div className="overview-banner"><div className="overview-banner-glow" aria-hidden="true"/><div className="eyebrow"><Sparkles size={16}/> YOUR AUTONOMOUS DJ STUDIO</div><h2>Make every track <span>flow.</span></h2><p>Analyze your music, shape the energy journey and produce seamless nonstop mixes in one creative workspace.</p><button className="overview-cta" onClick={() => navigate('studio')}>Start mixing <ArrowRight size={17}/></button><div className="banner-orb"><Music2 size={58}/></div></div>
-          <div className="overview-stats"><div className="stat-card"><span>TRACKS LOADED</span><strong>{filesCount}</strong><small>Ready in your session</small></div><div className="stat-card"><span>COMPLETED MIXES</span><strong>{history.length}</strong><small>Browser history entries</small></div><div className="stat-card"><span>PLAN COMPATIBILITY</span><strong>{analysis?.plan ? analysis.plan.quality_score + '/100' : '—'}</strong><small>Metadata-based estimate</small></div></div>
-          <div className="overview-grid"><div className="panel"><div className="panel-heading"><div><h2><Activity size={19}/> Session status</h2><p>Your current workflow at a glance.</p></div></div><div className="status-rows"><div><span>Track selection</span><strong>{filesCount} / {count} files</strong></div><div><span>Track analysis</span><strong>{analysis ? 'Complete' : 'Not started'}</strong></div><div><span>Mix output</span><strong>{url ? 'Ready to preview' : busy ? 'Processing' : 'Not rendered'}</strong></div></div><button className="inline-link" onClick={() => navigate(url ? 'preview' : 'studio')}>Continue session <ArrowRight size={16}/></button></div><div className="panel"><div className="panel-heading"><div><h2><ListMusic size={19}/> Recent activity</h2><p>Previously completed mixes on this browser.</p></div></div>{history.length ? history.slice(0,3).map((item,i) => <div className="recent-row" key={i}><div className="recent-icon"><AudioLines size={18}/></div><div><strong>Nonstop Mix</strong><small>{item.tracks} tracks · {item.created}</small></div></div>) : <div className="overview-empty">Your first finished mix will appear here.</div>}<button className="inline-link" onClick={() => navigate('history')}>View history <ArrowRight size={16}/></button></div></div>
-        </div>)
+export default function OverviewPage() {
+  return <div className="overview-page">
+    <section className="overview-banner">
+      <div className="overview-banner-glow" aria-hidden="true"/>
+      <div className="eyebrow"><Sparkles size={16}/> YOUR MUSIC WORKSPACE</div>
+      <h2>Make your music <span>flow.</span></h2>
+      <p>Generate original music, build energy-based playlists, separate audio stems and master your songs in one workspace.</p>
+      <a href="#/music-mix" className="overview-cta">Open Music Mix <ArrowRight size={17}/></a>
+      <div className="banner-orb"><Music2 size={58}/></div>
+    </section>
+    <div className="overview-grid overview-tools">
+      <a className="panel overview-tool" href="#/full-song"><Music2 size={25}/><h2>Music Generator</h2><p>Compose songs using a configured generation engine.</p><span>Open generator <ArrowRight size={15}/></span></a>
+      <a className="panel overview-tool" href="#/music-mix"><ListMusic size={25}/><h2>Music Mix</h2><p>Upload two to twenty songs, arrange them by energy and export a continuous mix.</p><span>Start mixing <ArrowRight size={15}/></span></a>
+      <a className="panel overview-tool" href="#/stem-splitter"><AudioLines size={25}/><h2>Stem Splitter</h2><p>Separate vocals and instruments for further creative work.</p><span>Open stems <ArrowRight size={15}/></span></a>
+      <a className="panel overview-tool" href="#/lyrics-generator"><WandSparkles size={25}/><h2>Lyrics Generator</h2><p>Draft original lyrics and develop song ideas.</p><span>Write lyrics <ArrowRight size={15}/></span></a>
+      <a className="panel overview-tool" href="#/audio-mastering"><Sparkles size={25}/><h2>Audio Mastering</h2><p>Adjust loudness and polish finished recordings.</p><span>Open mastering <ArrowRight size={15}/></span></a>
+      <a className="panel overview-tool" href="#/generated-files"><FolderOpen size={25}/><h2>Generated Files</h2><p>Find audio files saved by supported workflows.</p><span>Browse files <ArrowRight size={15}/></span></a>
+    </div>
+  </div>
 }
