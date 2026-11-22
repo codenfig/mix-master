@@ -39,3 +39,13 @@
 @keyframes mm-processing-slide{0%{transform:translateX(-110%)}100%{transform:translateX(300%)}}
 @media(max-width:600px){.music-mix-processing{flex-direction:column;gap:8px;padding:18px}.music-mix-processing-visual{height:95px}.music-mix-processing-copy{width:100%}}
 @media(prefers-reduced-motion:reduce){.music-mix-processing-orbit,.music-mix-processing-dot,.music-mix-processing-bars i,.music-mix-processing-indeterminate span{animation:none}.music-mix-processing-indeterminate span{width:50%}}
+
+/* Spinning vinyl record for live Music Mix analysis and rendering. */
+.music-mix-processing-orbit{width:108px;height:108px;border:0;background:transparent;box-shadow:none;animation:mm-vinyl-spin 2.6s linear infinite}
+.music-mix-vinyl-grooves{position:relative;width:108px;height:108px;border-radius:50%;display:grid;place-items:center;background:repeating-radial-gradient(circle at center,#111923 0px,#111923 4px,#263946 5px,#0c1820 7px);border:3px solid #365d66;box-shadow:0 0 0 7px rgba(0,221,229,.06),0 0 30px rgba(0,221,229,.28),inset 0 0 12px #000}
+.music-mix-vinyl-grooves:before{content:"";position:absolute;inset:8px;border-radius:50%;border:1px solid rgba(255,255,255,.17)}
+.music-mix-vinyl-grooves:after{content:"";position:absolute;left:21px;top:12px;width:23px;height:10px;border-radius:100%;transform:rotate(-35deg);background:rgba(255,255,255,.2);filter:blur(2px)}
+.music-mix-vinyl-label{display:grid;place-items:center;width:47px;height:47px;border:3px solid #09252a;border-radius:50%;background:linear-gradient(145deg,var(--mm-accent),#4b83c5);color:#09252a;box-shadow:0 0 0 1px rgba(255,255,255,.25)}
+.music-mix-vinyl-label:after{content:"";position:absolute;width:5px;height:5px;border-radius:50%;background:#09252a}
+@keyframes mm-vinyl-spin{to{transform:rotate(360deg)}}
+@media(prefers-reduced-motion:reduce){.music-mix-processing-orbit{animation:none}}
