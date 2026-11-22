@@ -1,4 +1,5 @@
 import DjDeckStudio from './DjDeckStudio'
+import MusicMixPage from './MusicMixPage'
 import LandingPage from './pages/LandingPage'
 import PricingPage from './pages/PricingPage'
 import FullSongPage from './pages/FullSongPage'
@@ -16,7 +17,7 @@ import StemSplitter from './StemSplitter'
 import AudioMastering from './AudioMastering'
 import VoiceStudio from './VoiceStudio'
 
-type Page = 'landing' | 'features' | 'how-it-works' | 'studio-preview' | 'faq' | 'onboarding' | 'overview' | 'studio' | 'library' | 'preview' | 'history' | 'generated-files' | 'text-to-song' | 'full-song' | 'pricing' | 'settings' | 'vocal-remover' | 'stem-splitter' | 'audio-mastering' | 'voice-studio' | 'lyrics-generator'
+type Page = 'landing' | 'features' | 'how-it-works' | 'studio-preview' | 'faq' | 'onboarding' | 'overview' | 'studio' | 'music-mix' | 'library' | 'preview' | 'history' | 'generated-files' | 'text-to-song' | 'full-song' | 'pricing' | 'settings' | 'vocal-remover' | 'stem-splitter' | 'audio-mastering' | 'voice-studio' | 'lyrics-generator'
 const pages: { id: Page; label: string; subtitle: string }[] = [
   { id: 'landing', label: 'Home', subtitle: 'Create music with MixMaster AI' },
   { id: 'features', label: 'Features', subtitle: 'Explore MixMaster AI tools' },
@@ -26,6 +27,7 @@ const pages: { id: Page; label: string; subtitle: string }[] = [
   { id: 'onboarding', label: 'Welcome', subtitle: 'Discover MixMaster AI' },
   { id: 'overview', label: 'Overview', subtitle: 'Your creative command center' },
   { id: 'studio', label: 'DJ Studio', subtitle: 'Build your next continuous set' },
+  { id: 'music-mix', label: 'Music Mix', subtitle: 'Combine songs by energy, from calm to energetic' },
   { id: 'library', label: 'Track Library', subtitle: 'Explore and arrange your music' },
   { id: 'preview', label: 'Mix Preview', subtitle: 'Listen, review and export' },
   { id: 'history', label: 'Mix History', subtitle: 'Your previous sessions' },
@@ -44,7 +46,7 @@ const readPage = (): Page => {
   const hash = window.location.hash.replace(/^#\/?/, '')
   return pages.some(p => p.id === hash) ? hash as Page : 'landing'
 }
-const primaryPages: Page[] = ['overview','full-song','studio','vocal-remover','stem-splitter','audio-mastering','library','generated-files']
+const primaryPages: Page[] = ['overview','full-song','music-mix','studio','vocal-remover','stem-splitter','audio-mastering','library','generated-files']
 const extensions = new Set(['mp3', 'wav', 'flac', 'm4a', 'ogg', 'aac'])
 const MAX_BYTES = 200 * 1024 * 1024
 const formatTime = (seconds: number) => Number.isFinite(seconds) ? [Math.floor(seconds / 60), Math.floor(seconds % 60)].map(n => String(n).padStart(2, '0')).join(':') : '--:--'
@@ -337,7 +339,7 @@ export default function App() {
     <main className="main">
       <header className="topbar mm-topbar">
         <nav className="mm-top-nav" aria-label="Studio shortcuts">
-          {([{id:'full-song',label:'AI Music',icon:Music2},{id:'studio',label:'DJ Studio',icon:SlidersHorizontal},{id:'stem-splitter',label:'Stems',icon:AudioLines},{id:'generated-files',label:'Library',icon:FolderOpen}] as const).map(link=><a key={link.id} href={'#/'+link.id} aria-current={page===link.id?'page':undefined} className={page===link.id?'active':''} onClick={()=>setPage(link.id)}><link.icon size={17}/>{link.label}</a>)}
+          {([{id:'full-song',label:'AI Music',icon:Music2},{id:'music-mix',label:'Music Mix',icon:Music2},{id:'studio',label:'DJ Studio',icon:SlidersHorizontal},{id:'stem-splitter',label:'Stems',icon:AudioLines},{id:'generated-files',label:'Library',icon:FolderOpen}] as const).map(link=><a key={link.id} href={'#/'+link.id} aria-current={page===link.id?'page':undefined} className={page===link.id?'active':''} onClick={()=>setPage(link.id)}><link.icon size={17}/>{link.label}</a>)}
         </nav>
         <div className="mm-top-actions"><span className="mm-top-status"><span className="online-dot"/> Local Studio</span><a href="#/pricing" onClick={()=>setPage('pricing')} className="mm-top-upgrade"><Crown size={16}/> Upgrade</a></div>
       </header>
@@ -345,6 +347,7 @@ export default function App() {
         {activeJob && <div className="background-job" role="status"><div><LoaderCircle className="spin" size={18}/><strong>Background mix in progress</strong><span>{progress || 'The server is preparing your audio.'}</span></div><button type="button" onClick={() => navigate('studio')}>View progress <ArrowRight size={15}/></button></div>}
         <div className="page-heading"><div><div className="eyebrow"><Sparkles size={14}/> MIXMASTER WORKSPACE</div><h1>{pages.find(p => p.id === page)?.label}</h1><p>{pages.find(p => p.id === page)?.subtitle}</p></div><div className="page-heading-actions">{page !== 'studio' && <button className="action primary" onClick={() => navigate('studio')}><Sparkles size={16}/> Create a Mix <ArrowRight size={16}/></button>}</div></div>
         {page === 'generated-files' && <GeneratedFilesPage/>}
+          {page === 'music-mix' && <MusicMixPage/>}
         {page === 'text-to-song' && <TextToSongPage/>}
         {page === 'full-song' && <FullSongPage/>}
         {page === 'lyrics-generator' && <LyricsGeneratorPage/>}
