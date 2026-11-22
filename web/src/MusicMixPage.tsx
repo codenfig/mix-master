@@ -170,13 +170,20 @@ export default function MusicMixPage() {
       {busy && <button className="music-mix-cancel" onClick={()=>controller.current?.abort()}>Cancel request</button>}
     </div>
     {busy && <section className="music-mix-processing" role="status" aria-live="polite" aria-label={busy==='analyze'?'Analyzing song energy':'Creating music mix'}>
-      <div className="music-mix-processing-visual" aria-hidden="true">
-        <div className="music-mix-processing-orbit"><div className="music-mix-vinyl-grooves"><div className="music-mix-vinyl-label"><Music2 size={19}/></div></div></div>
-        <div className="music-mix-processing-bars">{[28,50,72,43,90,62,38,80,55,100,65,42,85,54,31,70,46].map((h,i)=><i key={i} style={{height:h+'%',animationDelay:(i*.085)+'s'}}/>)}</div>
+      <div className="music-mix-processing-visual music-mix-card-scan" aria-hidden="true">
+        <div className="music-mix-scan-wave music-mix-scan-wave-left">{[20,45,75,40,100,65,35,80,50].map((h,i)=><i key={i} style={{height:h+'%',animationDelay:i*.11+'s'}}/>)}</div>
+        <div className="music-mix-scan-stack">
+          <div className="music-mix-scan-card music-mix-scan-card-back back-three"/>
+          <div className="music-mix-scan-card music-mix-scan-card-back back-two"/>
+          <div className="music-mix-scan-card music-mix-scan-card-back back-one"/>
+          <div className="music-mix-scan-card music-mix-scan-card-front"><Music2 size={40}/></div>
+          <div className="music-mix-scan-beam"/>
+        </div>
+        <div className="music-mix-scan-wave music-mix-scan-wave-right">{[50,80,35,65,100,40,75,45,20].map((h,i)=><i key={i} style={{height:h+'%',animationDelay:i*.11+'s'}}/>)}</div>
       </div>
       <div className="music-mix-processing-copy">
         <span className="music-mix-processing-eyebrow"><span className="music-mix-processing-dot"/> {busy==='analyze'?'ANALYSIS IN PROGRESS':'MIX CREATION IN PROGRESS'}</span>
-        <h3>{busy==='analyze'?'Discovering your music’s energy…':'Blending your music into one journey…'}</h3>
+        <h3>{busy==='analyze'?'Analyzing songs…':'Blending your music into one journey…'}</h3>
         <p>{busy==='analyze'?'Analyzing '+files.length+' uploaded songs and finding the best '+modes.find(m=>m.id===mode)?.label+' order.':'Combining '+files.length+' full songs with '+transition+'-second crossfades.'}</p>
         <div className="music-mix-processing-indeterminate" aria-label="Processing; exact progress unavailable"><span/></div>
         <small>Processing time depends on file size and song length. This animation is not a percentage indicator.</small>
