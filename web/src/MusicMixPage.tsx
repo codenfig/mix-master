@@ -169,6 +169,19 @@ export default function MusicMixPage() {
       </button>
       {busy && <button className="music-mix-cancel" onClick={()=>controller.current?.abort()}>Cancel request</button>}
     </div>
+    {busy && <section className="music-mix-processing" role="status" aria-live="polite" aria-label={busy==='analyze'?'Analyzing song energy':'Creating music mix'}>
+      <div className="music-mix-processing-visual" aria-hidden="true">
+        <div className="music-mix-processing-orbit"><Music2 size={30}/></div>
+        <div className="music-mix-processing-bars">{[28,50,72,43,90,62,38,80,55,100,65,42,85,54,31,70,46].map((h,i)=><i key={i} style={{height:h+'%',animationDelay:(i*.085)+'s'}}/>)}</div>
+      </div>
+      <div className="music-mix-processing-copy">
+        <span className="music-mix-processing-eyebrow"><span className="music-mix-processing-dot"/> {busy==='analyze'?'ANALYSIS IN PROGRESS':'MIX CREATION IN PROGRESS'}</span>
+        <h3>{busy==='analyze'?'Discovering your music’s energy…':'Blending your music into one journey…'}</h3>
+        <p>{busy==='analyze'?'Analyzing '+files.length+' uploaded songs and finding the best '+modes.find(m=>m.id===mode)?.label+' order.':'Combining '+files.length+' full songs with '+transition+'-second crossfades.'}</p>
+        <div className="music-mix-processing-indeterminate" aria-label="Processing; exact progress unavailable"><span/></div>
+        <small>Processing time depends on file size and song length. This animation is not a percentage indicator.</small>
+      </div>
+    </section>}
     {error && <p className="music-mix-error" role="alert">{error}</p>}
     {audio && <section className="music-mix-result"><h3><Check size={20}/> Your Music Mix is ready</h3>
       <audio controls src={audio}/><a className="music-mix-download" href={audio} download="Music_Mix.mp3"><Download size={18}/> Download Music Mix MP3</a></section>}
