@@ -10,15 +10,12 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.background import BackgroundTask
 
-from engine import analyze, render
-from planner import plan
-from jobs import allocate_directory, create_job, get_job, get_download
-from cover_art import embed_cover
+from engine import analyze
 from vocal_remover import router as vocal_remover_router
 from stem_splitter import router as stem_splitter_router
 from audio_mastering import router as mastering_router
 from voice_studio import router as voice_studio_router
-from generated_storage import router as generated_files_router, save_generated
+from generated_storage import router as generated_files_router
 from commercial_licensing import router as commercial_licensing_router
 from text_to_song import router as text_to_song_router
 from full_song import router as full_song_router
@@ -143,98 +140,6 @@ def inspect_tracks(tracks, names):
         result["name"] = name
         results.append(result)
     return results
-
-
-@app.post("/api/analyze")
-def analyze_songs(songs: list[UploadFile] = File(...), count: int = Form(10)):
-    validate_settings(count, 12)
-    with TemporaryDirectory(prefix="mixmaster_analysis_") as temp:
-        tracks, names = save_uploads(songs, Path(temp), count)
-        results = inspect_tracks(tracks, names)
-        mix_plan = plan(results)
-        return {"tracks": [{k: v for k, v in t.items() if k != "path"} for t in results], "order": mix_plan["order"], "plan": mix_plan}
-
-
-@app.post("/api/mix")
-def mix(songs: list[UploadFile] = File(...), count: int = Form(10), transition: int = Form(12), mastering: str = Form("balanced"), kick_enabled: bool = Form(False), kick_style: str = Form("soft"), kick_level: float = Form(0.16), kick_source_index: int = Form(-1), target_lufs: float = Form(-14), true_peak: float = Form(-1.5), bass_db: float = Form(0), treble_db: float = Form(0), compression: bool = Form(False), cover: UploadFile | None = File(None), mix_title: str = Form("My DJ Mix"), mix_artist: str = Form("MixMaster AI"), mix_album: str = Form("MixMaster AI"), mix_year: str = Form("")):
-    validate_settings(count, transition)
-    validate_mastering_options(mastering, target_lufs, true_peak, bass_db, treble_db)
-    validate_kick(kick_style, kick_level)
-    validate_cover_metadata(mix_title, mix_artist, mix_album, mix_year)
-    if kick_enabled and kick_source_index >= count:
-        raise HTTPException(400, "Kick source is not one of the uploaded songs.")
-    if kick_source_index < -1:
-        raise HTTPException(400, "Invalid kick source.")
-    with TemporaryDirectory(prefix="mixmaster_") as temp:
-        tmp = Path(temp)
-        tracks, names = save_uploads(songs, tmp, count)
-        analysis = inspect_tracks(tracks, names)
-        mix_plan = plan(analysis, transition=transition)
-        ordered = [analysis[i] for i in mix_plan['order_indices']]
-        out = tmp / "MixMaster_AI_Nonstop.mp3"
-        try:
-            quality = render(ordered, out, transition=transition, mastering=mastering, kick_enabled=kick_enabled, kick_style=kick_style, kick_level=kick_level, mastering_options={"target_lufs": target_lufs, "true_peak": true_peak, "bass_db": bass_db, "treble_db": treble_db, "compression": compression}, kick_source_index=kick_source_index if kick_enabled and kick_source_index >= 0 else None, source_tracks=analysis)
-        except Exception as exc:
-            raise HTTPException(422, "Audio rendering failed. Check track lengths and FFmpeg installation.") from exc
-        if cover is not None:
-            image = save_cover(cover, tmp)
-            if image is not None:
-                embed_cover(out, image, mix_title, mix_artist, mix_album, mix_year)
-        saved = Path(tempfile.gettempdir()) / f"mixmaster_{uuid.uuid4().hex}.mp3"
-        shutil.copyfile(out, saved)
-        save_generated(out, "dj_mixes", "MixMaster_AI_Nonstop.mp3", "audio/mpeg")
-        return FileResponse(
-            saved,
-            media_type="audio/mpeg",
-            filename="MixMaster_AI_Nonstop.mp3",
-            background=BackgroundTask(lambda: saved.unlink(missing_ok=True)),
-            headers={"X-MixMaster-Track-Count": str(count),
-                     "X-MixMaster-Peak": str(quality["peak"]),
-                     "X-MixMaster-RMS": str(quality["rms"]),
-                     "X-MixMaster-Near-Silence": str(quality["near_silence_fraction"]),
-                     "X-MixMaster-Clipping-Risk": str(quality["clipping_risk"]).lower()},
-        )
-
-
-@app.post("/api/jobs", status_code=202)
-def queue_mix(songs: list[UploadFile] = File(...), count: int = Form(10), transition: int = Form(12), mastering: str = Form("balanced"), kick_enabled: bool = Form(False), kick_style: str = Form("soft"), kick_level: float = Form(0.16), kick_source_index: int = Form(-1), target_lufs: float = Form(-14), true_peak: float = Form(-1.5), bass_db: float = Form(0), treble_db: float = Form(0), compression: bool = Form(False), cover: UploadFile | None = File(None), mix_title: str = Form("My DJ Mix"), mix_artist: str = Form("MixMaster AI"), mix_album: str = Form("MixMaster AI"), mix_year: str = Form("")):
-    """Accept uploads, analyze, then render asynchronously in one bounded worker."""
-    validate_settings(count, transition)
-    validate_mastering_options(mastering, target_lufs, true_peak, bass_db, treble_db)
-    validate_kick(kick_style, kick_level)
-    if kick_enabled and kick_source_index >= count:
-        raise HTTPException(400, "Kick source is not one of the uploaded songs.")
-    if kick_source_index < -1:
-        raise HTTPException(400, "Invalid kick source.")
-    directory = allocate_directory()
-    try:
-        image = save_cover(cover, directory)
-        tracks, names = save_uploads(songs, directory, count)
-        analysis = inspect_tracks(tracks, names)
-        job_id = create_job(analysis, transition, directory, mastering=mastering, kick_enabled=kick_enabled, kick_style=kick_style, kick_level=kick_level, mastering_options={"target_lufs": target_lufs, "true_peak": true_peak, "bass_db": bass_db, "treble_db": treble_db, "compression": compression}, kick_source_index=kick_source_index if kick_enabled and kick_source_index >= 0 else None, source_tracks=analysis, cover=image, title=mix_title, artist=mix_artist, album=mix_album, year=mix_year)
-        return {"id": job_id, "status": "queued", "status_url": f"/api/jobs/{job_id}"}
-    except RuntimeError as exc:
-        shutil.rmtree(directory, ignore_errors=True)
-        raise HTTPException(503, str(exc)) from exc
-    except Exception:
-        shutil.rmtree(directory, ignore_errors=True)
-        raise
-
-
-@app.get("/api/jobs/{job_id}")
-def job_status(job_id: str):
-    job = get_job(job_id)
-    if job is None:
-        raise HTTPException(404, "Job not found or expired.")
-    return job
-
-
-@app.get("/api/jobs/{job_id}/download")
-def job_download(job_id: str):
-    path = get_download(job_id)
-    if path is None:
-        raise HTTPException(404, "Mix not ready or job expired.")
-    return FileResponse(path, media_type="audio/mpeg", filename="MixMaster_AI_Nonstop.mp3")
 
 
 # Energy-based Music Mix is intentionally separate from DJ endpoints.
