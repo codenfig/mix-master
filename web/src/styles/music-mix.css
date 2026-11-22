@@ -49,3 +49,23 @@
 .music-mix-vinyl-label:after{content:"";position:absolute;width:5px;height:5px;border-radius:50%;background:#09252a}
 @keyframes mm-vinyl-spin{to{transform:rotate(360deg)}}
 @media(prefers-reduced-motion:reduce){.music-mix-processing-orbit{animation:none}}
+
+/* Sample 8: animated stack of song-art cards scanned by a cyan beam. */
+.music-mix-card-scan{min-width:250px;height:170px;gap:0;isolation:isolate}
+.music-mix-scan-stack{position:relative;flex:none;width:138px;height:150px;perspective:550px}
+.music-mix-scan-card{position:absolute;top:19px;left:21px;width:98px;height:116px;border:2px solid #79eafa;border-radius:11px;box-shadow:0 6px 18px #001a2b,0 0 12px rgba(0,221,229,.26);transform:rotateY(-17deg) rotateZ(6deg);background:linear-gradient(155deg,#db6da9 0%,#8161cb 35%,#3568a0 59%,#082b45 80%);overflow:hidden}
+.music-mix-scan-card:before{content:"";position:absolute;inset:30% -20% 0;clip-path:polygon(0 85%,28% 32%,46% 64%,67% 14%,100% 84%,100% 100%,0 100%);background:linear-gradient(130deg,#236b9b,#0c2e4c)}
+.music-mix-scan-card-back{animation:mm-scan-float 3s ease-in-out infinite alternate}
+.music-mix-scan-card.back-one{transform:translate(20px,1px) rotateY(-17deg) rotateZ(6deg);opacity:.92;animation-delay:.1s}
+.music-mix-scan-card.back-two{transform:translate(36px,4px) rotateY(-17deg) rotateZ(6deg);opacity:.75;animation-delay:.25s}
+.music-mix-scan-card.back-three{transform:translate(51px,7px) rotateY(-17deg) rotateZ(6deg);opacity:.6;animation-delay:.4s}
+.music-mix-scan-card-front{display:grid;place-items:center;color:#fff;animation:mm-scan-front 3s ease-in-out infinite alternate;z-index:2}
+.music-mix-scan-card-front svg{position:relative;z-index:1;filter:drop-shadow(0 2px 8px #073b54)}
+.music-mix-scan-beam{position:absolute;z-index:5;top:50%;left:-30px;width:210px;height:4px;border-radius:50%;background:#57f9ff;box-shadow:0 0 9px 3px #00dfe9,0 0 25px 7px rgba(0,221,229,.52);transform:rotate(-3deg);animation:mm-scan-sweep 2.5s ease-in-out infinite alternate}
+.music-mix-scan-wave{height:86px;width:45px;display:flex;align-items:center;justify-content:center;gap:3px;opacity:.7}
+.music-mix-scan-wave i{width:3px;border-radius:3px;background:linear-gradient(#00dce9,#276cba);animation:mm-processing-wave 1s ease-in-out infinite alternate}
+@keyframes mm-scan-sweep{0%{top:20%;opacity:.5}50%{opacity:1}100%{top:81%;opacity:.9}}
+@keyframes mm-scan-front{from{transform:translateY(3px) rotateY(-17deg) rotateZ(6deg)}to{transform:translateY(-4px) rotateY(-13deg) rotateZ(3deg)}}
+@keyframes mm-scan-float{from{margin-top:3px}to{margin-top:-4px}}
+@media(max-width:600px){.music-mix-card-scan{height:160px;min-width:220px}}
+@media(prefers-reduced-motion:reduce){.music-mix-scan-card,.music-mix-scan-beam,.music-mix-scan-wave i{animation:none}}
