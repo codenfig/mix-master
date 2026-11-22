@@ -322,7 +322,7 @@ export default function App() {
       <div className="nav-label">YOUR STUDIO</div>
       <nav aria-label="Main tools">
         {pages.filter(item=>primaryPages.includes(item.id)).map(item=>{
-          const Icon=item.id==='overview'?LayoutDashboard:item.id==='full-song'?Music2:item.id==='studio'?SlidersHorizontal:item.id==='vocal-remover'?AudioLines:item.id==='stem-splitter'?FileAudio:item.id==='audio-mastering'?Sparkles:item.id==='library'?ListMusic:FolderOpen
+          const Icon=item.id==='overview'?LayoutDashboard:item.id==='full-song'?Music2:item.id==='music-mix'?ListMusic:item.id==='studio'?SlidersHorizontal:item.id==='vocal-remover'?AudioLines:item.id==='stem-splitter'?FileAudio:item.id==='audio-mastering'?Sparkles:item.id==='library'?ListMusic:FolderOpen
           return <a key={item.id} href={'#/'+item.id} aria-current={page===item.id?'page':undefined} className={'nav'+(page===item.id?' active':'')} onClick={()=>setPage(item.id)}><Icon size={18}/><span>{item.label}</span></a>
         })}
       </nav>
