@@ -26,7 +26,6 @@ const pages: { id: Page; label: string; subtitle: string }[] = [
   { id: 'faq', label: 'FAQ', subtitle: 'Frequently asked questions' },
   { id: 'onboarding', label: 'Welcome', subtitle: 'Discover MixMaster AI' },
   { id: 'overview', label: 'Overview', subtitle: 'Your creative command center' },
-  { id: 'studio', label: 'DJ Studio', subtitle: 'Build your next continuous set' },
   { id: 'music-mix', label: 'Music Mix', subtitle: 'Combine songs by energy, from calm to energetic' },
   { id: 'library', label: 'Track Library', subtitle: 'Explore and arrange your music' },
   { id: 'preview', label: 'Mix Preview', subtitle: 'Listen, review and export' },
@@ -44,9 +43,9 @@ const pages: { id: Page; label: string; subtitle: string }[] = [
 ]
 const readPage = (): Page => {
   const hash = window.location.hash.replace(/^#\/?/, '')
-  return pages.some(p => p.id === hash) ? hash as Page : 'landing'
+  return hash === 'studio' ? 'music-mix' : pages.some(p => p.id === hash) ? hash as Page : 'landing'
 }
-const primaryPages: Page[] = ['overview','full-song','music-mix','studio','vocal-remover','stem-splitter','audio-mastering','library','generated-files']
+const primaryPages: Page[] = ['overview','full-song','music-mix','vocal-remover','stem-splitter','audio-mastering','library','generated-files']
 const extensions = new Set(['mp3', 'wav', 'flac', 'm4a', 'ogg', 'aac'])
 const MAX_BYTES = 200 * 1024 * 1024
 const formatTime = (seconds: number) => Number.isFinite(seconds) ? [Math.floor(seconds / 60), Math.floor(seconds % 60)].map(n => String(n).padStart(2, '0')).join(':') : '--:--'
@@ -58,7 +57,7 @@ export default function App() {
     window.addEventListener('hashchange', onHash)
     return () => window.removeEventListener('hashchange', onHash)
   }, [])
-  const navigate = (next: Page) => { window.location.hash = '/' + next; setPage(next); window.scrollTo(0, 0) }
+  const navigate = (next: Page) => { const destination = next === 'studio' ? 'music-mix' : next; window.location.hash = '/' + destination; setPage(destination); window.scrollTo(0, 0) }
   const [count, setCount] = useState<5 | 10 | 20>(10)
   const [transition, setTransition] = useState(12)
   const [mastering, setMastering] = useState<'off' | 'balanced' | 'club' | 'custom'>('balanced')
@@ -136,7 +135,7 @@ export default function App() {
     const invalid = next.filter(file => !extensions.has(file.name.split('.').pop()?.toLowerCase() || '') || file.size > MAX_BYTES || file.size === 0)
     const valid = next.filter(file => !invalid.includes(file))
     setFiles(valid)
-    navigate('studio')
+    navigate('music-mix')
     setAnalysis(null)
     resetOutput()
     setError(invalid.length > 0)
@@ -301,9 +300,9 @@ export default function App() {
       <div className="onboard-eyebrow"><Sparkles size={16}/> WELCOME TO YOUR MUSIC WORKSPACE</div>
       <h1>Make your music <em>extraordinary.</em></h1>
       <p className="onboard-lead">Create DJ mixes, separate vocals, master audio and explore AI voice tools — all from one workspace.</p>
-      <div className="onboard-actions"><button className="onboard-primary" onClick={()=>navigate('studio')}>Launch Mixing Studio <ArrowRight size={20}/></button><button className="onboard-secondary" onClick={()=>navigate('overview')}>Explore operations</button></div>
+      <div className="onboard-actions"><button className="onboard-primary" onClick={()=>navigate('music-mix')}>Open Music Mix <ArrowRight size={20}/></button><button className="onboard-secondary" onClick={()=>navigate('overview')}>Explore operations</button></div>
       <div className="onboard-features">
-        <button onClick={()=>navigate('studio')}><SlidersHorizontal size={26}/><strong>DJ Mix Creator</strong><span>Arrange tracks and generate continuous mixes</span><ArrowRight size={17}/></button>
+        <button onClick={()=>navigate('music-mix')}><SlidersHorizontal size={26}/><strong>Music Mix Creator</strong><span>Arrange tracks and generate continuous mixes</span><ArrowRight size={17}/></button>
         <button onClick={()=>navigate('vocal-remover')}><FileAudio size={26}/><strong>Vocal Remover</strong><span>Separate vocals from instrumentals</span><ArrowRight size={17}/></button>
         <button onClick={()=>navigate('stem-splitter')}><AudioLines size={26}/><strong>Stem Splitter</strong><span>Extract drums, bass, vocals and other stems</span><ArrowRight size={17}/></button>
         <button onClick={()=>navigate('audio-mastering')}><Sparkles size={26}/><strong>Audio Mastering</strong><span>Polish loudness, dynamics and tone</span><ArrowRight size={17}/></button>
@@ -344,8 +343,8 @@ export default function App() {
         <div className="mm-top-actions"><span className="mm-top-status"><span className="online-dot"/> Local Studio</span><a href="#/pricing" onClick={()=>setPage('pricing')} className="mm-top-upgrade"><Crown size={16}/> Upgrade</a></div>
       </header>
       <div className={"content content-" + page + (page === "overview" ? " overview-content" : "")} key={page}>
-        {activeJob && <div className="background-job" role="status"><div><LoaderCircle className="spin" size={18}/><strong>Background mix in progress</strong><span>{progress || 'The server is preparing your audio.'}</span></div><button type="button" onClick={() => navigate('studio')}>View progress <ArrowRight size={15}/></button></div>}
-        <div className="page-heading"><div><div className="eyebrow"><Sparkles size={14}/> MIXMASTER WORKSPACE</div><h1>{pages.find(p => p.id === page)?.label}</h1><p>{pages.find(p => p.id === page)?.subtitle}</p></div><div className="page-heading-actions">{page !== 'studio' && <button className="action primary" onClick={() => navigate('studio')}><Sparkles size={16}/> Create a Mix <ArrowRight size={16}/></button>}</div></div>
+        {activeJob && <div className="background-job" role="status"><div><LoaderCircle className="spin" size={18}/><strong>Background mix in progress</strong><span>{progress || 'The server is preparing your audio.'}</span></div><button type="button" onClick={() => navigate('music-mix')}>View progress <ArrowRight size={15}/></button></div>}
+        <div className="page-heading"><div><div className="eyebrow"><Sparkles size={14}/> MIXMASTER WORKSPACE</div><h1>{pages.find(p => p.id === page)?.label}</h1><p>{pages.find(p => p.id === page)?.subtitle}</p></div><div className="page-heading-actions">{page !== 'studio' && <button className="action primary" onClick={() => navigate('music-mix')}><Sparkles size={16}/> Create a Mix <ArrowRight size={16}/></button>}</div></div>
         {page === 'generated-files' && <GeneratedFilesPage/>}
           {page === 'music-mix' && <MusicMixPage/>}
         {page === 'text-to-song' && <TextToSongPage/>}
@@ -412,7 +411,7 @@ export default function App() {
             </details>}
             {(page === 'studio' || page === 'library') && <div className="panel library" id="library"><details className="mm-studio-disclosure" open={page === 'library' ? true : undefined}><summary><ListMusic size={18}/> Track analysis &amp; suggested order <span>{files.length} tracks</span></summary>
               <div className="panel-heading"><div><h2><ListMusic size={20}/> Track Analysis</h2><p>Insights into your selected music.</p></div><button className="subtle" disabled={busy !== null || files.length === 0} onClick={() => chooseFiles([])}><RotateCcw size={15}/> Clear</button></div>
-              {page === 'library' && <div className="library-upload-actions"><span>{files.length} tracks in this session</span><button type="button" onClick={() => navigate('studio')}><UploadCloud size={16}/> Add tracks in Create Mix</button></div>}
+              {page === 'library' && <div className="library-upload-actions"><span>{files.length} tracks in this session</span><button type="button" onClick={() => navigate('music-mix')}><UploadCloud size={16}/> Add tracks in Create Mix</button></div>}
               <div className="tabs"><button className={tab === 'tracks' ? 'selected' : ''} onClick={() => setTab('tracks')}>Tracks & Insights</button><button className={tab === 'order' ? 'selected' : ''} onClick={() => setTab('order')}>Suggested Order</button></div>
               {tab === 'tracks' ? <div className="table-wrap"><table><thead><tr><th>#</th><th>TRACK</th><th>DURATION</th><th>BPM</th><th>KEY</th><th>ENERGY</th></tr></thead><tbody>{files.length === 0 ? <tr><td className="empty" colSpan={6}><FileAudio size={28}/> Upload tracks to view their analysis.</td></tr> : files.map((file,i) => { const track = analysis?.tracks[i]; return <tr key={i}><td>{String(i+1).padStart(2,'0')}</td><td className="track-name" title={file.name}>{file.name}</td><td>{track ? formatTime(track.duration) : '—'}</td><td>{track ? Math.round(track.bpm) : '—'}</td><td>{track?.key || '—'}</td><td>{track ? <div className="energy-bar"><span style={{width: Math.max(6,track.energy / energyMax * 100)+'%'}}/></div> : '—'}</td></tr> })}</tbody></table></div> : <div>{analysis?.plan && <div className="plan-score"><strong>Mix compatibility: {analysis.plan.quality_score}/100</strong><small>{analysis.plan.strategy} · Estimated from track metadata</small></div>}<ol className="order-list">{analysis?.order.length ? analysis.order.map((name,i) => <li key={i}><span>{String(i+1).padStart(2,'0')}</span>{name}</li>) : <li className="order-empty">Analyze your tracks to see the suggested play order.</li>}</ol>{analysis?.plan?.transitions.map((t, i) => <div className="transition-insight" key={i}><span>{t.from} → {t.to}</span><strong>{t.compatibility}/100</strong>{t.warning && <small>{t.warning}</small>}</div>)}</div>}
             </details></div>}
