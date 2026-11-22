@@ -235,3 +235,8 @@ def job_download(job_id: str):
     if path is None:
         raise HTTPException(404, "Mix not ready or job expired.")
     return FileResponse(path, media_type="audio/mpeg", filename="MixMaster_AI_Nonstop.mp3")
+
+
+# Energy-based Music Mix is intentionally separate from DJ endpoints.
+from music_mix import router as music_mix_router
+app.include_router(music_mix_router)
