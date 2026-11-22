@@ -129,6 +129,27 @@ export default function MusicMixPage() {
       </section>
     </div>
 
+    {busy && <section className="music-mix-processing" role="status" aria-live="polite" aria-label={busy==='analyze'?'Analyzing song energy':'Creating music mix'}>
+      <div className="music-mix-processing-visual music-mix-card-scan" aria-hidden="true">
+        <div className="music-mix-scan-wave music-mix-scan-wave-left">{[20,45,75,40,100,65,35,80,50].map((h,i)=><i key={i} style={{height:h+'%',animationDelay:i*.11+'s'}}/>)}</div>
+        <div className="music-mix-scan-stack">
+          <div className="music-mix-scan-card music-mix-scan-card-back back-three"/>
+          <div className="music-mix-scan-card music-mix-scan-card-back back-two"/>
+          <div className="music-mix-scan-card music-mix-scan-card-back back-one"/>
+          <div className="music-mix-scan-card music-mix-scan-card-front"><Music2 size={40}/></div>
+          <div className="music-mix-scan-beam"/>
+        </div>
+        <div className="music-mix-scan-wave music-mix-scan-wave-right">{[50,80,35,65,100,40,75,45,20].map((h,i)=><i key={i} style={{height:h+'%',animationDelay:i*.11+'s'}}/>)}</div>
+      </div>
+      <div className="music-mix-processing-copy">
+        <span className="music-mix-processing-eyebrow"><span className="music-mix-processing-dot"/> {busy==='analyze'?'ANALYSIS IN PROGRESS':'MIX CREATION IN PROGRESS'}</span>
+        <h3>{busy==='analyze'?'Analyzing songs…':'Blending your music into one journey…'}</h3>
+        <p>{busy==='analyze'?'Analyzing '+files.length+' uploaded songs and finding the best '+modes.find(m=>m.id===mode)?.label+' order.':'Combining '+files.length+' full songs with '+transition+'-second crossfades.'}</p>
+        <div className="music-mix-processing-indeterminate" aria-label="Processing; exact progress unavailable"><span/></div>
+        <small>Processing time depends on file size and song length. The bar shows activity, not a measured percentage.</small>\n        <div className="music-mix-processing-stages"><div><FileAudio size={20}/><span>Reading audio</span></div><ArrowRight size={15}/><div className="is-current"><Activity size={20}/><span>Analyzing energy</span></div><ArrowRight size={15}/><div><ListMusic size={20}/><span>Arranging songs</span></div><ArrowRight size={15}/><div><Check size={20}/><span>Finalizing order</span></div></div>\n        <button className="music-mix-processing-cancel" onClick={()=>controller.current?.abort()}>Cancel processing</button>
+      </div>
+    </section>}
+    {!busy && <>
     <section className="music-mix-order">
       <div className="music-mix-section-title"><div><h3><Activity size={20}/> Song Order <span>(by Energy)</span></h3>
         <p>{estimated ? ordered.length+' songs arranged for '+modes.find(m=>m.id===mode)?.label : 'Analyze your uploaded songs to see their energy-based order'}</p></div>
@@ -169,26 +190,7 @@ export default function MusicMixPage() {
       </button>
       {busy && <button className="music-mix-cancel" onClick={()=>controller.current?.abort()}>Cancel request</button>}
     </div>
-    {busy && <section className="music-mix-processing" role="status" aria-live="polite" aria-label={busy==='analyze'?'Analyzing song energy':'Creating music mix'}>
-      <div className="music-mix-processing-visual music-mix-card-scan" aria-hidden="true">
-        <div className="music-mix-scan-wave music-mix-scan-wave-left">{[20,45,75,40,100,65,35,80,50].map((h,i)=><i key={i} style={{height:h+'%',animationDelay:i*.11+'s'}}/>)}</div>
-        <div className="music-mix-scan-stack">
-          <div className="music-mix-scan-card music-mix-scan-card-back back-three"/>
-          <div className="music-mix-scan-card music-mix-scan-card-back back-two"/>
-          <div className="music-mix-scan-card music-mix-scan-card-back back-one"/>
-          <div className="music-mix-scan-card music-mix-scan-card-front"><Music2 size={40}/></div>
-          <div className="music-mix-scan-beam"/>
-        </div>
-        <div className="music-mix-scan-wave music-mix-scan-wave-right">{[50,80,35,65,100,40,75,45,20].map((h,i)=><i key={i} style={{height:h+'%',animationDelay:i*.11+'s'}}/>)}</div>
-      </div>
-      <div className="music-mix-processing-copy">
-        <span className="music-mix-processing-eyebrow"><span className="music-mix-processing-dot"/> {busy==='analyze'?'ANALYSIS IN PROGRESS':'MIX CREATION IN PROGRESS'}</span>
-        <h3>{busy==='analyze'?'Analyzing songs…':'Blending your music into one journey…'}</h3>
-        <p>{busy==='analyze'?'Analyzing '+files.length+' uploaded songs and finding the best '+modes.find(m=>m.id===mode)?.label+' order.':'Combining '+files.length+' full songs with '+transition+'-second crossfades.'}</p>
-        <div className="music-mix-processing-indeterminate" aria-label="Processing; exact progress unavailable"><span/></div>
-        <small>Processing time depends on file size and song length. This animation is not a percentage indicator.</small>
-      </div>
-    </section>}
+    </>}
     {error && <p className="music-mix-error" role="alert">{error}</p>}
     {audio && <section className="music-mix-result"><h3><Check size={20}/> Your Music Mix is ready</h3>
       <audio controls src={audio}/><a className="music-mix-download" href={audio} download="Music_Mix.mp3"><Download size={18}/> Download Music Mix MP3</a></section>}
