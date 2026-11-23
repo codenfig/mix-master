@@ -178,9 +178,9 @@ export default function AudioMastering() {
         <div className="master-subsection-head"><div><div className="master-section-kicker">02 / SOUND CHARACTER</div><h4 className="master-label">Choose your signature</h4><p>One starting point. Endless possibilities.</p></div><Sparkles size={19}/></div>
         <div className="master-presets">
           {presets.map(item => <button type="button" key={item.id}
-            className={'master-preset' + (preset === item.id ? ' selected' : '')}
+            data-preset={item.id} className={'master-preset' + (preset === item.id ? ' selected' : '')}
             onClick={() => choosePreset(item.id)} disabled={busy} aria-pressed={preset === item.id}>
-            <span className="master-preset-top"><span className="master-preset-glyph" aria-hidden="true">{item.id === 'balanced' ? '◈' : item.id === 'club' ? '◉' : item.id === 'streaming' ? '≋' : item.id === 'warm' ? '◐' : item.id === 'dynamic' ? '⌁' : '✳'}</span>{preset === item.id && <Check size={14}/>}</span><strong>{item.title}</strong><small>{item.subtitle}</small>
+            <span className="master-preset-top"><span className="master-preset-glyph" aria-hidden="true"><img src={'/icons/mastering/' + item.id + '.svg'} alt="" width={84} height={84} draggable={false}/></span>{preset === item.id && <span className="master-preset-selected-icon"><Check size={15}/></span>}</span><strong>{item.title}</strong><small>{item.subtitle}</small>
           </button>)}
         </div>
         <p className="master-hint">Selected target: <strong>{preset === 'custom' ? target : presetTargets[preset].loudness} LUFS</strong> · true peak ceiling: <strong>{preset === 'custom' ? peak : presetTargets[preset].ceiling} dBTP</strong>. Targets are approximate.</p>
