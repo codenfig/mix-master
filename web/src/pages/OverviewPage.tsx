@@ -1,22 +1,15 @@
-import { ArrowRight, AudioLines, FolderOpen, ListMusic, Music2, Sparkles, WandSparkles } from 'lucide-react'
-
-export default function OverviewPage() {
+import { ArrowRight, AudioLines, FileAudio, FolderOpen, Headphones, ListMusic, Music2, Sparkles } from 'lucide-react'
+const tools=[
+  {name:'Music Mix',description:'Arrange full tracks by energy and export seamless blends.',href:'#/music-mix',icon:ListMusic},
+  {name:'Audio Mastering',description:'Control loudness, equalization, width and dynamics.',href:'#/audio-mastering',icon:Sparkles},
+  {name:'Stem Splitter',description:'Isolate instruments and other song components.',href:'#/stem-splitter',icon:FileAudio},
+  {name:'Vocal Remover',description:'Extract an instrumental backing from an audio recording.',href:'#/vocal-remover',icon:AudioLines},
+  {name:'AI Voice Studio',description:'Run supported voice conversion and processing workflows.',href:'#/voice-studio',icon:Headphones},
+  {name:'Processed Files',description:'Browse saved outputs from your audio tools.',href:'#/generated-files',icon:FolderOpen},
+]
+export default function OverviewPage(){
   return <div className="overview-page">
-    <section className="overview-banner">
-      <div className="overview-banner-glow" aria-hidden="true"/>
-      <div className="eyebrow"><Sparkles size={16}/> YOUR MUSIC WORKSPACE</div>
-      <h2>Make your music <span>flow.</span></h2>
-      <p>Generate original music, build energy-based playlists, separate audio stems and master your songs in one workspace.</p>
-      <a href="#/music-mix" className="overview-cta">Open Music Mix <ArrowRight size={17}/></a>
-      <div className="banner-orb"><Music2 size={58}/></div>
-    </section>
-    <div className="overview-grid overview-tools">
-      <a className="panel overview-tool" href="#/full-song"><Music2 size={25}/><h2>Music Generator</h2><p>Compose songs using a configured generation engine.</p><span>Open generator <ArrowRight size={15}/></span></a>
-      <a className="panel overview-tool" href="#/music-mix"><ListMusic size={25}/><h2>Music Mix</h2><p>Upload two to twenty songs, arrange them by energy and export a continuous mix.</p><span>Start mixing <ArrowRight size={15}/></span></a>
-      <a className="panel overview-tool" href="#/stem-splitter"><AudioLines size={25}/><h2>Stem Splitter</h2><p>Separate vocals and instruments for further creative work.</p><span>Open stems <ArrowRight size={15}/></span></a>
-      <a className="panel overview-tool" href="#/lyrics-generator"><WandSparkles size={25}/><h2>Lyrics Generator</h2><p>Draft original lyrics and develop song ideas.</p><span>Write lyrics <ArrowRight size={15}/></span></a>
-      <a className="panel overview-tool" href="#/audio-mastering"><Sparkles size={25}/><h2>Audio Mastering</h2><p>Adjust loudness and polish finished recordings.</p><span>Open mastering <ArrowRight size={15}/></span></a>
-      <a className="panel overview-tool" href="#/generated-files"><FolderOpen size={25}/><h2>Generated Files</h2><p>Find audio files saved by supported workflows.</p><span>Browse files <ArrowRight size={15}/></span></a>
-    </div>
+    <section className="overview-banner"><div className="eyebrow"><Sparkles size={16}/> YOUR AUDIO PRODUCTION WORKSPACE</div><h2>Make every <span>sound count.</span></h2><p>Mix and master tracks, process vocals, and refine recordings in one precision studio.</p><a href="#/music-mix" className="overview-cta">Open Music Mix <ArrowRight size={17}/></a><div className="banner-orb" aria-hidden="true"><Music2 size={55}/></div></section>
+    <div className="mix-overview-grid">{tools.map(tool=>{const Icon=tool.icon;return <a key={tool.href} className="mix-overview-card" href={tool.href}><span><Icon size={24}/></span><strong>{tool.name}</strong><p>{tool.description}</p><ArrowRight size={16}/></a>})}</div>
   </div>
 }
