@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Activity, ArrowRight, Check, Download, FileAudio, Headphones, ListMusic, Music2, Play, Sparkles, UploadCloud, X } from 'lucide-react'
+import { Activity, ArrowRight, Check, Download, FileAudio, Headphones, ListMusic, Music2, Sparkles, UploadCloud, X } from 'lucide-react'
 import './styles/music-mix.css'
 
 type Track = { name: string; bpm: number; key: string; energy: number; duration: number }
