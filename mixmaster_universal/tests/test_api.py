@@ -1,40 +1,31 @@
-"""API validation smoke tests; no audio fixtures required."""
+"""MixMaster audio-processing API smoke tests. No model is required."""
 from fastapi.testclient import TestClient
 from server import app
+import generated_storage
 
 client = TestClient(app)
 
-
 def test_health():
-    response = client.get("/health")
-    assert response.status_code == 200
-    assert response.json()["ok"] is True
+    r = client.get("/health")
+    assert r.status_code == 200
+    assert r.json()["ok"] is True
 
+def test_music_mix_requires_audio():
+    r = client.post("/api/music-mix/analyze", data={"progression": "build-up"})
+    assert r.status_code == 422
 
-def test_missing_uploads():
-    response = client.post("/api/mix", data={"count": 10, "transition": 12})
-    assert response.status_code == 422
+def test_mastering_requires_audio():
+    r = client.post("/api/mastering/jobs", data={"preset": "balanced"})
+    assert r.status_code == 422
 
+def test_music_generation_routes_are_removed():
+    for path in ("/api/full-song/engine", "/api/lyrics/status"):
+        assert client.get(path).status_code == 404
+    assert client.post("/api/text-to-song", json={}).status_code == 404
 
-def test_song_count_validation():
-    from server import validate_settings
-    from fastapi import HTTPException
-    for count in (5, 10, 20):
-        validate_settings(count, 12)
-    try:
-        validate_settings(7, 12)
-        assert False, "Expected validation failure"
-    except HTTPException as exc:
-        assert exc.status_code == 400
-
-
-def test_transition_validation():
-    from server import validate_settings
-    from fastapi import HTTPException
-    for transition in (4, 12, 32):
-        validate_settings(10, transition)
-    try:
-        validate_settings(10, 33)
-        assert False, "Expected validation failure"
-    except HTTPException as exc:
-        assert exc.status_code == 400
+def test_shared_processing_storage_retained():
+    assert "audio_mastering" in generated_storage.CATEGORIES
+    assert "stem_splitter" in generated_storage.CATEGORIES
+    assert "vocal_remover" in generated_storage.CATEGORIES
+    assert "full_song" not in generated_storage.CATEGORIES
+    assert "text_to_song" not in generated_storage.CATEGORIES

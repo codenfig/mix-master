@@ -44,3 +44,44 @@ button:disabled{cursor:not-allowed;opacity:.5}
 footer{display:flex;justify-content:space-between;flex-wrap:wrap;gap:16px;padding:24px 0 5px;color:#88adbd;font-size:11px}
 @media(max-width:1200px){.overview-tools{grid-template-columns:repeat(2,minmax(0,1fr))}.banner-orb{opacity:.3}}
 @media(max-width:760px){.app{display:block}.sidebar{position:static;width:100%;height:auto}.sidebar-bottom{margin-top:18px}.topbar{padding:0 12px}.content{padding:18px 12px}.page-heading{align-items:flex-start;flex-direction:column}.overview-banner{padding:25px}.overview-tools{grid-template-columns:1fr}.banner-orb{display:none}}
+
+/* Independent MixMaster audio workspace, without music-generation UI styles. */
+#root .mix-app{background:radial-gradient(circle at 96% 0,#1c4e5b32,transparent 40%),#031421;color:#f3fcff}
+#root .mix-app .mm-sidebar{width:235px;background:#051c29;border-right:1px solid #184a5c;padding:20px 12px}
+#root .mix-app .mm-brand{display:flex;align-items:center;gap:8px;padding:5px 5px 29px}
+#root .mix-app .brand strong{font-size:19px;color:#f5fcff}
+#root .mix-app .brand strong span{color:#64f0e9}
+#root .mix-app .brand small{font-size:9px;color:#a7c8d6}
+#root .mix-app .brand-icon{padding:2px;flex-shrink:0}
+#root .mix-app .nav-label{color:#95bbc9}
+#root .mix-app .sidebar nav{display:grid;gap:6px}
+#root .mix-app .sidebar .nav{display:flex;align-items:center;gap:12px;border:1px solid transparent;border-radius:10px;padding:11px 12px;color:#c0dbe4;background:transparent;text-decoration:none;font-size:12px;font-weight:750}
+#root .mix-app .sidebar .nav:hover{background:#123648}
+#root .mix-app .sidebar .nav.active{border-color:#167f89;background:#0c4352;color:#80f8e8}
+#root .mix-app .sidebar-bottom{margin-top:auto}
+#root .mix-app .mix-help{display:grid;gap:9px;border:1px solid #246273;border-radius:12px;background:#0b3040;padding:15px}
+#root .mix-app .mix-help>svg{color:#77f1e5}
+#root .mix-app .mix-help strong{font-size:12px}
+#root .mix-app .mix-help small{color:#abcdd7;font-size:10px;line-height:1.6}
+#root .mix-app .mm-topbar{background:#051a28;border-bottom:1px solid #1e4b5d;padding:0 25px}
+#root .mix-app .mm-top-nav{display:flex;align-items:center;gap:5px;min-width:0;overflow:auto}
+#root .mix-app .mm-top-nav a{display:flex;gap:8px;align-items:center;padding:10px 13px;text-decoration:none;border:1px solid transparent;border-radius:9px;color:#c3dbe7;white-space:nowrap;font-size:12px;font-weight:700}
+#root .mix-app .mm-top-nav a:hover{background:#113648}
+#root .mix-app .mm-top-nav a.active{background:#0a3b4a;border-color:#16818d;color:#8df9f0}
+#root .mix-app .mm-top-status{color:#9cc1d2;font-size:11px}
+#root .mix-app .content{max-width:1800px;padding:25px 27px 35px}
+#root .mix-app .page-heading h1{font-size:clamp(26px,3vw,36px)}
+#root .mix-app .page-heading p{color:#adccd5}
+#root .mix-app .eyebrow{color:#76eae5}
+#root .mix-app .action.primary{background:#6cf1e4;color:#052c34}
+#root .mix-app .mix-overview-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:15px;margin-top:20px}
+#root .mix-app .mix-overview-card{display:flex;flex-direction:column;align-items:flex-start;gap:11px;min-height:187px;padding:20px;background:#082837;border:1px solid #205668;border-radius:15px;color:#f1fbff;text-decoration:none}
+#root .mix-app .mix-overview-card:hover{border-color:#6aece1;background:#0b3444}
+#root .mix-app .mix-overview-card span{width:42px;height:42px;display:grid;place-items:center;background:#13566a;border-radius:12px;color:#78f7eb}
+#root .mix-app .mix-overview-card strong{font-size:14px}
+#root .mix-app .mix-overview-card p{margin:0;line-height:1.65;font-size:11px;color:#afcbd6;flex:1}
+#root .mix-app .mix-overview-card>svg{color:#6cefe3}
+#root .mix-app .content footer{color:#95bfce}
+@media(max-width:1160px){#root .mix-app .mix-overview-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:800px){#root .mix-app{display:block}#root .mix-app .mm-sidebar{width:100%;height:auto;position:relative;padding:12px}#root .mix-app .mm-brand{padding-bottom:10px}#root .mix-app .mm-sidebar nav{grid-template-columns:repeat(2,minmax(0,1fr))}#root .mix-app .sidebar-bottom{display:none}#root .mix-app .topbar{height:auto;min-height:60px;padding:9px}#root .mix-app .content{padding:17px 13px}}
+@media(max-width:540px){#root .mix-app .mix-overview-grid{grid-template-columns:1fr}#root .mix-app .page-heading{flex-direction:column;align-items:flex-start}#root .mix-app .mm-top-status{display:none}}

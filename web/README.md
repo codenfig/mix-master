@@ -1,78 +1,33 @@
-# MixMaster AI Web Studio
+# MixMaster Audio Workspace
 
-A standalone **React + TypeScript + Vite** frontend for the existing Python FastAPI audio engine.
+React, TypeScript and Vite frontend for **existing-audio processing**, independent of music generation.
 
-## Features
-- Responsive dark DJ dashboard with track upload and drag-and-drop
-- 5, 10 or 20 song selection, audio extension and size validation
-- BPM, key, duration and energy analysis
-- Autonomous energy- and harmonic-aware track planning with explainable compatibility scores
-- Adjustable 4–32-second crossfade settings
-- MP3 rendering, WaveSurfer waveform playback and download
-- Cancelable browser requests and readable error messages
+Available routes:
 
-## Run locally
+- `/#/overview` — audio workspace overview
+- `/#/music-mix` — energy-based Music Mix
+- `/#/audio-mastering` — loudness, EQ and mastering export
+- `/#/stem-splitter` — stem separation
+- `/#/vocal-remover` — instrumental extraction
+- `/#/voice-studio` — voice processing
+- `/#/generated-files` — saved non-generation processing outputs
 
-Start the backend in terminal one:
+Full-song generation, AI lyrics, Text to Song, music model adapters and generated-song libraries now belong to [Melodiva AI](https://github.com/codenfig/Melodiva-AI).
+
+## Start
 
 ```bash
+# In one terminal:
 cd mixmaster_universal
 python -m pip install -r requirements.txt
 python -m uvicorn server:app --host 127.0.0.1 --port 8000
-```
 
-Install FFmpeg first. Then start the frontend in terminal two, from the repository root:
-
-```bash
+# In another terminal:
 cd web
-npm install
+npm ci
 npm run dev
 ```
 
-Open http://localhost:5173. Vite proxies `/api` and `/health` to FastAPI on port 8000, avoiding cross-origin issues in local development.
+Open http://localhost:5173/#/overview .
 
-## Build
-
-```bash
-cd web
-npm install
-npm run build
-npm run preview
-```
-
-The production frontend build goes to `web/dist/`. Deploy it to a static web host and route `/api/*` to your secured FastAPI service. The current app uses relative API URLs, so the deployment must provide a same-origin reverse proxy or be adapted to a configurable API base URL.
-
-## Architecture
-
-- `src/App.tsx` — dashboard, workflow and application state
-- `src/api.ts` — typed FastAPI multipart requests
-- `src/Waveform.tsx` — WaveSurfer playback visualization
-- `src/styles.css` — responsive neon DJ theme
-- `vite.config.ts` — development proxy
-- `../mixmaster_universal/server.py` — audio API
-- `../mixmaster_universal/engine.py` — analysis and crossfade rendering
-
-The legacy HTML frontend remains at `mixmaster_universal/static/index.html`; it is not automatically replaced by the React build.
-
-## Important limitations
-
-This is a development MVP, not a production deployment. Rendering uses conservative pitch-preserving tempo matching when BPMs are close, but beat-grid and phrase alignment are not yet implemented. Rendering remains synchronous; canceling a browser request does not guarantee cancellation of backend processing. Upload progress and server-side job status are not yet available. WaveSurfer decodes rendered audio in the browser and can use significant memory for long mixes. Authentication, background jobs, quotas, production security and real-audio testing remain necessary.
-
-## DJ dashboard features
-
-- Energy journey chart generated from the backend's planned track order.
-- Transition presets: Quick (6 seconds), Balanced (12 seconds), Smooth (20 seconds). These affect crossfade length only, not separate DJ algorithms.
-- Browser-local mix history records the completion time and track count. It does **not** retain uploaded songs or generated MP3s; download completed mixes before leaving the page.
-- Transition compatibility scores are estimates based on metadata, not audible-quality assessments.
-
-Planned, not implemented: persistent cloud library, downloadable mix history, phrase-aware transition placement, audio-quality evaluation, background jobs, and true iterative optimization. No chatbot is included.
-
-## Audio signal health checks
-
-After rendering, the backend scans the pre-limiter PCM in chunks and returns peak amplitude, RMS, near-silence fraction and a peak-based clipping-risk flag. The web dashboard displays these measurements. They do not indicate perceptual DJ quality or guarantee absence of distortion after encoding. The system does not yet listen to, score, or iteratively regenerate transitions.
-
-## Asynchronous mixing jobs (development)
-
-The React app now posts audio to `POST /api/jobs`, polls `GET /api/jobs/{id}` for queued/processing/done/failed status, and retrieves the MP3 from `GET /api/jobs/{id}/download`. Progress is reported by completed track count. The original `POST /api/mix` remains available for compatibility.
-
-The queue is single-process, uses one worker, caps stored jobs at eight, and expires completed jobs after one hour when the queue is next accessed. Restarting the server loses job state and temporary audio. Browser cancellation only stops waiting; it does not terminate the server-side job. Production deployments need persistent storage, authentication, job cancellation, quota enforcement, and a durable worker queue.
+Run `npm run build` to typecheck and produce a production Vite bundle. Do not commit `web/dist` build outputs.

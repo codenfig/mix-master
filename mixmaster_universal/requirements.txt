@@ -10,5 +10,3 @@ soundfile>=0.12
 numba==0.61.2
 llvmlite==0.44.0
 
-# Stripe-hosted commercial licensing checkout and signed webhooks
-stripe>=11,<15
