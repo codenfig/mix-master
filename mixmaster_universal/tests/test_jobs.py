@@ -4,7 +4,7 @@ from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 from server import app
-from jobs import Job
+from jobs import Job, get_job
 
 client = TestClient(app)
 
@@ -19,9 +19,9 @@ def test_job_public_status_has_no_file_paths(tmp_path: Path):
     assert status["total_tracks"] == 5
     assert "directory" not in status
 
-def test_job_status_endpoint(tmp_path: Path):
+def test_internal_mix_job_status_lookup(tmp_path: Path):
     job = Job(id="sample", directory=tmp_path, status="processing", completed_tracks=2, total_tracks=5)
-    with patch("server.get_job", return_value=job.public()):
-        response = client.get("/api/jobs/sample")
-    assert response.status_code == 200
-    assert response.json()["completed_tracks"] == 2
+    with patch.dict("jobs._jobs", {"sample": job}):
+        status = get_job("sample")
+    assert status["completed_tracks"] == 2
+    assert "directory" not in status
