@@ -157,3 +157,23 @@
 @media(max-width:760px){#root .master-studio .master-hero{grid-template-columns:1fr;padding:30px 24px}#root .master-studio .master-hero-art{display:none}#root .master-studio .master-flow{gap:7px;padding:13px}#root .master-studio .master-flow-step{gap:6px}#root .master-studio .master-flow-step>span{flex-basis:29px;height:29px}#root .master-studio .master-flow-step small{display:none}#root .master-studio .master-flow-step strong{font-size:10px}#root .master-studio .master-presets{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:460px){#root .master-studio .master-hero h2{font-size:38px;letter-spacing:-1.5px}#root .master-studio .master-flow>svg{display:none}#root .master-studio .master-flow-step{justify-content:center}#root .master-studio .master-flow-step>div{display:none}#root .master-studio .master-format-options{grid-template-columns:1fr}#root .master-studio .master-format-options button{min-height:58px}#root .master-studio .master-panel{padding:18px}}
 @media(prefers-reduced-motion:reduce){#root .master-studio :is(.master-preset,.master-main-action,.master-drop,.master-expand-indicator){transition:none!important}}
+
+/* Large vector identities for the six mastering signature presets. */
+#root .master-studio .master-preset{min-height:208px;padding:17px 16px 18px;gap:7px;overflow:hidden;isolation:isolate}
+#root .master-studio .master-preset::before{content:'';position:absolute;inset:-50px -35px auto;height:160px;z-index:-1;background:radial-gradient(ellipse at 40% 40%,color-mix(in srgb,var(--master-preset-accent) 15%,transparent),transparent 70%);pointer-events:none}
+#root .master-studio .master-preset[data-preset='balanced']{--master-preset-accent:#37dfd0}
+#root .master-studio .master-preset[data-preset='club']{--master-preset-accent:#fa6ab4}
+#root .master-studio .master-preset[data-preset='streaming']{--master-preset-accent:#75aafa}
+#root .master-studio .master-preset[data-preset='warm']{--master-preset-accent:#ffc578}
+#root .master-studio .master-preset[data-preset='dynamic']{--master-preset-accent:#a0e999}
+#root .master-studio .master-preset[data-preset='custom']{--master-preset-accent:#c7a1ff}
+#root .master-studio .master-preset-top{margin-bottom:6px;min-height:100px;align-items:flex-start}
+#root .master-studio .master-preset-glyph{width:100px;height:100px;max-width:100%;display:flex;align-items:center;justify-content:center;flex:none;border-radius:23px;border:1px solid color-mix(in srgb,var(--master-preset-accent) 44%,#153247);background:radial-gradient(circle at 35% 25%,color-mix(in srgb,var(--master-preset-accent) 15%,#152a40),#091827 76%);box-shadow:inset 0 1px 0 #ffffff16,0 11px 20px #0003;transition:transform .22s,box-shadow .22s}
+#root .master-studio .master-preset-glyph img{width:84px;height:84px;display:block;object-fit:contain;filter:drop-shadow(0 4px 10px color-mix(in srgb,var(--master-preset-accent) 26%,transparent))}
+#root .master-studio .master-preset:hover:not(:disabled) .master-preset-glyph{transform:translateY(-3px) scale(1.035);box-shadow:0 12px 26px #0005,0 0 23px color-mix(in srgb,var(--master-preset-accent) 22%,transparent)}
+#root .master-studio .master-preset.selected .master-preset-glyph{border-color:var(--master-preset-accent);background:radial-gradient(circle at 35% 25%,color-mix(in srgb,var(--master-preset-accent) 24%,#153247),#0b2534 85%);box-shadow:0 0 23px color-mix(in srgb,var(--master-preset-accent) 18%,transparent)}
+#root .master-studio .master-preset-selected-icon{display:grid;place-items:center;width:25px;height:25px;border-radius:50%;background:#63ede6;color:#08313c;box-shadow:0 0 0 4px #63ede51f}
+#root .master-studio .master-preset strong{font-size:14px;letter-spacing:.1px}
+#root .master-studio .master-preset small{font-size:11px;line-height:1.5}
+@media(max-width:460px){#root .master-studio .master-preset{padding:12px;min-height:190px}#root .master-studio .master-preset-glyph{width:82px;height:82px;border-radius:19px}#root .master-studio .master-preset-glyph img{width:72px;height:72px}#root .master-studio .master-preset-top{min-height:82px}#root .master-studio .master-preset strong{font-size:12px}#root .master-studio .master-preset small{font-size:10px}}
+@media(prefers-reduced-motion:reduce){#root .master-studio .master-preset-glyph{transition:none}}
